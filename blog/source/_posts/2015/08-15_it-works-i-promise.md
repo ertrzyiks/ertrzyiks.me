@@ -4,6 +4,7 @@ permalink: it-works-i-promise
 updated: '2017-11-11 21:18:51'
 date: 2015-08-15 19:26:08
 tags: javascript
+featured_image: my_img.png
 ---
 
 With javascript it's quite common to experience uncommon things. Sometimes it's about wrong parameters, something is undefined or we write totally invalid code using valid syntax. Moreover asynchronous code gives us headache when nesting goes beyond two or three levels.

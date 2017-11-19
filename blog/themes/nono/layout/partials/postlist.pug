@@ -8,10 +8,9 @@ each post in page.posts.data
         = time(post.date, 'LL')
 
     .post-content
-      if post.photos && post.photos.length
+      if post.featured_image
         .post-thumbnail
-        img.post-thumbnail_image(src=post.photos[0] alt="the hand made image dedicated to the post number #{post.id}")
+          img.post-thumbnail_image(src=post.featured_image alt="the hand made image dedicated to the post number #{post.id}")
 
       .post-excerpt !{post.excerpt}
-
-    .post-tags !{list_tags(post.tags, {show_count: false, style: ''})}
+        .post-tags !{list_tags(post.tags, {show_count: false, style: ''})}

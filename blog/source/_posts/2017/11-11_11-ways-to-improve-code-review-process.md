@@ -4,6 +4,7 @@ permalink: 11-ways-to-improve-code-review-process
 updated: '2017-11-13 09:34:27'
 date: 2017-11-11 12:18:57
 tags: testing
+featured_image: /content/2017/approved.jpg
 ---
 
 Regardless of the team size, before any code can be merged to the version control system it should be reviewed. It's a great way to communicate, improve the code and share knowledge across the team. 
