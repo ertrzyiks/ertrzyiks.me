@@ -1,0 +1,17 @@
+each post in page.posts.data
+  section.post(id="post-{{id}}")
+    h3.post-title
+      a(href=url_for(post.path))
+        = post.title
+
+      span.post-date
+        = time(post.date, 'LL')
+
+    .post-content
+      if post.photos && post.photos.length
+        .post-thumbnail
+        img.post-thumbnail_image(src=post.photos[0] alt="the hand made image dedicated to the post number #{post.id}")
+
+      .post-excerpt !{post.excerpt}
+
+      .post-tags !{list_tags(post.tags, {show_count: false, style: ''})}

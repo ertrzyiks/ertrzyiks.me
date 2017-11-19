@@ -1,0 +1,65 @@
+doctype html
+html(lang="zh-cn" prefix="og: http://ogp.me/ns#")
+  head
+    meta(charset="UTF-8")
+    meta(http-equiv="X-UA-Compatible" content="IE=edge,chrome=1")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+
+    title
+      = page.title
+
+    meta(name="description" content=config.description)
+    meta(name="author" content="ertrzyiks")
+
+    include ./partials/modernizr.pug
+
+    link(rel="stylesheet" type='text/css' href='css/compiled-7a7b003.css')
+
+    script.
+      (function () {
+        if (!Modernizr.flexbox) {
+          var head = document.head
+            , link = document.createElement('link')
+
+          link.type = 'text/css'
+          link.rel = 'stylesheet'
+          link.href = 'css/fallback'
+
+          head.appendChild(link)
+        }
+      })();
+
+    link(rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png")
+    link(rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png")
+    link(rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png")
+    link(rel="manifest" href="/manifest.json")
+    meta(name="theme-color" content="#4aadd6")
+
+    //{{ghost_head}}
+
+    meta(name="google-site-verification" content="dmIhKepYx3GEEmkcODaN1X4d0inBN2syKkHcCg3-eL0")
+    body
+      block analytics
+        include ./partials/analytics.pug
+
+      block navigation
+        include ./partials/navigation.pug
+
+      block header
+        header.page_header
+          h1.page_header-title
+            a.page_header-link(href=config.url)
+                = config.title
+
+          p.page_header-description
+            = config.subtitle
+
+      block content
+
+      block footer
+        footer.main
+          p
+            | Published with <a href="https://hexo.io/">Hexo</a>.
+
+      block scripts
+        script(async=true src='js/lib/raven-ed99ff6.js')
