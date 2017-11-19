@@ -1,6 +1,8 @@
 ---
 title: 'It works, I promise'
-date: 2015-08-18 19:26:11
+permalink: it-works-i-promise
+updated: '2017-11-11 21:18:51'
+date: 2015-08-15 19:26:08
 tags: javascript
 ---
 
@@ -8,7 +10,6 @@ With javascript it's quite common to experience uncommon things. Sometimes it's 
 <!-- more -->
 
 Using **Promises** arranges async code quite well and provides a great error handling opportunity, but there is a catch. Or not even one.
-
 
 ## Server side renderer
 We had a great plan to render a pretty error page. The issue was simple: setup the library, call the render method and in case of a problem render an error page. We ended up with something like this:
