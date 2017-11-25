@@ -7,6 +7,7 @@ tags:
   - bdd-course 
   - javascript
   - testing
+featured_image: /content/2017/blocks.jpg
 ---
 
 As I said in [the introduction](/introduction-to-the-bdd-c-o-urse) you can select one of the various available interfaces. My favourite is BDD and this is the interface I'm going to present here. The main goal of this interface is to help you write specs as grammatically correct sentences.

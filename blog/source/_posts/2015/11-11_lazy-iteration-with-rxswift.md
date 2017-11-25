@@ -6,6 +6,7 @@ date: 2015-11-11 10:32:05
 tags: 
   - swift
   - reactive extensions
+featured_image: /content/2015/machine.jpg
 ---
 
 I am totally frontend guy and used to work on web frontends. Last weeks were time of dev experiment for my team. For me? The buzzer in my Challenge Detector is going to be quite tired soon. 

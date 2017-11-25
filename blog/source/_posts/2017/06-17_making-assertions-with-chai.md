@@ -7,6 +7,7 @@ tags:
   - bdd-course 
   - javascript 
   - testing
+featured_image: /content/2017/assertion.jpg
 ---
 
 ## Why Chai?

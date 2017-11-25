@@ -4,6 +4,7 @@ permalink: lets-play
 updated: '2017-06-05 19:16:04'
 date: 2015-09-09 09:17:29
 tags: and stuff
+featured_image: /content/2015/game.jpg
 ---
 
 the game called Replace Assumption. It's my favourite game and is the best when your opponent doesn't know she/he is part of the game. You are warned, so we do not score this one. We can treat it as introduction. So fun starts with question. Who would win: Superman or Batman? 

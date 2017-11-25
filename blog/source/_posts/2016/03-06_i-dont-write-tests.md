@@ -6,6 +6,7 @@ date: 2016-03-06 17:40:09
 tags: 
   - javascript
   - testing
+featured_image: /content/2016/should-swim.jpg
 ---
 
 and i'm proud of it.
@@ -54,4 +55,4 @@ The second thing is to read specs included in some open source projects, like fo
 Once I found my favourite testing stack and learned how to use it's components, practiced enough to be able to start writing specs before actual implementation of feature and failed on writing tests which were deeply linked to framework internals. I can take advantage of a Test-driven Development. My mistakes are now improperly specified features, writing tests is part of coding time and when I see my test suite green I am confident about quality.
 
 BTW this writing has specs as well, see:
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1457817413/b8zwxye4zlmth45azqqx.png)
+![](/content/2016/specs-run.png)

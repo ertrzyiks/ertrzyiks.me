@@ -4,6 +4,7 @@ permalink: weekend-on-mars
 updated: '2017-06-05 19:18:34'
 date: 2016-08-31 08:00:04
 tags: and stuff
+featured_image: /content/2016/journey.jpg
 ---
 
 ## It could be possible now!
@@ -14,7 +15,7 @@ To better understand how it works we need to add some background information. Ex
 
 <div style="max-width:300px; min-height:212px; margin:0 auto">
 
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1472589004/slz4hcxsjvzyhwmr5qai.jpg)
+![](/content/2016/dont-touch.jpg)
 </div>
 
 For those wondering why the heck is that a big deal I must make one thing clear: There is a 12 page manual on the good and the bad things about pressing that button. None of the scientists dared to press that button. What would happen after that was known as undetermined and it was somehow calming for everybody. The Button activated a tiny, cybernetic hand which moved a small lever and repositioned an even smaller ring located on the registron. What happened next was just outstanding! The whole atom moved half a nanometer!
@@ -25,7 +26,7 @@ Our dream became reality in a very surprising way. Would you ever think that you
 All countries all over the globe cut expenses on the least important areas (like painting fences yellow and public education) to support scientist from the <abbr title="Internation Organization of Cosmos">IOC</abbr>. The following couple of months were full of speculations how we could use such knowledge. 
 
 <div style="max-width:300px; min-height:212px; margin:0 auto">
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1472589035/blmi9mn4xqv2e1gfxa0t.jpg)
+![](/content/2016/thinking.jpg)
 </div>
 
 So, going back to the press conference, the head of the Intergalactic Department of the IOC presented a plan for a new ship powered by a registron manipulating engine. Or to be more precise, an army of nanobots manipulating registrons of the crew, passengers and the ship itself. The technology turned out to be way more limited than we expected. Moving some of the tiny levers inside registrons uses a massive energy. The bigger change they make, the higher amount of energy is required. Furthermore, moving one kilogram of water to Mars instantly would need the energy produced by our Sun. In a month. 
@@ -37,7 +38,7 @@ is hard to predict. Most of the people we asked what they think about this revel
 As we can see, the opinions are spread.
 
 <div style="max-width:300px; min-height:212px; margin:0 auto">
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1472589058/lsyjpel3jxoz4tf750ev.jpg)
+![](/content/2016/chart.jpg)
 </div>
 
 That's certainly a great step forward. We are waiting for an announcement of the first expedition and looking forward to seeing its value for the humanity.

@@ -5,6 +5,7 @@ updated: '2017-11-13 09:34:27'
 date: 2017-11-11 12:18:57
 tags: testing
 featured_image: /content/2017/approved.jpg
+comment_id: 25
 ---
 
 Regardless of the team size, before any code can be merged to the version control system it should be reviewed. It's a great way to communicate, improve the code and share knowledge across the team. 
@@ -22,7 +23,7 @@ Unfortunately, it has a negative impact on the review quality. Instead, think of
 ## 2. It's OK to be second
 
 <div style="max-width:300px; min-height:212px; margin:0 auto">
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1510338875/ck29g62axwnpfri8pdsw.jpg)
+![](/content/2017/ok-job.jpg)
 </div>
 
 It may be demotivating to see that the Pull Request you are going to review has already been approved. Another guy spent who-knows-how-much time on the review already, why should you waste your time then?
@@ -38,7 +39,7 @@ Don't assume that the author read the task description and programmed everything
 ## 4. Check with a reference point
 
 <div style="max-width:300px; min-height:212px; margin:0 auto">
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1510339843/ug6wvjk4unp9vsojtpq8.jpg)
+![](/content/2017/reference.jpg)
 </div>
 
 If everything works great and just like specified in requirements, the code may still be incorrect. The solution can have unintentional changes to the parts of the application that were supposed to be left untouched.
@@ -54,7 +55,7 @@ It may be the last chance to stop a buggy solution. Try to do something against 
 ## 6. Check performance
 
 <div style="max-width:300px; min-height:212px; margin:0 auto">
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1510338795/ojazjnqus7ikxnkan8sd.jpg)
+![](/content/2017/performance.jpg)
 </div>
 
 Any kind of slowness will annoy your users. Report any performance issues you notice. It can be a slow server response, a lagging user interface or choppy animations.
@@ -99,7 +100,7 @@ Actually, that was my only input to the code changes when as a front-end develop
 ## 10. Take a few passes
 
 <div style="max-width:300px; min-height:212px; margin:0 auto">
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1510340231/ohnz28tahptqq0lkoss7.jpg)
+![](/content/2017/step-by-step.jpg)
 </div> 
 
 Code Review process can take hours. Sometimes, it is even more time-consuming than the actual implementation. It's really hard to stay focused for so long and the quality of the review decreases over time.

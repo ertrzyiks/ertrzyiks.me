@@ -4,7 +4,7 @@ permalink: it-works-i-promise
 updated: '2017-11-11 21:18:51'
 date: 2015-08-15 19:26:08
 tags: javascript
-featured_image: my_img.png
+featured_image: /content/2015/catch.jpg
 ---
 
 With javascript it's quite common to experience uncommon things. Sometimes it's about wrong parameters, something is undefined or we write totally invalid code using valid syntax. Moreover asynchronous code gives us headache when nesting goes beyond two or three levels.
@@ -45,7 +45,7 @@ But hey! We are in the Promised Land. One more catch will surely be enough.
 
 ... Nope. Still nothing. 
 
-I feel like [The Spanish Inquisition](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1439321371/joazv8fj14wvviiflwjx.png) ASCII art thrown to the terminal would be more expected than this.
+I feel like [The Spanish Inquisition](/content/2015/spanish-inquisition.png) ASCII art thrown to the terminal would be more expected than this.
 
 Aware of the hopelessness of this attempt, we decide to add a good old try catch there.
 

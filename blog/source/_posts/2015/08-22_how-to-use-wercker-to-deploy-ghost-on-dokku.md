@@ -4,6 +4,7 @@ permalink: how-to-use-wercker-to-deploy-ghost-on-dokku
 updated: '2017-06-05 19:15:37'
 date: 2015-08-22 08:33:54
 tags: devops
+featured_image: /content/2015/ghost.jpg
 ---
 
 [Ghost](https://ghost.org/) is a blogging platform and a lightweight alternative to the [Wordpress](https://wordpress.org/). It's written in NodeJS (which we all love), has a markdown-based editor, a very simple admin interface and yet is highly customizable. This make Ghost my platform of choice.
@@ -18,22 +19,22 @@ Dokku is an open source copy of Heroku Platform as a Service. I met it because l
 How to start? To use Dokku you need a server with an ssh access. On [documentation page](http://progrium.viewdocs.io/dokku/) or [repository](https://github.com/progrium/dokku) there is one-liner to set it up. 
 
 To have an access to deployment and `dokku` user, you need to send your public key from your computer to the server:
-```
+```sh
 cat ~/.ssh/id_rsa.pub | ssh [sudouser]@[server-address] "sudo sshcommand acl-add dokku [description]"
 ```
 
 Now you can create an app:
-```
+```sh
 ssh dokku@<server_address> apps:create my-awesome-app
 ```
 
 add new remote to your local git repository:
-```
+```sh
 git remote add dokku dokku@<server-address>:my-awesome-app
 ```
 
 and push your master there:
-```
+```sh
 git push dokku master
 ```
 
@@ -52,7 +53,7 @@ Ah yeah, the blog.
 
 To prepare application for continuous delivery and avoid vendor code in repository, you can use Ghost as an npm package. [Here](https://github.com/TryGhost/Ghost/wiki/Using-Ghost-as-an-npm-module) is the instruction. Finally it's enough to create index file, like this:
 
-```
+```js
 var ghost = require('ghost');
 var path = require('path');
 
@@ -67,14 +68,14 @@ ghost({
 ##### Database
 Ghost use SQL database for storing page settings and posts. For local preview it's fine to use sqlite3 adapter, for the actual blog it's recommended to use MySQL or Postgresql. I've created a Postgres database server, because I used to MySQL and wanted to try something new. The [postgres plugin](https://github.com/Kloadut/dokku-pg-plugin) for Dokku made this task very simple:
 
-```
+```sh
 ssh dokku@<server_address> postgresql:create blog-db
 ssh dokku@<server_address> postgresql:link blog-app blog-db
 ```
 
 After executing those lines `DATABASE_URL` environment variable will be created inside the application, so to get connection we need to pass it to database config section:
 
-```
+```js
 database: {
     client: 'postgres',
     connection: process.env.DATABASE_URL
@@ -93,7 +94,7 @@ With Dokku you could create a volume - folder shared between the app and the ser
 Before version 0.6 Ghost didn't support us when we decided to use external service for file storage. Currently we can install and configure store addon. Since it's free, I decided to give Cloudinary a chance. 
 
 For installation instruction check documentation of chosen adapter. Most likely it will be done by making sure that your production config contains storage section with valid authentication keys, for example:
-```
+```js
 storage: {
     active: 'ghost-cloudinary-store',
     'ghost-cloudinary-store': {
@@ -113,17 +114,17 @@ Let's create a custom deploy target. That means we take responsibility for deplo
 
 Wercker need access to our Dokku server, so we can use the *SSH keys* section in the application settings. Once you created the key, it needs to be exposed to the deploy job with an environment variable. I've added it to the deploy target settings, but this variable can be added in the *Environment variables* section as well. Check the "SSH Key pair" in the form and select the key from the list, here:
 
-![](https://res.cloudinary.com/dx4fgzy3q/image/upload/v1439722708/yh4gkrueswzqmghnimbe.png)
+![](/content/2015/dokku-key.png)
 
 Copy the public key and add it to your server, exactly like you added your own key:
 
-```
+```sh
 echo "WERCKER PUBLIC KEY HERE" | ssh [sudouser]@[server-address] "sudo sshcommand acl-add dokku [description]"
 ```
 
 Additionally, the deploy target can build dokku git url from environment variables. We need the hostname alone to add it to known hosts anyway. Let's put it all together:
 
-```
+```sh
 GIT_DEPLOY_APP=<app_name>
 GIT_DEPLOY_USER=dokku
 GIT_DEPLOY_HOST=<server_address>

@@ -7,6 +7,7 @@ tags:
   - bdd-course 
   - javascript
   - testing
+featured_image: /content/2017/terminal.jpg
 ---
 
 As I wrote in the [I do not write tests] article, my favourite testing stack is [Mocha] with [Sinon] and [Chai]. 

@@ -6,6 +6,7 @@ date: 2016-05-17 17:47:38
 tags: 
   - devops
   - and stuff
+featured_image: /content/2016/mars.jpg
 ---
 
 Working with the latest technology is challenging not only when you touch it, but even more so when you don't.
