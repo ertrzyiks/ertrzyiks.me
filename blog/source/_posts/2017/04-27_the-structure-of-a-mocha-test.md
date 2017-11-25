@@ -21,7 +21,7 @@ The usage of the description depends on the reporter you chose. The default `spe
 
 See the example:
 
-<!--TOMMY the-structure-basic-example YMMOT-->
+{% tommy_example the-structure-basic-example %}
 
 There is an alias function `specify`, which may be useful when having the word `it` as a part of the test suite sentence doesn't make sense.
 
@@ -37,7 +37,7 @@ We have an alias for the `describe` block as well. It's the `context` function. 
 
 Here is an example of using the `describe` and the `context` blocks to specify a divide operation:
 
-<!--TOMMY the-structure-blocks-example YMMOT-->
+{% tommy_example the-structure-blocks-example %}
 
 ## Hooks
 
@@ -49,7 +49,7 @@ Sharing code between test cases can sometimes break their isolation. In particul
 
 The other misuse of hooks is making them fat or (even worse) conditional. Do not force yourself to use hooks. Sometimes to avoid duplication it's better to extract a helper function, put it at the top of a spec file and call it in a few related `it` blocks.
 
-<!--TOMMY the-structure-hooks-example YMMOT-->
+{% tommy_example the-structure-hooks-example %}
 
 ## Async
 

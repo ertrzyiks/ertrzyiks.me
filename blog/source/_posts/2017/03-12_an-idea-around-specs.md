@@ -27,11 +27,11 @@ During the last phase, you can clean up all the hacky shortcuts. We want to keep
 
 Let's say you need a function which returns HTML code for an action button. We need to be able to apply a CSS class for the rendered element. Try to implement that function in a way that covers all the requirements. At this stage, you don't need to care about code quality, so feel free to hack your way through to the green specs!
 
-<!--TOMMY render-action-button YMMOT-->
+{% tommy_example render-action-button %}
 
 For the purpose of the refactor phase, I've prepared a utility function for rendering an HTML string. Feel free to copy it and rework your solution to make use of it. 
 
-<!--TOMMY render-html-element YMMOT-->
+{% tommy_example render-html-element %}
 
 When you read this you most likely have completed the green and refactor phases. Good job!
 

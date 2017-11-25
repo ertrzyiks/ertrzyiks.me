@@ -1,0 +1,59 @@
+.post-iframe_placeholder--tommy {
+  height: 600px;
+  margin: 30px 0;
+}
+
+.post-iframe_wrapper--tommy {
+  position: relative;
+  height: 600px;
+  background-color: #7b81b2;
+  background-image: url('../img/tommy-logo.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: 150px 150px;
+  padding: 1em;
+}
+
+.post-iframe--tommy {
+  border: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.post-iframe_button--tommy {
+  background-color: #4be625;
+  border: solid 1px #55d115;
+  border-radius: 16px;
+  bottom: 140px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 1px 1px rgba(0,0,0,0.2);
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 16px;
+  left: 50%;
+  letter-spacing: 1px;
+  margin-left: -100px;
+  opacity: 0.8;
+  padding: 0.8em;
+  position: absolute;
+  transition: opacity 200ms;
+  width: 200px;
+}
+
+.post-iframe_button--tommy:hover,
+.post-iframe_button--tommy:focus {
+  opacity: 1;
+}
+
+.post-iframe_button--tommy.is-hidden {
+  display: none;
+}
+
+.post-iframe_wrapper--tommy.is-expanded {
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  left: 2em;
+  right: 2em;
+  z-index: 999;
+}

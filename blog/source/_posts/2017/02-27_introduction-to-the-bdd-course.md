@@ -117,7 +117,7 @@ expect(spy).to.have.been.calledWith(foo: 'bar'})
 To demonstrate all of them talking to one another I invited Tommy The Runner (yup, that thing with a guitar logo below) to help. 
 It will show you some snippets of code with specs in more readable format and allow you to execute test suites immediately in your browser. First load an exercise and then hit the Run button to see it clicking.
 
-<!--TOMMY mocha-chai-sinon YMMOT-->
+{% tommy_example mocha-chai-sinon %}
 
 Tommy promised to be with us during the whole course.
 

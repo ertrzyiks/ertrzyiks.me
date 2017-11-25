@@ -1,8 +1,9 @@
 extends ./base.pug
 
 block content
+  h1= page.hasTommyExample
   section.main
-    article.single_post(id="post-#{post.id}")
+    article.single_post(id="post-#{page.id}")
       header.single_post-header
         if page.featured_image
           .single_post-thumbnail

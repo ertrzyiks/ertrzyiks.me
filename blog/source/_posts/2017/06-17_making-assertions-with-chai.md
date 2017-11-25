@@ -73,7 +73,7 @@ it { is_expected.to increase_number_of_tasks_by(1) }
 
 Custom matchers allow hiding complexity of the code behind a readable curtain. In Chai, to add a custom matcher, you need to use the [plugins API](http://chaijs.com/guide/plugins/). Take a look and also read the [Building a Helper](http://chaijs.com/guide/helpers/) tutorial, then try to implement a custom matcher in the example below. 
 
-<!--TOMMY assertions-custom-matcher YMMOT-->
+{% tommy_example assertions-custom-matcher %}
 
 ## Plugins
 
@@ -87,4 +87,4 @@ The point is, having a green spec is not enough to say it's all good. It may be 
 
 As a final excercise on this topic, please try to figure out what is wrong with the code below:
 
-<!--TOMMY assertions-false-negatives YMMOT-->
+{% tommy_example assertions-false-negatives %}
