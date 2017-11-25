@@ -20,12 +20,13 @@ permalink_defaults:
 # Directory
 source_dir: source
 public_dir: public
-tag_dir: tags
+tag_dir: tag
 archive_dir: archives
 category_dir: categories
 code_dir: downloads/code
 i18n_dir: :lang
 skip_render:
+  - /categories/**
 
 # Writing
 new_post_name: :title.md # File name of new posts
@@ -61,6 +62,7 @@ index_generator:
 default_category: uncategorized
 category_map:
 tag_map:
+  bdd-course: bdd
 
 # Date / Time format
 ## Hexo uses Moment.js to parse and display date
