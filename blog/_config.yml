@@ -81,6 +81,10 @@ pagination_dir: page
 ## Themes: https://hexo.io/themes/
 theme: nono
 
+analytics:
+  enabled: false
+  gtm_key: GTM-W3RLRX
+
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:

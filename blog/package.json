@@ -5,6 +5,11 @@
   "hexo": {
     "version": "3.4.1"
   },
+  "scripts": {
+    "start": "hexo server --watch",
+    "build": "hexo clean && hexo generate",
+    "build:prod": "hexo clean && hexo generate --config _config.yml,_config.prod.yml"
+  },
   "dependencies": {
     "hexo": "^3.2.0",
     "hexo-featured-image": "^0.2.1",
