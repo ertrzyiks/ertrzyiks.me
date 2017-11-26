@@ -11,6 +11,9 @@ html(lang="zh-cn" prefix="og: http://ogp.me/ns#")
     meta(name="description" content=config.description)
     meta(name="author" content="ertrzyiks")
 
+    if config.feed && config.feed.path
+      link(rel='alternate' href=config.feed.path title=config.title type='application/rss+xml')
+
     include ./partials/modernizr.pug
 
     link(rel="stylesheet" type='text/css' href='/css/compiled-7a7b003.css')

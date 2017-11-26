@@ -85,6 +85,10 @@ analytics:
   enabled: false
   gtm_key: GTM-W3RLRX
 
+feed:
+  type: rss2
+  path: rss
+
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
