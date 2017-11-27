@@ -1,0 +1,21 @@
+{
+  "name": "ertrzyiks.me",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "blog:deploy": "npm run build:prod --prefix blog && npm run deploy --prefix blog",
+    "postinstall": "npm install --prefix blog"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ertrzyiks/ertrzyiks.me.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ertrzyiks/ertrzyiks.me/issues"
+  },
+  "homepage": "https://github.com/ertrzyiks/ertrzyiks.me#readme"
+}
