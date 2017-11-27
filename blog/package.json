@@ -8,7 +8,7 @@
   "scripts": {
     "start": "hexo server --watch",
     "build": "hexo clean && hexo generate",
-    "build:prod": "hexo clean && hexo generate --config _config.yml,_config.prod.yml"
+    "build:prod": "hexo clean && hexo generate --config _config.yml,_config.prod.yml && touch public/.static"
   },
   "dependencies": {
     "hexo": "^3.2.0",

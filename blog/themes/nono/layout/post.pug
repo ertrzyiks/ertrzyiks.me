@@ -14,7 +14,7 @@ block content
 
           span.single_post-header_date
             = time(page.date, 'LL')
-            if page.tags.length > 0
+            if page.tags && page.tags.length > 0
               != " &middot; "
               span.taglist !{list_tags(page.tags, {show_count: false, style: '', separator: " &middot; "})}
 

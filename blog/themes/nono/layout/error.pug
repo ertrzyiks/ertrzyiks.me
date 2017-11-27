@@ -1,0 +1,10 @@
+extends ./base.pug
+
+block content
+  section.main
+    header.error-header
+      img.error-image(src="/img/dog.jpeg" alt="a sad dog")
+      h1.error-title
+        = page.title
+      h2.error-subtitle
+        | !{page.content}
