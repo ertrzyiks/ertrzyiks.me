@@ -10,11 +10,13 @@ build:
 
 deploy:
   steps:
-    - npm-install
     - script:
         name: echo nodejs information
         code: |
           echo "node version $(node -v) running"
           echo "npm version $(npm -v) running"
-    - npm run deploy:blog
-
+    - script:
+        name: deploy blog
+        code: |
+          npm install --prefix blog
+          npm run blog:deploy
