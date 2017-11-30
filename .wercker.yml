@@ -15,8 +15,19 @@ deploy:
         code: |
           echo "node version $(node -v) running"
           echo "npm version $(npm -v) running"
+
+    - script:
+        name: setup git
+        code: |
+          git config --global user.email "bot@ertrzyiks.me"
+          git config --global user.name "Deploy Bot"
+
+    - script:
+        name: npm install
+        code: |
+          npm install --prefix blog
+
     - script:
         name: deploy blog
         code: |
-          npm install --prefix blog
           npm run blog:deploy
