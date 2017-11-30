@@ -9,6 +9,7 @@ description:
 author: Mateusz Derks
 language:
 timezone:
+default_image: /content/assets/img/avatar.jpg
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'

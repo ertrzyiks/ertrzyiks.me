@@ -11,6 +11,16 @@ html(lang="zh-cn" prefix="og: http://ogp.me/ns#")
     meta(name="description" content=config.description)
     meta(name="author" content="ertrzyiks")
 
+    !=open_graph({url: url.replace('/index.html', '/'), image: (page.featured_image || config.default_image)})
+
+    if is_post()
+      meta(name="twitter:label1" content="Written by")
+      meta(name="twitter:data1" content="Mateusz Derks")
+      if page.tags && page.tags.length > 0
+        meta(name="twitter:label2" content="Filed under")
+        meta(name="twitter:data2" content=strip_html(list_tags(page.tags, {show_count: false, style: '', amount: 1})))
+      meta(name="twitter:site" content="@ertrzyiks")
+
     if config.feed && config.feed.path
       link(rel='alternate' href=config.feed.path title=config.title type='application/rss+xml')
 
