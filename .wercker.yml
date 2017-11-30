@@ -27,6 +27,12 @@ deploy:
         code: |
           npm install --prefix blog
 
+    - add-to-known_hosts:
+        hostname: ertrzyiks.me
+
+    - add-ssh-key:
+        keyname: DOKKU_DEPLOY
+
     - script:
         name: deploy blog
         code: |
