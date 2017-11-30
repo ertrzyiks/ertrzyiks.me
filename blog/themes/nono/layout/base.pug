@@ -6,7 +6,7 @@ html(lang="zh-cn" prefix="og: http://ogp.me/ns#")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
 
     title
-      = page.title
+      = page.title || config.title
 
     meta(name="description" content=config.description)
     meta(name="author" content="ertrzyiks")

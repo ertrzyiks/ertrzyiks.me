@@ -6,6 +6,7 @@
   "private": true,
   "scripts": {
     "blog:deploy": "npm run build:prod --prefix blog && npm run deploy --prefix blog",
+    "blog:start": "npm start --prefix blog",
     "postinstall": "npm install --prefix blog"
   },
   "repository": {
