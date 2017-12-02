@@ -1,0 +1,14 @@
+if page.tags && page.tags.data.filter(function(tag) { return tag.name == 'bdd-course' }).length > 0
+  .related_posts
+    h3.related_posts-header
+      | Read also:
+
+    .related_posts-inner
+      each post in site.tags.findOne({name: 'bdd-course'}).posts.sort('date', -1).filter(function (post) { return post.title != page.title }).limit(3).toArray()
+        a.related_post(href=url_for(post.path))
+          if post.featured_image
+            .related_post-thumbnail
+              img.related_post-thumbnail_image(src=post.featured_image alt="the hand made image dedicated to the post number {{id}}")
+
+          .related_post-title
+            =post.title
