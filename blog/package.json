@@ -8,6 +8,7 @@
   "scripts": {
     "start": "hexo server --watch",
     "build": "hexo clean && hexo generate",
+    "test": "npm run build",
     "build:prod": "hexo clean && hexo generate --config _config.yml,_config.prod.yml && touch public/.static",
     "deploy": "hexo deploy"
   },
@@ -23,9 +24,10 @@
     "hexo-migrator-ghost": "^0.1.0",
     "hexo-prism-plugin": "^2.2.0",
     "hexo-render-pug": "^1.2.0",
-    "hexo-renderer-ejs": "^0.3.0",
     "hexo-renderer-marked": "^0.3.0",
-    "hexo-renderer-stylus": "^0.3.1",
     "hexo-server": "^0.2.0"
+  },
+  "devDependencies": {
+    "uglify-js": "^2.6.0"
   }
 }

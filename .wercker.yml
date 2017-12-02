@@ -8,6 +8,16 @@ build:
           echo "node version $(node -v) running"
           echo "npm version $(npm -v) running"
 
+    - script:
+        name: install dependencies
+        code: |
+          npm install --prefix blog
+
+    - script:
+        name: test blog
+        code: |
+          npm test --prefix blog
+
 deploy:
   steps:
     - script:
