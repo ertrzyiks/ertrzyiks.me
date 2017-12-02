@@ -94,6 +94,6 @@ feed:
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: dokku@ertrzyiks.me:hexoblog
+  repo: dokku@ertrzyiks.me:blog
   branch: master
   ignore_hidden: false
