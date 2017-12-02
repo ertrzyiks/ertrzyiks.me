@@ -13,6 +13,8 @@ http {
   server {
     listen {{ $.PORT }};
     server_name  _;
+    port_in_redirect off;
+
     {{ if ne $.NGINX_ROOT "" }}
       root /app/www/{{ $.NGINX_ROOT }};
     {{ else }}
