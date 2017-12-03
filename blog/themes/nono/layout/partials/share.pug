@@ -1,31 +1,31 @@
 #social-bar
   ul.share
     li.share-item
-      a.share-item_link.is-email(href="mailto:?subject=#{page.title}&amp;body=#{page.permalink}")
+      a.share-item_link.is-email(href="mailto:?subject=" + encodeURIComponent(page.title) + "&amp;body=" + encodeURIComponent(page.permalink))
         span.icon
           include ../assets/share/email.svg
         span.text Email
 
     li.share-item
-      a.share-item_link.is-facebook.popup(href="https://www.facebook.com/sharer/sharer.php?u=#{page.permalink}")
+      a.share-item_link.is-facebook.popup(href="https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(page.permalink))
         span.icon
           include ../assets/share/fb.svg
         span.text Facebook
 
     li.share-item
-      a.share-item_link.is-twitter.popup(href="http://twitter.com/home?status=#{page.title}%20#{page.permalink}")
+      a.share-item_link.is-twitter.popup(href="http://twitter.com/home?status=" + encodeURIComponent(page.title) + "%20" + encodeURIComponent(page.permalink))
         span.icon
           include ../assets/share/twitter.svg
         span.text Twitter
 
     li.share-item
-      a.share-item_link.is-linkedin.popup(href="http://www.linkedin.com/shareArticle?mini=true&amp;url=#{page.permalink}&amp;title=#{page.title}&amp;summary=#{!{post.excerpt}}...")
+      a.share-item_link.is-linkedin.popup(href="http://www.linkedin.com/shareArticle?mini=true&amp;url=" + encodeURIComponent(page.permalink) + "&amp;title=" + encodeURIComponent(page.title))
         span.icon
           include ../assets/share/linkedin.svg
         span.text LinkedIn
 
     li.share-item
-      a.share-item_link.is-pocket.popup(href="https://getpocket.com/save?url=#{page.permalink}")
+      a.share-item_link.is-pocket.popup(href="https://getpocket.com/save?url=" + encodeURIComponent(page.permalink))
         span.icon
           include ../assets/share/pocket.svg
         span.text Pocket
