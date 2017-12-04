@@ -24,7 +24,7 @@ Timestamps were also not correctly applied and I had to fix the publish date for
 
 ### Tommy
 
-To make my testing course more enjoyable and engaging I added a simple playground environment a while ago. You can see an example at the bottom of the [Introduction to the BDD c(o)urse](http://localhost:4000/introduction-to-the-bdd-c-o-urse/). This playground is powered by [Tommy The Runner](https://github.com/tommy-the-runner/) and is embedded via slug. It used to be an HTML comment with the id of the exercise in my blog post. With Hexo I embed them using the [Tag Plugin](https://hexo.io/docs/tag-plugins.html). Now it looks like this: 
+To make my testing course more enjoyable and engaging I added a simple playground environment a while ago. You can see an example at the bottom of the [Introduction to the BDD c(o)urse](/introduction-to-the-bdd-c-o-urse/). This playground is powered by [Tommy The Runner](https://github.com/tommy-the-runner/) and is embedded via slug. It used to be an HTML comment with the id of the exercise in my blog post. With Hexo I embed them using the [Tag Plugin](https://hexo.io/docs/tag-plugins.html). Now it looks like this: 
 
 ```js
 {% tommy_example mocha-chai-sinon %}
