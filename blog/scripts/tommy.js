@@ -1,4 +1,4 @@
-const BASE_URL = process.env.BASE_TOMMY_URL || 'http://tommy-web.ertrzyiks.me/'
+const BASE_URL = process.env.BASE_TOMMY_URL || 'https://tommy-web.ertrzyiks.me/'
 
 hexo.extend.tag.register('tommy_example', function(args){
     const slug = args[0]
