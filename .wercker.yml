@@ -1,4 +1,4 @@
-box: node:6.9.1
+box: node:8.9.1
 
 build:
   steps:
@@ -11,12 +11,12 @@ build:
     - script:
         name: install dependencies
         code: |
-          npm install --prefix blog
+          cd blog && npm install
 
     - script:
         name: test blog
         code: |
-          npm test --prefix blog
+          cd blog && npm test
 
 deploy:
   steps:
@@ -35,7 +35,7 @@ deploy:
     - script:
         name: npm install
         code: |
-          npm install --prefix blog
+          cd blog && npm install
 
     - add-to-known_hosts:
         hostname: ertrzyiks.me
@@ -46,4 +46,4 @@ deploy:
     - script:
         name: deploy blog
         code: |
-          npm run blog:deploy
+          cd blog && npm run deploy
