@@ -1,0 +1,63 @@
+.related_posts
+  margin-top: 72px
+  margin-bottom: 36px
+
+.related_posts-header
+  margin: 12px 0 12px 0
+
+.related_posts-inner
+  +flexbox
+    display: flex
+    flex-direction: column
+
+    +tablet-screen
+      justify-content: space-between
+      flex-direction: row
+
+  +noflexbox
+    +clearfix
+
+.related_post
+  flex: 0 1 30%
+  padding-bottom: 12px
+
+  +flexbox
+    display: flex
+    flex-direction: column-reverse
+
+    +tablet-screen
+      flex-direction: column
+
+  +noflexbox
+    float: left
+    width: 100%
+
+    +tablet-screen
+      margin-left: 5%
+      width: 30%
+
+      &:first-child
+        margin-left: 0
+
+.related_post-title
+  margin-top: 7px
+
+.related_post-thumbnail
+  border: 1px dotted $greyColor
+  height: 134px
+  justify-content: center
+  margin-bottom: 12px
+  text-align: center
+
+  +flexbox
+    display: flex
+
+  +noflexbox
+    display: none
+
+    +tablet-screen
+      display: block
+
+.related_post-thumbnail_image
+  object-fit: contain
+  height: 100%

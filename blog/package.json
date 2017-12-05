@@ -7,7 +7,9 @@
   },
   "scripts": {
     "start": "hexo server --watch",
-    "build": "hexo clean && hexo generate",
+    "build": "hexo clean && npm run build-theme && hexo generate",
+    "prebuild-theme": "rm -fr ./themes/nono/source/js/* && rm -fr ./themes/nono/source/css/*",
+    "build-theme": "NODE_ENV=production webpack",
     "test": "npm run build",
     "build:prod": "hexo clean && hexo generate --config _config.yml,_config.prod.yml && touch public/.static",
     "deploy": "hexo deploy"
@@ -28,6 +30,18 @@
     "hexo-server": "^0.2.0"
   },
   "devDependencies": {
-    "uglify-js": "^2.6.0"
+    "css-loader": "^0.28.7",
+    "dotenv": "^4.0.0",
+    "extract-css-block-webpack-plugin": "^1.3.1",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "file-loader": "^1.1.5",
+    "node-sass": "^4.7.2",
+    "postcss-loader": "^2.0.9",
+    "raven-js": "^3.20.1",
+    "sass-loader": "^6.0.6",
+    "style-loader": "^0.19.0",
+    "uglify-js": "^2.6.0",
+    "webpack": "^3.10.0",
+    "webpack-manifest-plugin": "^1.3.2"
   }
 }

@@ -1,0 +1,106 @@
+.share
+  background-color: #eee
+  font-size: 13px
+  margin: 0
+  padding: 1em 0.5em
+  list-style-type: none
+
+  +flexbox
+    display: flex
+
+  +noflexbox
+    +clearfix
+
+.share-item
+  padding: 0
+  margin: 0 5px
+
+  +flexbox
+    display: flex
+    flex: 1
+    justify-content: center
+
+  +noflexbox
+    float: left
+
+.share-item_link
+  background-color: #333
+  border-radius: 2px
+  color: #fff
+  padding: 1em
+  opacity: 0.8
+  transition: opacity 200ms
+
+  +flexbox
+    align-items: center
+    display: flex
+    flex: 0 0 20px
+    justify-content: center
+
+    +tablet-screen
+      flex: 1
+
+    +desktop-screen
+      padding: 0.5em 1.5em
+
+  +noflexbox
+    display: inline-block
+
+    +desktop-screen
+      width: (880px - 5 * 10px) / (5 + 1)
+
+  &:hover,
+  &:focus
+    opacity: 1
+    text-decoration: none
+
+.share-item_link
+  .icon
+    width: 17px
+    height: 17px
+    margin-top: -4px
+
+  .text
+    margin-left: 5px
+    text-align: center
+    display: none
+
+    +desktop-screen
+      display: inline
+
+    +flexbox
+      flex: 1
+
+  svg
+    width: 17px
+    height: 17px
+
+    path
+      fill: #fff
+
+.share-item_link
+  &.is-email,
+  &.is-facebook,
+  &.is-twitter
+    +tablet-screen
+      .text
+        display: inline
+
+    +flexbox
+      +tablet-screen
+        flex: 1
+        padding: 0.5em 1.5em
+
+
+
+  &.is-facebook
+    background-color: #306199
+
+  &.is-twitter
+    background-color: #26c4f1
+
+  &.is-linkedin
+    background-color: #007bb6
+
+  &.is-pocket
+    background-color: #ed4054
