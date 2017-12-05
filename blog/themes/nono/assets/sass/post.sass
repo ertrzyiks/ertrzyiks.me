@@ -1,0 +1,70 @@
+.post
+  margin-bottom: 40px
+
+.post-content
+  +flexbox
+    display: flex
+    flex-direction: column
+
+    +tablet-screen
+      flex-direction: row
+
+  +noflexbox
+    +clearfix
+
+.post-title
+  font-size: 24px
+  margin: 12px 0
+  padding: 0
+
+.post-date
+  color: #999
+  font-size: 16px
+  padding: 0
+  display: block
+
+  +tablet-screen
+    margin-left: 0.4em
+    display: inline
+
+.post-excerpt
+  line-height: 140%
+
+  h2, h3
+    display: none
+
+  +flexbox
+    display: flex
+    flex-direction: column
+    justify-content: space-around
+
+  +noflexbox
+    +tablet-screen
+      padding-left: 200px + 12px
+
+.post-tags
+  margin-top: 1em
+
+.post-thumbnail
+  border: 1px dotted $greyColor
+  height: 134px
+  justify-content: center
+  margin-bottom: 12px
+
+  +flexbox
+    display: flex
+    flex: 0 0 200px
+
+  +noflexbox
+    overflow: hidden
+
+  +tablet-screen
+    margin-bottom: 0
+    margin-right: 12px
+
+    +noflexbox
+      float: left
+      width: 200px
+
+.post-thumbnail_image
+  object-fit: contain

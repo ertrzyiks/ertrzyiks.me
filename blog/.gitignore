@@ -6,3 +6,6 @@ node_modules/
 _multiconfig.yml
 public/
 .deploy*/
+themes/nono/assets.json
+themes/nono/source/css/
+themes/nono/source/js/
