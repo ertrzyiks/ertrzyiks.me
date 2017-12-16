@@ -84,7 +84,7 @@ theme: nono
 
 analytics:
   enabled: false
-  gtm_key: GTM-W3RLRX
+  ua_code: UA-33547155-2
 
 feed:
   type: rss2
