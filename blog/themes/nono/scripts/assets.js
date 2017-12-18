@@ -9,5 +9,5 @@ hexo.extend.helper.register('asset_path', function (name) {
   if (!json[name]) {
     throw new Error('Can not find asset ' + name)
   }
-  return '/' + json[name]
+  return json[name]
 })

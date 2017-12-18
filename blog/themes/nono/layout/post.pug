@@ -18,8 +18,12 @@ block content
               != " &middot; "
               span.taglist !{list_tags(page.tags, {show_count: false, style: '', separator: " &middot; "})}
 
-      | !{page.content}
+      .single_post-body
+        | !{page.content}
 
       include ./partials/related_posts.pug
       include ./partials/share.pug
       include ./partials/comments.pug
+
+block append scripts
+  script(async=true src=asset_path('post.js'))

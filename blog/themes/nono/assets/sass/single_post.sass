@@ -1,6 +1,7 @@
 .single_post
   line-height: 150%
   font-size: 18px
+  perspective: 900px
 
   +tablet-screen
     font-size: 20px
@@ -21,8 +22,10 @@
 
 .single_post-header
   border-bottom: 1px dotted $greyColor
-  padding-bottom: 1em
+  padding: 1em 0
   text-align: center
+  transform-origin: 0% 100%
+  will-change: opacity
 
   +flexbox
     display: flex
