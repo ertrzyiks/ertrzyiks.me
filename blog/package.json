@@ -6,7 +6,7 @@
     "version": "3.4.1"
   },
   "scripts": {
-    "start": "hexo server --watch",
+    "start": "PUBLIC_ASSETS_PATH=http://localhost:8080/ hexo server --watch",
     "build": "hexo clean && npm run build-theme && hexo generate",
     "prebuild-theme": "rm -fr ./themes/nono/source/js/* && rm -fr ./themes/nono/source/css/*",
     "build-theme": "NODE_ENV=production webpack",
@@ -15,6 +15,9 @@
     "deploy": "hexo deploy"
   },
   "dependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
     "hexo": "^3.2.0",
     "hexo-deployer-git": "^0.3.1",
     "hexo-featured-image": "^0.2.1",
@@ -27,7 +30,9 @@
     "hexo-prism-plugin": "^2.2.0",
     "hexo-render-pug": "^1.2.0",
     "hexo-renderer-marked": "^0.3.0",
-    "hexo-server": "^0.2.0"
+    "hexo-server": "^0.2.0",
+    "lodash.throttle": "^4.1.1",
+    "webpack-dev-server": "^2.9.7"
   },
   "devDependencies": {
     "css-loader": "^0.28.7",
