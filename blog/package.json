@@ -11,7 +11,7 @@
     "prebuild-theme": "rm -fr ./themes/nono/source/js/* && rm -fr ./themes/nono/source/css/*",
     "build-theme": "NODE_ENV=production webpack",
     "test": "npm run build",
-    "build:prod": "hexo clean && hexo generate --config _config.yml,_config.prod.yml && touch public/.static",
+    "build:prod": "hexo clean && npm run build-theme && hexo generate --config _config.yml,_config.prod.yml && touch public/.static",
     "deploy": "hexo deploy"
   },
   "dependencies": {
