@@ -1,0 +1,64 @@
+html
+  height: 100%
+
+html, body
+  background-color: #08597b
+  overflow-x: hidden
+
+.the-sky
+  background-color: #4aadd6
+  padding-top: 20vh
+  padding-bottom: 20vh
+
+.title-section
+  position: relative
+
+#title
+  text-align: center
+  font-size: 42px
+  text-transform: uppercase
+  letter-spacing: 4px
+  position: relative
+  z-index: 2
+
+#title > span
+  z-index: 4
+
+#cloud1
+  position: absolute
+  animation: cloud-movement 20s infinite linear
+  animation-delay: -5s
+  z-index: 1
+  width: 120px
+  top: -56px
+
+#cloud2
+  position: absolute
+  animation: cloud-movement 20s infinite linear
+  animation-delay: -15s
+  z-index: 3
+  width: 120px
+  top: 22px
+
+#cloud3
+  position: absolute
+  animation: cloud-movement 20s infinite linear
+  animation-delay: -8s
+  z-index: 3
+  width: 120px
+  top: 22px
+
+#cloud4
+  position: absolute
+  animation: cloud-movement 20s infinite linear
+  animation-delay: -20s
+  z-index: 3
+  width: 120px
+  top: -56px
+
+
+@keyframes cloud-movement
+  0%
+    transform: translateX(-50vw)
+  100%
+    transform: translateX(150vw)
