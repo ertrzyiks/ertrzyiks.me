@@ -4,7 +4,7 @@ permalink: weekend-on-mars
 updated: '2017-06-05 19:18:34'
 date: 2016-08-31 08:00:04
 tags: and stuff
-featured_image: /content/2016/journey.jpg
+featured_image: /content/2016/mars.jpg
 ---
 
 ## It could be possible now!
