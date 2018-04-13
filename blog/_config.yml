@@ -90,6 +90,11 @@ feed:
   type: rss2
   path: rss
 
+markdown:
+  render:
+    breaks: false
+    html: true
+
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
