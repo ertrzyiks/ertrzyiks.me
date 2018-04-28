@@ -52,6 +52,14 @@
   justify-content: center
   margin-bottom: 12px
 
+  animation: lazy-image-placeholder 300ms
+  background-repeat: no-repeat
+  background-size: cover
+  background-position: center
+
+  &.is-loaded
+    animation: none
+
   +flexbox
     display: flex
     flex: 0 0 200px
@@ -67,5 +75,10 @@
       float: left
       width: 200px
 
-.post-thumbnail_image
-  object-fit: contain
+@keyframes lazy-image-placeholder
+  0%
+    opacity: 0
+  99%
+    opacity: 0
+  100%
+    opacity: 1

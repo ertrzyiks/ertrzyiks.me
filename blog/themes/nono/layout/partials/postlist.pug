@@ -9,8 +9,14 @@ each post in page.posts.data
 
     .post-content
       if post.featured_image
-        .post-thumbnail
-          img.post-thumbnail_image(src=post.featured_image alt="the hand made image dedicated to the post number #{post.id}")
+        .post-thumbnail(
+          style=`background-image: ${lqip_for(post.featured_image)}`
+          data-lazy-src=post.featured_image
+          alt=`the hand made image dedicated to the post number ${post.id}`
+        )
 
       .post-excerpt !{post.excerpt}
         .post-tags !{list_tags(post.tags, {show_count: false, style: ''})}
+
+script
+ include lazy_images.js
