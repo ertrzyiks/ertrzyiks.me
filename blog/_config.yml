@@ -98,6 +98,16 @@ markdown:
 sitemap:
   path: sitemap.xml
 
+lqip:
+  default_type: potrace
+
+  potrace:
+   canvas_size:
+    width: 40
+   steps: 1
+   color: '#999'
+   background: transparent
+
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
