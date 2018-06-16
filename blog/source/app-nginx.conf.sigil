@@ -26,5 +26,10 @@ http {
       rewrite /rss/ /rss.xml;
       try_files $uri $uri/ /404.html;
     }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+        expires max;
+        add_header Cache-Control "public, no-transform";
+    }
   }
 }
