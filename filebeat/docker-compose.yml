@@ -1,0 +1,8 @@
+version: '2'
+services:
+  beat:
+    build: ./src
+    network_mode: host
+    volumes:
+      - ./log:/var/log/
+    restart: unless-stopped
