@@ -125,4 +125,4 @@ Tommy promised to be with us during the whole course.
 [Mocha]: https://mochajs.org/
 [Sinon]: http://sinonjs.org/
 [Chai]: http://chaijs.com/
-[chai-jquery]: (https://github.com/chaijs/chai-jquery)
+[chai-jquery]: https://github.com/chaijs/chai-jquery
