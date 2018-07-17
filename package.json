@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/ertrzyiks/ertrzyiks.me/issues"
   },
-  "homepage": "https://github.com/ertrzyiks/ertrzyiks.me#readme"
+  "homepage": "https://github.com/ertrzyiks/ertrzyiks.me#readme",
+  "dependencies": {
+    "hexo": "^3.4.4"
+  }
 }
