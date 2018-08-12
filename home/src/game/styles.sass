@@ -1,0 +1,58 @@
+@import './normalize.sass'
+
+html, body
+  margin: 0
+  padding: 0
+
+.game-wrapper
+  canvas
+    position: fixed
+    width: 100vw
+    height: 100vh
+    top: 0
+    left: 0
+
+h1
+  color: #4aadd6
+  display: inline
+
+h2
+  font-size: 1em
+  color: #333333
+  font-weight: normal
+
+a
+  color: #4aadd6
+  text-decoration: none
+
+html
+  height: 100%
+
+body
+  color: #444
+  min-height: 100%
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+
+.contact
+  padding: 6em 1em
+  max-width: 600px
+  margin-left: auto
+  margin-right: auto
+
+.contact svg
+  max-width: 16px
+  max-height: 16px
+  vertical-align: top
+
+.contact-link
+  margin-right: 1em
+
+@media (max-width: 700px)
+  .contact
+    text-align: center
+
+
+
