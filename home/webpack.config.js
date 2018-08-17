@@ -4,6 +4,7 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin")
 const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin")
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const PreloadWebpackPlugin = require('preload-webpack-plugin')
+const ProgressBarPlugin = require('progress-bar-webpack-plugin')
 
 const devMode = process.env.NODE_ENV !== 'production'
 
@@ -29,7 +30,8 @@ module.exports = {
       fileWhitelist: [/plain-tile/],
       as: 'image',
       rel: 'prefetch',
-    })
+    }),
+    new ProgressBarPlugin()
   ],
   module: {
     rules: [
