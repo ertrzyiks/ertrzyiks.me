@@ -1,4 +1,4 @@
-import {Container} from 'pixi.js'
+import 'pixi.js'
 import Viewport from 'pixi-viewport'
 
 export class GameViewport extends Viewport {

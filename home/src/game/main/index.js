@@ -1,4 +1,4 @@
-import {Container, Sprite, loader} from 'pixi.js'
+import {Loader} from 'pixi.js'
 import {GameViewport} from '../shared/viewport'
 import {Tile} from '../shared/renderable/tile.js'
 import {createGrid, getGridBoundingBox} from '../shared/grid'
@@ -25,6 +25,8 @@ export function create(app, emitter, coordinates) {
   })
 
   return new Promise(resolve => {
+    const loader = new Loader()
+
     loader.load((loader, resources) => {
       const marker = new Tile(resources.marker.texture)
       marker.visible = false

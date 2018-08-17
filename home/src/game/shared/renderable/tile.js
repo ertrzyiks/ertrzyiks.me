@@ -1,4 +1,4 @@
-import {Sprite, Polygon, Graphics} from 'pixi.js'
+import {Sprite, Polygon} from 'pixi.js'
 
 export class Tile extends Sprite {
   constructor(texture, coordinates) {

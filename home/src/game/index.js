@@ -1,5 +1,5 @@
 import 'core-js/es6/promise'
-import {Application, Container, Sprite, Point, loader, ticker, utils} from 'pixi.js'
+import {Application, Point, Loader, ticker, utils} from 'pixi.js'
 import TWEEN from '@tweenjs/tween.js'
 import {create as createIntro} from './intro'
 import './styles.sass'
@@ -11,11 +11,6 @@ const app = new Application({transparent: true, resolution: window.devicePixelRa
 app.ticker.add(() => {
   TWEEN.update()
 })
-
-loader.add('plain_tile', require('../assets/intro/plain-tile.png'))
-// loader.add('ship', require('../assets/intro/ship.png'))
-// loader.add('tile', require('../assets/tile.svg'))
-// loader.add('marker', require('../assets/mark.svg'))
 
 function initGame() {
   const warriors = document.getElementById('warriors')

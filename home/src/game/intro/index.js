@@ -1,4 +1,5 @@
-import {Container, Sprite, loader} from 'pixi.js'
+import Loader from 'pixi.js/lib/loaders/loader'
+import InteractionManager from 'pixi.js/lib/interaction/InteractionManager'
 import TWEEN from '@tweenjs/tween.js'
 import {GameViewport} from '../shared/viewport'
 import {Tile} from '../shared/renderable/tile.js'
@@ -16,6 +17,10 @@ class IntroGridSpreadAnimation extends GridSpreadAnimation {
 
 function load() {
   return new Promise(resolve => {
+    const loader = new Loader()
+
+    loader.add('plain_tile', require('../../assets/intro/plain-tile.png'))
+
     loader.load((loader, resources) => {
       resolve(resources)
     })
@@ -23,7 +28,7 @@ function load() {
 }
 
 export function create(app, startingPoint, emitter) {
-  const interaction = app.renderer.plugins.interaction
+  const interaction = new InteractionManager(app.renderer)
   const Grid = createGrid()
   const grid = Grid.rectangle({width: 30, height: 30})
   grid.Grid = Grid
