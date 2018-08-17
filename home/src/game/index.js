@@ -1,4 +1,4 @@
-import('babel-polyfill')
+import 'core-js/es6/promise'
 import {Application, Container, Sprite, Point, loader, ticker, utils} from 'pixi.js'
 import TWEEN from '@tweenjs/tween.js'
 import {create as createIntro} from './intro'
