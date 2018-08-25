@@ -18,7 +18,7 @@
     "babel-polyfill": "^6.26.0",
     "honeycomb-grid": "^1.3.5",
     "node-noop": "^1.0.0",
-    "pixi-viewport": "^3.0.0",
+    "pixi-viewport": "^3.4.1",
     "pixi.js": "^4.8.1",
     "webpack": "^4.16.5",
     "webpack-dev-middleware": "^3.1.3"
