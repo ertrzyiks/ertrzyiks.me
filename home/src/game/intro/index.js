@@ -1,5 +1,4 @@
 import Loader from 'pixi.js/lib/loaders/loader'
-import InteractionManager from 'pixi.js/lib/interaction/InteractionManager'
 import TWEEN from '@tweenjs/tween.js'
 import {GameViewport} from '../shared/viewport'
 import {Tile} from '../shared/renderable/tile.js'
@@ -28,7 +27,7 @@ function load() {
 }
 
 export function create(app, startingPoint, emitter) {
-  const interaction = new InteractionManager(app.renderer)
+  const interaction = app.renderer.plugins.interaction
   const Grid = createGrid()
   const grid = Grid.rectangle({width: 30, height: 30})
   grid.Grid = Grid
@@ -38,7 +37,10 @@ export function create(app, startingPoint, emitter) {
   var viewport = new GameViewport({
     worldWidth: worldWidth,
     worldHeight: worldHeight,
-    ticker: app.ticker
+    screenWidth: window.innerWidth,
+    screenHeight: window.innerHeight,
+    ticker: app.ticker,
+    interaction: interaction
   })
 
   return load().then(resources => {
@@ -76,10 +78,6 @@ export function create(app, startingPoint, emitter) {
     }
 
     let currentAnimation
-
-    viewport.on('clicked', function onClick(e) {
-      console.log(e.screen)
-    })
 
     function setup(point) {
       const tile = interaction.hitTest(point, viewport)
