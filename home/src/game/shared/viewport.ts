@@ -1,8 +1,9 @@
 import 'pixi.js'
-import Viewport from 'pixi-viewport'
+import {DestroyOptions} from 'pixi.js'
+import * as Viewport from 'pixi-viewport'
 
 export class GameViewport extends Viewport {
-  constructor(options) {
+  constructor(options?: Viewport.Options) {
     const hexSize = 100
     super({
       screenWidth: window.innerWidth,
@@ -35,7 +36,7 @@ export class GameViewport extends Viewport {
     this.resize(window.innerWidth, window.innerHeight, this.worldWidth, this.worldHeight)
   }
 
-  destroy (options) {
+  destroy (options: DestroyOptions) {
     window.removeEventListener('resize', this.onResize)
     super.destroy(options)
   }

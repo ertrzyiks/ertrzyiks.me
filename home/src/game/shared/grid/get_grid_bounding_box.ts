@@ -1,4 +1,11 @@
-export function getGridBoundingBox(grid) {
+import {Grid, Hex} from 'honeycomb-grid'
+
+interface WorldDimensions {
+  worldWidth: number;
+  worldHeight: number;
+}
+
+export function getGridBoundingBox(grid: Grid<Hex<any>>): WorldDimensions {
   const lastHex = grid.get(grid.length - 1)
   const lastPoint = lastHex.toPoint()
   const lastCorners = lastHex.corners()
