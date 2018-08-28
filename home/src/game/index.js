@@ -12,6 +12,12 @@ app.ticker.add(() => {
   TWEEN.update()
 })
 
+window.addEventListener('resize', resize)
+
+function resize() {
+  app.renderer.resize(window.innerWidth, window.innerHeight)
+}
+
 function initGame() {
   const warriors = document.getElementById('warriors')
 
@@ -30,15 +36,13 @@ const loadIntro = (startingPoint) => createIntro(app, startingPoint, emitter).th
   app.stage.addChild(viewport)
   resize()
 
-  const el = document.getElementById('game')
-  el.parentNode.replaceChild(app.view, el)
-
-  window.addEventListener('resize', resize)
-
-  function resize() {
-    app.renderer.resize(window.innerWidth, window.innerHeight)
+  if (!document.body.contains(app.view)) {
+    const el = document.getElementById('game')
+    el.parentNode.replaceChild(app.view, el)
   }
 
+  app.start()
+  app.view.style.display = ''
   return viewport
 })
 
@@ -48,16 +52,34 @@ const launch = () => new Promise(resolve => {
   })
 })
 
-initGame()
-  .then(startingPoint => Promise.all([loadIntro(startingPoint), launch()]))
-  .then(data => ({viewport: data[0], coordinates: data[1]}))
-  .then(({viewport, coordinates}) => {
-    return import('./main')
-      .then(m => m.create(app, emitter, coordinates))
-      .then((newViewport) => ({viewport, newViewport}))
-  })
- .then(({viewport, newViewport}) => {
-    newViewport.moveCenter(viewport.center)
-    app.stage.removeChild(viewport)
-    app.stage.addChild(newViewport)
-  })
+function initialize() {
+  initGame()
+    .then(startingPoint => Promise.all([loadIntro(startingPoint), launch()]))
+    .then(data => ({viewport: data[0], coordinates: data[1]}))
+    .then(({viewport, coordinates}) => {
+      return import('./main')
+        .then(m => m.create(app, emitter, coordinates))
+        .then((newViewport) => ({viewport, newViewport}))
+    })
+    .then(({viewport, newViewport}) => {
+      newViewport.moveCenter(viewport.center)
+      app.stage.removeChild(viewport)
+      app.stage.addChild(newViewport)
+    })
+}
+
+initialize()
+
+emitter.on('exit', () => {
+  app.stop()
+  app.view.style.display = 'none'
+  app.loader.reset()
+
+  while (app.stage.children[0]) {
+    const child = app.stage.children[0]
+    app.stage.removeChild(child)
+    child.destroy({children: true, texture: true, baseTexture: true})
+  }
+
+  initialize()
+})

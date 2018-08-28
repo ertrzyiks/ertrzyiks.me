@@ -1,9 +1,9 @@
-import {Sprite, Polygon} from 'pixi.js'
+import {Polygon} from 'pixi.js'
+import {Tileable} from './tileable'
 
-export class Tile extends Sprite {
-  constructor(texture, coordinates) {
-    super(texture)
-    this.coordinates = coordinates
+export class Tile extends Tileable {
+  constructor(...args) {
+    super(...args)
 
     const size = this.width / 2
     const points = []
@@ -16,9 +16,5 @@ export class Tile extends Sprite {
     }
 
     this.hitArea = new Polygon(points)
-  }
-
-  hexCoordinates() {
-    return this.coordinates
   }
 }

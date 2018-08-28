@@ -10,7 +10,7 @@ export class GameViewport extends Viewport {
       ...options
     })
 
-    const offset = hexSize * 0.6
+    const offset = hexSize * 0.75
     this
       .clamp({
         left: offset,
@@ -33,5 +33,10 @@ export class GameViewport extends Viewport {
 
   onResize() {
     this.resize(window.innerWidth, window.innerHeight, this.worldWidth, this.worldHeight)
+  }
+
+  destroy (options) {
+    window.removeEventListener('resize', this.onResize)
+    super.destroy(options)
   }
 }
