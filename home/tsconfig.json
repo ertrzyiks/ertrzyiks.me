@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist/",
+    "noImplicitAny": true,
+    "removeComments": true,
+    "module": "ES6",
+    "moduleResolution": "Node",
+    "sourceMap": true,
+    "target": "es5",
+    "allowJs": true
+  }
+}

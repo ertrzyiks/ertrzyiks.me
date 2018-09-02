@@ -1,6 +1,6 @@
-import RecursiveTween from "../../lib/recursive_tween"
-import TWEEN from "@tweenjs/tween.js"
-import {getNextSpreadingWave, getLastSpreadingWave} from "./grid"
+import RecursiveTween from '../../lib/recursive_tween'
+import TWEEN from '@tweenjs/tween.js'
+import {getNextSpreadingWave} from './grid'
 
 export class GridSpreadAnimation {
   constructor({Grid, grid, startCube, from, to, duration}) {

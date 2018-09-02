@@ -71,7 +71,7 @@ module.exports = {
         as: 'image',
         rel: 'prefetch',
       }),
-      new ProgressBarPlugin()
+      // new ProgressBarPlugin()
     ])
     .concat(analyzeBundle ? [new BundleAnalyzerPlugin()] : []),
   module: {
@@ -80,6 +80,11 @@ module.exports = {
         test: /\.js$/,
         exclude: path.resolve('node_modules'),
         loader: 'babel-loader'
+      },
+      {
+        test: /\.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/
       },
       {
         test: /\.sass$/,
@@ -114,6 +119,9 @@ module.exports = {
         }
       }
     ]
+  },
+  resolve: {
+    extensions: ['.ts', '.js']
   },
   optimization: {
     minimizer: [

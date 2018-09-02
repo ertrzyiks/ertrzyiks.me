@@ -1,6 +1,6 @@
 import {Loader} from 'pixi.js'
 import {GameViewport} from '../shared/viewport'
-import {Tile} from '../shared/renderable/tile.js'
+import {Tile} from '../shared/renderable/tile'
 import {createGrid, getGridBoundingBox} from '../shared/grid'
 
 function getCoordinatesToIndex({gridWidth}) {
