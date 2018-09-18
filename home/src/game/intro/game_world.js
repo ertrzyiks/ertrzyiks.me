@@ -1,15 +1,15 @@
 import {GameWorld} from '../shared/game_world'
 import {Ship} from '../shared/renderable/ship'
 import TWEEN from '@tweenjs/tween.js'
-import {GridSpreadAnimation} from '../shared/spread_animation'
+import {GridSpreadAnimation} from './spreading_animation'
 
-export class IntroGridSpreadAnimation extends GridSpreadAnimation {
-  constructor({Grid, grid, startCube}) {
-    const from = {alpha: 0}
-    const to = {alpha: 1}
-    const duration = 80
-    super({Grid, grid, startCube, from, to, duration})
-  }
+function createSpreadAnimation({grid, startCube}) {
+  return new GridSpreadAnimation({
+    grid: grid,
+    startCube: startCube,
+    hexToElement: (hex) => hex.sprite,
+    duration: 80
+  })
 }
 
 export class IntroWorld extends GameWorld {
@@ -71,8 +71,7 @@ export class IntroWorld extends GameWorld {
   animateFrom(tile, coords) {
     const {Grid} = this.grid
 
-    return new IntroGridSpreadAnimation({
-      Grid,
+    return createSpreadAnimation({
       grid: this.grid,
       startCube: Grid.Hex(coords).cube()
     })
