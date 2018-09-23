@@ -11,8 +11,6 @@ export class GameWorld extends Container {
 
     this.grid = grid
     this.ticker = ticker
-    this.Grid = grid.Grid
-    this.Hex = grid.Grid.Hex
     this.emitter = emitter
     this.resources = resources
     this.interaction = interaction
@@ -53,7 +51,7 @@ export class GameWorld extends Container {
 
   tweenToNeighbour(tileable, direction) {
     const coordinates = tileable.hexCoordinates()
-    const newCoordinates = this.grid.neighborsOf(this.Hex(coordinates), direction)[0]
+    const newCoordinates = this.grid.neighborsOf(this.grid.get(coordinates), direction)[0]
     const newPos = this.grid.get(newCoordinates).toPoint()
 
     return new Promise(resolve => {

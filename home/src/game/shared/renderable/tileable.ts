@@ -1,5 +1,5 @@
 import {Sprite, Texture} from 'pixi.js'
-import {PointCoordinates} from 'honeycomb-grid/dist/honeycomb.d.ts'
+import {PointCoordinates} from 'honeycomb-grid'
 
 export class Tileable extends Sprite {
   private coordinates: PointCoordinates
@@ -13,9 +13,5 @@ export class Tileable extends Sprite {
 
   hexCoordinates() {
     return this.coordinates
-  }
-
-  updateCoordinates(coordinates: PointCoordinates) {
-    this.coordinates = coordinates
   }
 }
