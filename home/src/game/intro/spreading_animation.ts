@@ -10,7 +10,7 @@ export interface GridSpreadAnimationOptions {
   duration: number
 }
 
-export type CompleteCallback = () => undefined
+export type CompleteCallback = () => void
 
 export class GridSpreadAnimation {
   get duration() {
