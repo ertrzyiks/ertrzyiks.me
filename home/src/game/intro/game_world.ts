@@ -53,13 +53,7 @@ export class IntroWorld extends GameWorld {
   fadeOut() {
     let state = { alpha: 1}
     return new TWEEN.Tween(state).to({ alpha: 0 }, 100).onUpdate(() => {
-      this.ship.alpha = state.alpha
-
-      this.grid.forEach((hex: Hex<any>) => {
-        if (state.alpha < hex.sprite.alpha) {
-          hex.sprite.alpha = state.alpha
-        }
-      })
+      this.alpha = state.alpha
     }).onComplete(() => {
       this.emitter.emit('exit')
     })
