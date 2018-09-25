@@ -33,7 +33,7 @@ const toRemove = [
 
 module.exports = {
   mode: devMode ? 'development' : 'production',
-  entry: './src/game/index.js',
+  entry: './src/game/index.ts',
   devtool: 'cheap-module-source-map',
   output: {
     path: path.resolve('.git-deploy/'),
@@ -70,8 +70,7 @@ module.exports = {
         fileWhitelist: [/plain-tile/],
         as: 'image',
         rel: 'prefetch',
-      }),
-      // new ProgressBarPlugin()
+      })
     ])
     .concat(analyzeBundle ? [new BundleAnalyzerPlugin()] : []),
   module: {

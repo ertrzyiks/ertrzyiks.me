@@ -1,7 +1,8 @@
 import 'core-js/es6/promise'
-import {Application, Point, Loader, ticker, utils} from 'pixi.js'
-import TWEEN from '@tweenjs/tween.js'
+import {Application, Point, ticker, utils} from 'pixi.js'
+import * as TWEEN from '@tweenjs/tween.js'
 import {create as createIntro} from './intro'
+import {GameViewport} from './shared/viewport'
 import './styles.sass'
 
 ticker.shared.autoStart = false
@@ -18,11 +19,11 @@ function resize() {
   app.renderer.resize(window.innerWidth, window.innerHeight)
 }
 
-function initGame() {
+function initGame(): Promise<Point> {
   const warriors = document.getElementById('warriors')
 
   return new Promise((resolve) => {
-    function onClick(e) {
+    function onClick(e: MouseEvent) {
       warriors.removeEventListener('click', onClick)
       resolve(new Point(e.clientX, e.clientY))
     }
@@ -32,7 +33,7 @@ function initGame() {
 
 const emitter = new utils.EventEmitter()
 
-const loadIntro = (startingPoint) => createIntro(app, startingPoint, emitter).then(viewport => {
+const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint, emitter).then(viewport => {
   app.stage.addChild(viewport)
   resize()
 
@@ -47,25 +48,25 @@ const loadIntro = (startingPoint) => createIntro(app, startingPoint, emitter).th
 })
 
 const launch = () => new Promise(resolve => {
-  emitter.once('launch', coordinates => {
+  emitter.once('launch', (coordinates: Point) => {
     resolve(coordinates)
   })
 })
 
 function initialize() {
   initGame()
-    .then(startingPoint => Promise.all([loadIntro(startingPoint), launch()]))
-    .then(data => ({viewport: data[0], coordinates: data[1]}))
-    .then(({viewport, coordinates}) => {
-      return import('./main')
-        .then(m => m.create(app, emitter, coordinates))
-        .then((newViewport) => ({viewport, newViewport}))
-    })
-    .then(({viewport, newViewport}) => {
-      newViewport.moveCenter(viewport.center)
-      app.stage.removeChild(viewport)
-      app.stage.addChild(newViewport)
-    })
+    .then(startingPoint => Promise.all([loadIntro(startingPoint)]))
+    // .then(data => ({viewport: data[0], coordinates: data[1]}))
+    // .then(({viewport, coordinates}) => {
+    //   return import('./main')
+    //     .then(m => m.create(app, emitter, coordinates))
+    //     .then((newViewport) => ({viewport, newViewport}))
+    // })
+    // .then(({viewport, newViewport}) => {
+    //   newViewport.moveCenter(viewport.center)
+    //   app.stage.removeChild(viewport)
+    //   app.stage.addChild(newViewport)
+    // })
 }
 
 initialize()
@@ -76,7 +77,7 @@ emitter.on('exit', () => {
   app.loader.reset()
 
   while (app.stage.children[0]) {
-    const child = app.stage.children[0]
+    const child = app.stage.children[0] as GameViewport
     app.stage.removeChild(child)
     child.destroy({children: true, texture: true, baseTexture: true})
   }
