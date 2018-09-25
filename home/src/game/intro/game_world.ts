@@ -1,10 +1,10 @@
 import {GameWorld} from '../shared/game_world'
 import {Ship} from '../shared/renderable/ship'
+import {Tileable} from '../shared/renderable/tileable'
 import * as TWEEN from '@tweenjs/tween.js'
 import {Point} from 'pixi.js'
 import {GridSpreadAnimation} from './spreading_animation'
-import {Grid, Hex, CubeCoordinates, PointCoordinates} from 'honeycomb-grid'
-
+import {Grid, Hex, CubeCoordinates, PointCoordinates, FlatCompassDirection} from 'honeycomb-grid'
 
 function createSpreadAnimation(grid: Grid, startCube: CubeCoordinates) {
   return new GridSpreadAnimation({
@@ -17,13 +17,7 @@ function createSpreadAnimation(grid: Grid, startCube: CubeCoordinates) {
 
 export class IntroWorld extends GameWorld {
   private ship: Ship
-  private currentAnimation: GridSpreadAnimation | null
-
-  constructor (options: any) {
-    super(options)
-
-    this.currentAnimation = null
-  }
+  private currentAnimation: GridSpreadAnimation = null
 
   createWorldTile(hex: Hex<object>) {
     const sprite = super.createWorldTile(hex)
@@ -34,7 +28,7 @@ export class IntroWorld extends GameWorld {
   setup(point: Point) {
     const tile = this.interaction.hitTest(point, this.viewport)
 
-    if (tile) {
+    if (tile instanceof Tileable) {
       const coords = tile.hexCoordinates()
 
       this.currentAnimation = this.animateFrom(coords).start().onComplete(() => {
@@ -86,7 +80,7 @@ export class IntroWorld extends GameWorld {
   }
 
   tweenShipToSomeNeighbour(): Promise<void> {
-    const directions = ['n', 'ne', 'se', 's', 'sw', 'nw']
+    const directions = [0, 1, 2, 3, 4, 5]
     const direction = directions[Math.floor(Math.random() * directions.length)]
     return this.tweenToNeighbour(this.ship, direction).then(() => this.tweenShipToSomeNeighbour())
   }

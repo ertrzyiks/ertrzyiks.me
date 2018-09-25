@@ -2,7 +2,7 @@ import {Sprite, Texture} from 'pixi.js'
 import {PointCoordinates} from 'honeycomb-grid'
 
 export class Tileable extends Sprite {
-  private coordinates: PointCoordinates
+  public coordinates: PointCoordinates
 
   constructor(texture: Texture, coordinates: PointCoordinates) {
     super(texture)

@@ -20,14 +20,14 @@ export function create(app: Application, startingPoint: Point, emitter: utils.Ev
   const Grid = createGrid()
   const grid = Grid.rectangle({width: 30, height: 30})
 
-  return load(app.loader).then(resources => {
-    const world = new IntroWorld({
+  return load(app.loader).then((resources: loaders.ResourceDictionary) => {
+    const world = new IntroWorld(
       grid,
-      resources,
       emitter,
-      ticker: app.ticker,
-      interaction: interaction
-    })
+      resources,
+      app.ticker,
+      interaction
+    )
 
     setTimeout(() => {
       world.setup(startingPoint)

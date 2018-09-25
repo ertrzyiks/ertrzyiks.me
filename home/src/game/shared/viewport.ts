@@ -36,7 +36,7 @@ export class GameViewport extends Viewport {
     this.resize(window.innerWidth, window.innerHeight, this.worldWidth, this.worldHeight)
   }
 
-  destroy (options: DestroyOptions) {
+  destroy (options?: DestroyOptions) {
     window.removeEventListener('resize', this.onResize)
     super.destroy(options)
   }
