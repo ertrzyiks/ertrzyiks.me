@@ -37,7 +37,7 @@ module.exports = {
   devtool: 'cheap-module-source-map',
   output: {
     path: path.resolve('.git-deploy/'),
-    filename: 'index.js',
+    filename: devMode ? 'index.js' : 'index-[contenthash].js',
     publicPath: '/'
   },
   plugins:
@@ -58,7 +58,7 @@ module.exports = {
         'process.env.NODE_ENV': '"production"'
       }),
       new MiniCssExtractPlugin({
-        filename: "[name].css",
+        filename: devMode ? '[name].css' : '[name]-[contenthash].css',
         chunkFilename: "[id].css"
       }),
       new HtmlWebpackPlugin({
