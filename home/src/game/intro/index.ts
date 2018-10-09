@@ -1,12 +1,13 @@
 import {Application, Point, utils, loaders} from 'pixi.js'
 import {IntroWorld} from './game_world'
-import {createGrid} from '../shared/grid'
+import {Board} from '../../core'
 import * as plainTilePng from '../../assets/intro/plain-tile.png'
 import * as singleShipPng from '../../assets/intro/single-ship.png'
+import board from './board.json'
 
 function load(loader: loaders.Loader) {
   return new Promise(resolve => {
-    loader.add('plain_tile', plainTilePng)
+    loader.add('water', plainTilePng)
     loader.add('ship', singleShipPng)
 
     loader.load((loader: loaders.Loader, resources: loaders.ResourceDictionary) => {
@@ -17,13 +18,10 @@ function load(loader: loaders.Loader) {
 
 export function create(app: Application, startingPoint: Point, emitter: utils.EventEmitter) {
   const interaction = app.renderer.plugins.interaction
-  const Grid = createGrid()
-  const grid = Grid.rectangle({width: 30, height: 30})
 
   return load(app.loader).then((resources: loaders.ResourceDictionary) => {
     const world = new IntroWorld(
-      grid,
-      emitter,
+      board,
       resources,
       app.ticker,
       interaction

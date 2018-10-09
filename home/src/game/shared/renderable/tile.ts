@@ -1,10 +1,14 @@
 import {Polygon, Texture} from 'pixi.js'
 import {Tileable} from './tileable'
-import {PointCoordinates} from 'honeycomb-grid/dist/honeycomb.d.ts'
+import {cartesianToCube} from '../../../core/grid'
+import {CubeCoordinates} from 'honeycomb-grid'
 
 export class Tile extends Tileable {
-  constructor(texture: Texture, coordinates: PointCoordinates) {
+  constructor(texture: Texture, public coordinates: CubeCoordinates) {
     super(texture, coordinates)
+
+    this.anchor.x = 0.5
+    this.anchor.y = 0.5
 
     const size = this.width / 2
     const points = []
