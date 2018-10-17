@@ -3,10 +3,10 @@
     "outDir": "./dist/",
     "noImplicitAny": true,
     "removeComments": true,
-    "module": "ES6",
+    "module": "esNext",
     "moduleResolution": "Node",
     "sourceMap": true,
-    "target": "es5",
+    "target": "es2015",
     "allowJs": true,
     "lib": ["es5", "es2015", "dom"]
   }
