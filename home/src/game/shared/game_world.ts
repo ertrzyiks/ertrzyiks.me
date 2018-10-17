@@ -1,41 +1,149 @@
 import {Container, loaders, ticker, interaction, utils, DestroyOptions, DisplayObject, Sprite} from 'pixi.js'
 import {GameViewport} from './viewport'
-import {getGridBoundingBox} from './grid'
 import {Tile} from './renderable/tile'
-import {Tileable} from './renderable/tileable'
 import * as TWEEN from '@tweenjs/tween.js'
-import {CompassDirection, Grid, Hex, PointCoordinates} from 'honeycomb-grid'
+import {Board, Game, GameTileHex, WorldState, GameEventType} from '../../core'
+import {CubeCoordinates, PointLike} from 'honeycomb-grid'
+import {cubeToCartesian} from '../../core/grid/helpers'
+
+export class TerrainTiles {
+  protected objects: {[x: number]: {[y: number]: DisplayObject}} = {}
+
+  get(point: PointLike) {
+    if (!this.objects[point.x]) { return null }
+    return this.objects[point.x][point.y]
+  }
+
+  set(point: PointLike, object: DisplayObject) {
+    this.objects[point.x] = this.objects[point.x] || {}
+    this.objects[point.x][point.y] = object
+  }
+
+  keys() {
+    const points = []
+
+    for (let x in this.objects) {
+      for (let y in this.objects[x]) {
+        points.push({x: parseInt(x), y: parseInt(y)})
+      }
+    }
+
+    return points
+  }
+}
+
+type ObservableSubscriptionDone = () => void
+type ObservableSubscription<T> = (item: T, done: ObservableSubscriptionDone) => void
+
+class Observable<T> {
+  protected items: Array<T> = []
+  protected subscription: ObservableSubscription<T>
+  protected isWaiting = false
+
+  push(item: T) {
+    this.items.push(item)
+    this.publishNext()
+  }
+
+  subscribe(fn: ObservableSubscription<T>) {
+    if (this.subscription != null) throw new Error('Already subscribed')
+    this.subscription = fn
+    this.publishNext()
+  }
+
+  protected publishNext() {
+    if (this.items.length == 0) return
+    if (this.subscription == null) return
+    if (this.isWaiting) return
+
+    this.isWaiting = true
+
+    const item = this.items.shift()
+
+    this.subscription(item, () => {
+      this.isWaiting = false
+      this.publishNext()
+    })
+  }
+}
 
 export class GameWorld extends Container {
+  protected game: Game
   protected viewport: GameViewport
   protected currentTween: TWEEN.Tween
   protected tickerFunction = () => this.cull()
+  protected terrainTiles: TerrainTiles = new TerrainTiles()
+  protected worldObservable: Observable<WorldState>
 
-  constructor (protected grid: Grid, protected emitter: utils.EventEmitter, protected resources: loaders.ResourceDictionary, protected ticker: ticker.Ticker, protected interaction: interaction.InteractionManager) {
+  protected ship: Tile
+
+  constructor (protected board: Board, protected resources: loaders.ResourceDictionary, protected ticker: ticker.Ticker, protected interaction: interaction.InteractionManager) {
     super()
-    const {worldWidth, worldHeight} = getGridBoundingBox(grid)
+    this.game = new Game(board)
 
     this.viewport = new GameViewport({
-      worldWidth,
-      worldHeight,
+      worldWidth: this.game.world.width,
+      worldHeight: this.game.world.height,
       ticker,
       interaction
     })
 
     ticker.add(this.tickerFunction)
 
-    this.grid.forEach((hex: Hex<{sprite: DisplayObject}>) => {
-      const sprite = this.createWorldTile(hex)
-      hex.sprite = sprite
-      this.viewport.addChild(sprite)
-    })
+    this.renderTerrain()
+    this.observeWorldUpdates()
 
     this.addChild(this.viewport)
   }
 
-  createWorldTile(hex: Hex<Object>) {
+  protected observeWorldUpdates() {
+    this.worldObservable = new Observable()
+    this.game.onUpdate(state => this.worldObservable.push(state))
+    this.worldObservable.subscribe(this.onWorldUpdate.bind(this))
+  }
+
+  protected onWorldUpdate(state: WorldState, done: ObservableSubscriptionDone) {
+    const event = state.lastEvent
+
+    switch(event.type) {
+      case GameEventType.TurnEnd:
+        this.game.proceed()
+        done()
+        break
+
+      case GameEventType.Spawn:
+        const tile = this.getTerrainAt(event.position)
+        this.ship = new Tile(this.resources.ship.texture, event.position)
+        this.ship.scale.x = -1
+        this.ship.x = tile.x
+        this.ship.y = tile.y
+        this.viewport.addChild(this.ship)
+        done()
+        break
+
+      case GameEventType.Move:
+        const tile1 = this.getTerrainAt(event.position)
+
+        const tween = new TWEEN.Tween(this.ship).to({x: tile1.x, y: tile1.y}, 1000).delay(300).onComplete(() => {
+          this.ship.coordinates = event.position
+          done()
+        })
+
+        tween.start()
+        break
+
+      default:
+        done()
+        break
+    }
+  }
+
+  protected createWorldTile(hex: GameTileHex) {
     const {x, y} = hex.toPoint()
-    const sprite = new Tile(this.resources.plain_tile.texture, hex.coordinates())
+
+    const coords = hex.cube()
+
+    const sprite = new Tile(this.resources[hex.terrain].texture, coords)
 
     sprite.position.set(x, y)
     sprite.interactive = true
@@ -44,23 +152,19 @@ export class GameWorld extends Container {
     return sprite
   }
 
-  getTilePosition(query: number | PointCoordinates) {
-    return this.grid.get(query).toPoint()
+  protected renderTerrain() {
+    this.game.world.currentState.boardState.terrain.forEach((hex: GameTileHex) => {
+      const sprite = this.createWorldTile(hex)
+      const coords = hex.coordinates()
+
+      this.terrainTiles.set(coords, sprite)
+      this.viewport.addChild(sprite)
+    })
   }
 
-  tweenToNeighbour(tileable: Tileable, direction: CompassDirection) {
-    const coordinates = tileable.hexCoordinates()
-    const newCoordinates = this.grid.neighborsOf(this.grid.get(coordinates), direction)[0]
-    const newPos = this.grid.get(newCoordinates).toPoint()
-
-    return new Promise(resolve => {
-      this.currentTween = new TWEEN.Tween(tileable).to(newPos, 1000).delay(300).onComplete(() => {
-        tileable.coordinates = newCoordinates
-        resolve()
-      })
-
-      this.currentTween.start()
-    })
+  protected getTerrainAt(pos: CubeCoordinates) {
+    const point = cubeToCartesian(pos)
+    return this.terrainTiles.get(point)
   }
 
   cull() {

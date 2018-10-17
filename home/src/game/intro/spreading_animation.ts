@@ -1,12 +1,13 @@
 import RecursiveTween from '../../lib/recursive_tween'
 import {Tween, Easing} from '@tweenjs/tween.js'
 import {getNextSpreadingWave} from '../shared/grid'
-import {Grid, Hex, CubeCoordinates} from 'honeycomb-grid'
+import {cartesianToCube} from '../../core/grid'
+import {CubeCoordinates, PointLike} from 'honeycomb-grid'
+import {TerrainTiles} from '../shared/game_world'
 
 export interface GridSpreadAnimationOptions {
-  grid: Grid<Hex<object>>,
   startCube: CubeCoordinates,
-  hexToElement: (hex: Hex<any>) => PIXI.DisplayObject
+  terrainTiles: TerrainTiles
   duration: number
 }
 
@@ -25,15 +26,11 @@ export class GridSpreadAnimation {
     return {alpha: 1}
   }
 
-  get grid() {
-    return this.options.grid
-  }
-
   get startCube() {
     return this.options.startCube
   }
-  get hexToElement () {
-    return this.options.hexToElement
+  get terrainTiles () {
+    return this.options.terrainTiles
   }
 
   private state: any
@@ -48,10 +45,6 @@ export class GridSpreadAnimation {
     this.tween = new RecursiveTween()
     this.tween.onCycle(this.handleCycle.bind(this))
     this.tween.onUpdate(this.handleUpdate.bind(this))
-  }
-
-  private cubeToCartesian(cube: CubeCoordinates) {
-    return this.grid[0].cubeToCartesian(cube)
   }
 
   start() {
@@ -69,17 +62,17 @@ export class GridSpreadAnimation {
     return this
   }
 
+  hexToElement(coords: PointLike) {
+    return this.terrainTiles.get(coords)
+  }
+
   nextWave(currentCycle: number, last: boolean) {
     if (last) {
-      return this.grid.filter(hex => this.hexToElement(hex).alpha < 0.1).map(hex => this.hexToElement(hex))
+      return Array.from(this.terrainTiles.keys()).filter(hex => this.hexToElement(hex).alpha < 0.1).map(hex => this.hexToElement(hex))
     }
 
-    return getNextSpreadingWave(this.startCube, currentCycle, this.cubeToCartesian.bind(this))
-      .map(point => {
-        const hex = this.grid.get(point)
-        if (!hex) { return null }
-        return this.hexToElement(hex)
-      })
+    return getNextSpreadingWave(this.startCube, currentCycle)
+      .map(point => this.terrainTiles.get(point))
       .filter(sprite => sprite != null)
   }
 
@@ -98,15 +91,17 @@ export class GridSpreadAnimation {
   }
 
   handleCycle(oldTween: Tween, currentCycle: number) {
+    const cycles = 15
+
     this.state = {...this.from}
-    if (currentCycle > 15) {
+    if (currentCycle > cycles) {
       this.onCompleteCallback && this.onCompleteCallback()
       return false
     }
 
     const tween = this.createTween(currentCycle)
     tween.to(this.to, Math.max(this.duration - 5 * currentCycle, 10))
-    const isLast = currentCycle >= 15
+    const isLast = currentCycle >= cycles
     this.waveCache[currentCycle] = this.waveCache[currentCycle] || this.nextWave(currentCycle, isLast)
     this.subject = this.waveCache[currentCycle]
     return tween

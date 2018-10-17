@@ -1,3 +1,4 @@
+import {cubeToCartesian} from '../../../core/grid'
 import {CubeCoordinates, PointLike} from 'honeycomb-grid'
 
 function pointsBetween(cube1: CubeCoordinates, cube2: CubeCoordinates): Array<CubeCoordinates> {
@@ -19,7 +20,7 @@ function pointsBetween(cube1: CubeCoordinates, cube2: CubeCoordinates): Array<Cu
   return points
 }
 
-export function getNextSpreadingWave(startCube: CubeCoordinates, number: number, cubeToCartesian: (cube: CubeCoordinates) => PointLike) {
+export function getNextSpreadingWave(startCube: CubeCoordinates, number: number) {
   const corners = [
     {r: startCube.r + number, q: startCube.q - number, s: startCube.s}, // [0] +-0
     {r: startCube.r - number, q: startCube.q + number, s: startCube.s}, // [1] -+0
@@ -30,7 +31,6 @@ export function getNextSpreadingWave(startCube: CubeCoordinates, number: number,
   ]
 
   return corners
-    .concat()
     .concat(pointsBetween(corners[5], corners[0]))
     .concat(pointsBetween(corners[0], corners[2]))
     .concat(pointsBetween(corners[2], corners[4]))
