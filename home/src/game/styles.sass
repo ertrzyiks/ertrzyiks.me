@@ -66,10 +66,10 @@ body
     top: 0
     left: 0
     pointer-events: none
-    background-image: radial-gradient(circle, #4aadd6 10%, transparent 10.01%)
+    background-image: radial-gradient(circle, #4aadd6 60%, transparent 60.01%)
     background-repeat: no-repeat
     background-position: 50%
-    transform: scale(10, 10)
+    transform: scale(0)
     opacity: 0
     z-index: -1
 
@@ -79,8 +79,8 @@ body
 
 @keyframes ripple
   0%
-    transform: scale(0, 0)
+    transform: scale(0)
     opacity: 0
-  70%
-    transform: scale(10, 10)
+  60%
+    transform: scale(1.2)
     opacity: 0.5
