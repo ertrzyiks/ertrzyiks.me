@@ -31,7 +31,7 @@ function initGame(): Promise<Point> {
 
 const emitter = new utils.EventEmitter()
 
-const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint, emitter).then(viewport => {
+const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint).then(viewport => {
   app.stage.addChild(viewport)
   resize()
 
@@ -42,6 +42,11 @@ const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint, emit
 
   app.start()
   app.view.style.display = ''
+
+  viewport.emitter.on('exit', () => {
+    close()
+  })
+
   return viewport
 })
 
@@ -51,31 +56,7 @@ const launch = () => new Promise(resolve => {
   })
 })
 
-export function initialize(x?: number, y?: number) {
-  let init
-
-  if (x && y) {
-    init = Promise.resolve(new Point(x, y))
-  } else {
-    init = initGame()
-  }
-
-  init
-    .then(startingPoint => Promise.all([loadIntro(startingPoint)]))
-  // .then(data => ({viewport: data[0], coordinates: data[1]}))
-  // .then(({viewport, coordinates}) => {
-  //   return import('./main')
-  //     .then(m => m.create(app, emitter, coordinates))
-  //     .then((newViewport) => ({viewport, newViewport}))
-  // })
-  // .then(({viewport, newViewport}) => {
-  //   newViewport.moveCenter(viewport.center)
-  //   app.stage.removeChild(viewport)
-  //   app.stage.addChild(newViewport)
-  // })
-}
-
-emitter.on('exit', () => {
+function close() {
   app.stop()
   app.view.style.display = 'none'
   app.loader.reset()
@@ -86,6 +67,19 @@ emitter.on('exit', () => {
     child.destroy({children: true, texture: true, baseTexture: true})
   }
 
-  initialize()
-})
+  reinitialize()
+}
 
+function reinitialize() {
+  initGame().then(startingPoint => loadIntro(startingPoint))
+}
+
+export function initialize(x: number, y: number) {
+  loadIntro(new Point(x, y))
+
+  // .then(({viewport, newViewport}) => {
+  //   newViewport.moveCenter(viewport.center)
+  //   app.stage.removeChild(viewport)
+  //   app.stage.addChild(newViewport)
+  // })
+}

@@ -16,7 +16,7 @@ function load(loader: loaders.Loader) {
   })
 }
 
-export function create(app: Application, startingPoint: Point, emitter: utils.EventEmitter) {
+export function create(app: Application, startingPoint: Point) {
   const interaction = app.renderer.plugins.interaction
 
   return load(app.loader).then((resources: loaders.ResourceDictionary) => {

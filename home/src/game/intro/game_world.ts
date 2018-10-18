@@ -2,18 +2,21 @@ import {GameWorld} from '../shared/game_world'
 import {Renderable} from '../shared/renderable/renderable'
 import {Tileable} from '../shared/renderable/tileable'
 import * as TWEEN from '@tweenjs/tween.js'
-import {interaction, loaders, Point, ticker} from 'pixi.js'
+import {interaction, loaders, Point, ticker, utils} from 'pixi.js'
 import {GridSpreadAnimation} from './spreading_animation'
 import {CubeCoordinates} from 'honeycomb-grid'
 import {cartesianToCube, GameTileHex, Board, CpuPlayer, PlayerColor, Movable, Unit} from '../../core'
 
 export class IntroWorld extends GameWorld {
-  private currentAnimation: GridSpreadAnimation = null
-  private player: CpuPlayer
+  public emitter: utils.EventEmitter
+
+  protected currentAnimation: GridSpreadAnimation = null
+  protected player: CpuPlayer
 
   constructor (protected board: Board, protected resources: loaders.ResourceDictionary, protected ticker: ticker.Ticker, protected interaction: interaction.InteractionManager) {
     super(board, resources, ticker, interaction)
     this.player = new CpuPlayer(PlayerColor.RED)
+    this.emitter = new utils.EventEmitter()
   }
 
   setup(point: Point) {
@@ -57,7 +60,7 @@ export class IntroWorld extends GameWorld {
     return new TWEEN.Tween(state).to({ alpha: 0 }, 100).onUpdate(() => {
       this.alpha = state.alpha
     }).onComplete(() => {
-      // this.emitter.emit('exit')
+      this.emitter.emit('exit')
     })
   }
 
