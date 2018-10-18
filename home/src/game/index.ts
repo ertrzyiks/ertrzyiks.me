@@ -5,7 +5,6 @@ const warriors = document.getElementById('warriors')
 
 function onClick(e: MouseEvent) {
   warriors.removeEventListener('click', onClick)
-  // resolve(new Point(e.clientX, e.clientY))
 
   const link = e.target as HTMLElement
   const el = link.parentNode as HTMLElement

@@ -124,12 +124,12 @@ export class GameWorld extends Container {
       case GameEventType.Move:
         const tile1 = this.getTerrainAt(event.position)
 
-        const tween = new TWEEN.Tween(this.ship).to({x: tile1.x, y: tile1.y}, 1000).delay(300).onComplete(() => {
+        this.currentTween = new TWEEN.Tween(this.ship).to({x: tile1.x, y: tile1.y}, 1000).delay(300).onComplete(() => {
           this.ship.coordinates = event.position
           done()
         })
 
-        tween.start()
+        this.currentTween.start()
         break
 
       default:
@@ -191,7 +191,10 @@ export class GameWorld extends Container {
   }
 
   destroy(options?: DestroyOptions | boolean) {
-    this.currentTween.stop()
+    if (this.currentTween) {
+      this.currentTween.stop()
+    }
+
     this.ticker.remove(this.tickerFunction)
     super.destroy(options)
   }
