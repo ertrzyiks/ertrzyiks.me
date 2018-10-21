@@ -1,4 +1,4 @@
-import {Unit} from '../../../core/unit/unit'
+import {Unit} from '../../core/units'
 
 export interface IRenderable {
   textureName: string

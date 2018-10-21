@@ -1,4 +1,4 @@
-import {Unit} from './unit/unit'
+import {Unit} from './units'
 import {Controller} from './controller'
 import {PlayerActionType} from './player_action'
 import {positionAt, cubeToCartesian} from './grid'

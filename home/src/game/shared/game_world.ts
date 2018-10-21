@@ -2,9 +2,9 @@ import {Container, loaders, ticker, interaction, utils, DestroyOptions, DisplayO
 import {GameViewport} from './viewport'
 import {Tile} from './renderable/tile'
 import * as TWEEN from '@tweenjs/tween.js'
-import {Board, Game, GameTileHex, WorldState, GameEventType} from '../../core'
+import {Board, Game, GameTileHex, WorldState, GameEventType} from '../core'
 import {CubeCoordinates, PointLike} from 'honeycomb-grid'
-import {cubeToCartesian} from '../../core/grid/helpers'
+import {cubeToCartesian} from '../core/grid/helpers'
 
 export class TerrainTiles {
   protected objects: {[x: number]: {[y: number]: DisplayObject}} = {}

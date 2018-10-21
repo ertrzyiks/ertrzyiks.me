@@ -1,6 +1,6 @@
 import {Application, Point, utils, loaders} from 'pixi.js'
 import {IntroWorld} from './game_world'
-import {Board} from '../../core'
+import {Board} from '../core'
 import * as plainTilePng from '../../assets/intro/plain-tile.png'
 import * as singleShipPng from '../../assets/intro/single-ship.png'
 import board from './board.json'

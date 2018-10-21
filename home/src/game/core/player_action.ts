@@ -1,5 +1,5 @@
 import {CubeCoordinates} from 'honeycomb-grid'
-import {Unit} from './unit'
+import {Unit} from './units'
 import {Player} from './player'
 
 export enum PlayerActionType {

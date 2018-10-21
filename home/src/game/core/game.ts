@@ -1,5 +1,5 @@
 import {CubeCoordinates} from 'honeycomb-grid'
-import {Unit} from './unit/unit'
+import {Unit} from './units'
 import {Player} from './player'
 import {Board} from './board'
 import {Controller} from './controller'

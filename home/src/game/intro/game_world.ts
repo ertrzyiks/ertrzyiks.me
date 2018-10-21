@@ -5,7 +5,7 @@ import * as TWEEN from '@tweenjs/tween.js'
 import {interaction, loaders, Point, ticker, utils} from 'pixi.js'
 import {GridSpreadAnimation} from './spreading_animation'
 import {CubeCoordinates} from 'honeycomb-grid'
-import {cartesianToCube, GameTileHex, Board, CpuPlayer, PlayerColor, Movable, Unit} from '../../core'
+import {cartesianToCube, GameTileHex, Board, CpuPlayer, PlayerColor, Movable, Unit} from '../core'
 
 export class IntroWorld extends GameWorld {
   public emitter: utils.EventEmitter
