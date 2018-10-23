@@ -1,4 +1,4 @@
-import {Unit} from './unit/unit'
+import {Unit} from './units'
 import {GameTileHex} from './board'
 import {CubeCoordinates} from 'honeycomb-grid'
 

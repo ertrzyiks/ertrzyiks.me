@@ -1,6 +1,6 @@
 import {Polygon, Texture} from 'pixi.js'
 import {Tileable} from './tileable'
-import {cartesianToCube} from '../../../core/grid'
+import {cartesianToCube} from '../../core/grid'
 import {CubeCoordinates} from 'honeycomb-grid'
 
 export class Tile extends Tileable {

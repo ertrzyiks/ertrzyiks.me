@@ -1,6 +1,6 @@
 import {PlayerAction, PlayerActionType} from './player_action'
 import {Game, Player} from './index'
-import {Unit} from "./unit/unit";
+import {Unit} from './units'
 
 export class Controller {
   private active: boolean = true
