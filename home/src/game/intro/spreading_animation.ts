@@ -3,7 +3,7 @@ import {Tween, Easing} from '@tweenjs/tween.js'
 import {getNextSpreadingWave} from './grid'
 import {cartesianToCube} from '../core/grid'
 import {CubeCoordinates, PointLike} from 'honeycomb-grid'
-import {TerrainTiles} from '../shared/game_world'
+import {TerrainTiles} from '../shared/terrain_tiles'
 
 export interface GridSpreadAnimationOptions {
   startCube: CubeCoordinates,
