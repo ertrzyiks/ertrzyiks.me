@@ -6,6 +6,7 @@ import {interaction, loaders, Point, ticker, utils} from 'pixi.js'
 import {GridSpreadAnimation} from './spreading_animation'
 import {CubeCoordinates} from 'honeycomb-grid'
 import {cartesianToCube, GameTileHex, Board, CpuPlayer, PlayerColor, Movable, Unit} from '../core'
+import {Ship} from './units'
 
 export class IntroWorld extends GameWorld {
   public emitter: utils.EventEmitter
@@ -26,7 +27,6 @@ export class IntroWorld extends GameWorld {
       const coords = tile.coordinates
 
       this.currentAnimation = this.animateFrom(coords).start().onComplete(() => {
-        const Ship = Renderable(Movable(Unit))
         const ship = new Ship()
         ship.textureName = 'ship'
 

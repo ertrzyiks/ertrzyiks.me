@@ -5,10 +5,12 @@ export interface IMovable {
   step(cost: number): void
 }
 
-export function Movable<TBase extends Constructor<Unit>>(Base: TBase) {
+export function Movable<TBase extends Constructor<Unit>>(Base: TBase, baseMovementPoints: number) {
   return class extends Base implements IMovable {
+    protected movementPoints: number = 0
+
     canMove() {
-      return true
+      return this.movementPoints > 0
     }
 
     step(cost: number) {
@@ -17,6 +19,8 @@ export function Movable<TBase extends Constructor<Unit>>(Base: TBase) {
 
     replenish() {
       super.replenish()
+
+      this.movementPoints = baseMovementPoints
     }
   }
 }
