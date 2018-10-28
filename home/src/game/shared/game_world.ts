@@ -1,4 +1,4 @@
-import {Container, loaders, ticker, interaction, DestroyOptions, DisplayObject, Sprite} from 'pixi.js'
+import {Container, loaders, ticker, interaction, DestroyOptions, Texture, Sprite} from 'pixi.js'
 import {GameViewport} from './viewport'
 import {Tile} from './renderable/tile'
 import * as TWEEN from '@tweenjs/tween.js'
@@ -54,7 +54,7 @@ export class GameWorld extends Container {
 
       case GameEventType.Spawn:
         const tile = this.getTerrainAt(event.position)
-        this.ship = new Tile(this.resources.ship.texture, event.position)
+        this.ship = new Tile(Texture.fromFrame('ship'), event.position)
         this.ship.scale.x = -1
         this.ship.x = tile.x
         this.ship.y = tile.y
@@ -84,7 +84,7 @@ export class GameWorld extends Container {
 
     const coords = hex.cube()
 
-    const sprite = new Tile(this.resources[hex.terrain].texture, coords)
+    const sprite = new Tile(Texture.fromFrame(hex.terrain), coords)
 
     sprite.position.set(x, y)
     sprite.interactive = true
