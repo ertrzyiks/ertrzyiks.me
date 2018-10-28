@@ -1,19 +1,13 @@
 import {Unit} from './unit'
 
 export interface IDamageable {
-  readonly healthPoints: number
-  readonly maxHealthPoints: number
   takeDamage(value: number): void
   isAlive(): boolean
 }
 
-export function Damageable<TBase extends Constructor<Unit>>(Base: TBase) {
+export function Damageable<TBase extends Constructor<Unit>>(Base: TBase, maxHp: number) {
   return class extends Base implements IDamageable {
-    private maxHp: number
-    private hp: number
-
-    get healthPoints() { return this.hp }
-    get maxHealthPoints() { return this.maxHp }
+    protected hp: number = 0
 
     takeDamage(value: number) {
       this.hp -= value
@@ -25,7 +19,7 @@ export function Damageable<TBase extends Constructor<Unit>>(Base: TBase) {
 
     replenish() {
       super.replenish()
-      this.hp = this.maxHp
+      this.hp = maxHp
     }
   }
 }

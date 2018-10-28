@@ -1,4 +1,4 @@
-import {Container, loaders, ticker, interaction, utils, DestroyOptions, DisplayObject, Sprite} from 'pixi.js'
+import {Container, loaders, ticker, interaction, DestroyOptions, DisplayObject, Sprite} from 'pixi.js'
 import {GameViewport} from './viewport'
 import {Tile} from './renderable/tile'
 import * as TWEEN from '@tweenjs/tween.js'
