@@ -3,69 +3,10 @@ import {GameViewport} from './viewport'
 import {Tile} from './renderable/tile'
 import * as TWEEN from '@tweenjs/tween.js'
 import {Board, Game, GameTileHex, WorldState, GameEventType} from '../core'
-import {CubeCoordinates, PointLike} from 'honeycomb-grid'
+import {CubeCoordinates} from 'honeycomb-grid'
 import {cubeToCartesian} from '../core/grid/helpers'
-
-export class TerrainTiles {
-  protected objects: {[x: number]: {[y: number]: DisplayObject}} = {}
-
-  get(point: PointLike) {
-    if (!this.objects[point.x]) { return null }
-    return this.objects[point.x][point.y]
-  }
-
-  set(point: PointLike, object: DisplayObject) {
-    this.objects[point.x] = this.objects[point.x] || {}
-    this.objects[point.x][point.y] = object
-  }
-
-  keys() {
-    const points = []
-
-    for (let x in this.objects) {
-      for (let y in this.objects[x]) {
-        points.push({x: parseInt(x), y: parseInt(y)})
-      }
-    }
-
-    return points
-  }
-}
-
-type ObservableSubscriptionDone = () => void
-type ObservableSubscription<T> = (item: T, done: ObservableSubscriptionDone) => void
-
-class Observable<T> {
-  protected items: Array<T> = []
-  protected subscription: ObservableSubscription<T>
-  protected isWaiting = false
-
-  push(item: T) {
-    this.items.push(item)
-    this.publishNext()
-  }
-
-  subscribe(fn: ObservableSubscription<T>) {
-    if (this.subscription != null) throw new Error('Already subscribed')
-    this.subscription = fn
-    this.publishNext()
-  }
-
-  protected publishNext() {
-    if (this.items.length == 0) return
-    if (this.subscription == null) return
-    if (this.isWaiting) return
-
-    this.isWaiting = true
-
-    const item = this.items.shift()
-
-    this.subscription(item, () => {
-      this.isWaiting = false
-      this.publishNext()
-    })
-  }
-}
+import {TerrainTiles} from './terrain_tiles'
+import {Observable, ObservableSubscriptionDone} from './observable'
 
 export class GameWorld extends Container {
   protected game: Game
