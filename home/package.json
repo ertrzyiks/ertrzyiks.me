@@ -5,10 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "start": "node server.js",
+    "start": "npm run sprites && node server.js",
     "serve:prod": "node server.prod.js",
-    "build": "NODE_ENV=production webpack --optimize-minimize",
-    "deploy": "bash scripts/deploy.sh"
+    "build": "npm run sprites && NODE_ENV=production webpack --optimize-minimize",
+    "deploy": "bash scripts/deploy.sh",
+    "sprites": "bash scripts/generate_sprites.sh"
   },
   "author": "",
   "license": "MIT",

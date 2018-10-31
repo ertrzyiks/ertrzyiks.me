@@ -1,9 +1,9 @@
-import RecursiveTween from '../../lib/recursive_tween'
+import RecursiveTween from '../../../lib/recursive_tween'
 import {Tween, Easing} from '@tweenjs/tween.js'
-import {getNextSpreadingWave} from './grid'
-import {cartesianToCube} from '../core/grid'
+import {getNextSpreadingWave} from './get_spreading_wave'
+import {cartesianToCube} from '../../core/grid'
 import {CubeCoordinates, PointLike} from 'honeycomb-grid'
-import {TerrainTiles} from '../shared/terrain_tiles'
+import {TerrainTiles} from '../../shared/terrain_tiles'
 
 export interface GridSpreadAnimationOptions {
   startCube: CubeCoordinates,
