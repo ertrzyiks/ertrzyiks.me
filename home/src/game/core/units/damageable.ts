@@ -1,6 +1,6 @@
 import {Unit} from './unit'
 
-export interface IDamageable {
+export interface IDamageable extends Unit {
   takeDamage(value: number): void
   isAlive(): boolean
 }

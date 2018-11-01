@@ -4,18 +4,18 @@ import * as TWEEN from '@tweenjs/tween.js'
 import {interaction, loaders, Point, ticker, utils} from 'pixi.js'
 import {GridSpreadAnimation} from './grid/spreading_animation'
 import {CubeCoordinates} from 'honeycomb-grid'
-import {cartesianToCube, GameTileHex, Board, CpuPlayer, PlayerColor, Movable, Unit} from '../core'
+import {cartesianToCube, GameTileHex, Board, Explorer, PlayerColor, Movable, Unit} from '../core'
 import {Ship} from './units'
 
 export class IntroWorld extends GameWorld {
   public emitter: utils.EventEmitter
 
   protected currentAnimation: GridSpreadAnimation = null
-  protected player: CpuPlayer
+  protected player: Explorer
 
   constructor (protected board: Board, protected resources: loaders.ResourceDictionary, protected ticker: ticker.Ticker, protected interaction: interaction.InteractionManager) {
     super(board, resources, ticker, interaction)
-    this.player = new CpuPlayer(PlayerColor.RED)
+    this.player = new Explorer(PlayerColor.RED)
     this.emitter = new utils.EventEmitter()
   }
 
