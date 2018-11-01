@@ -1,4 +1,4 @@
-import {CubeCoordinates, PointLike, FlatCompassDirection, extendHex} from 'honeycomb-grid'
+import {CubeCoordinates, PointLike, extendHex} from 'honeycomb-grid'
 const Hex = extendHex({orientation: 'flat'})
 
 const directionalOffset: {[direction: string]: CubeCoordinates} = {
