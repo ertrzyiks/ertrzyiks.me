@@ -2,6 +2,7 @@ import {Unit} from './units'
 import {Controller} from './controller'
 import {PlayerActionType} from './player_action'
 import {positionAt, cubeToCartesian} from './grid'
+import {Direction, directions, opposite} from './direction'
 import {CubeCoordinates} from 'honeycomb-grid'
 
 export enum PlayerColor {
@@ -20,13 +21,9 @@ export abstract class Player {
   abstract takeActions(ctrl: Controller): void
 }
 
-const directions = [
-  'sw', 's', 'n', 'ne', 'se', 'nw'
-]
-
 export class CpuPlayer extends Player {
 
-  protected lastDirection: string
+  protected lastDirection: Direction
 
   takeActions(ctrl: Controller) {
     const ship = this.units[0]
@@ -44,19 +41,8 @@ export class CpuPlayer extends Player {
     ctrl.do({type: PlayerActionType.EndTurn, player: this})
   }
 
-  protected oppositeDirection(direction: string) {
-    switch(direction) {
-      case 'n': return 's'
-      case 's': return 'n'
-      case 'ne': return 'sw'
-      case 'se': return 'nw'
-      case 'nw': return 'se'
-      case 'sw': return 'ne'
-    }
-  }
-
   protected randomDirection(position: CubeCoordinates) {
-    const except = this.oppositeDirection(this.lastDirection)
+    const except = opposite(this.lastDirection)
     let availableDirections = directions.filter(d => d != except)
 
     const worldWidth = 30
