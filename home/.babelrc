@@ -1,11 +1,19 @@
 {
-  "presets": [["env", {
-    "targets": {
-      "browsers": [
-        "last 2 versions",
-        "IE >= 11"
-      ]
-    }
-  }]],
-  "plugins": ["transform-object-rest-spread", "syntax-dynamic-import"]
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "browsers": [
+            "last 2 versions",
+            "IE >= 11"
+          ]
+        },
+        "useBuiltIns": "usage",
+        "loose": true,
+        "modules": false
+      }
+    ]
+  ],
+  "plugins": ["@babel/plugin-syntax-dynamic-import"]
 }

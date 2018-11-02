@@ -32,7 +32,11 @@ const toRemove = [
 
 module.exports = {
   mode: devMode ? 'development' : 'production',
-  entry: './src/game/index.ts',
+  entry: [
+    'core-js/modules/es6.promise',
+    'core-js/modules/es6.array.iterator',
+    './src/game/index.ts',
+  ],
   devtool: 'cheap-module-source-map',
   output: {
     path: path.resolve('.git-deploy/'),
@@ -75,13 +79,11 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.js$/,
-        exclude: path.resolve('node_modules'),
-        loader: 'babel-loader'
-      },
-      {
         test: /\.tsx?$/,
-        use: 'ts-loader',
+        use: [
+          'babel-loader',
+          'ts-loader'
+        ],
         exclude: /node_modules/
       },
       {

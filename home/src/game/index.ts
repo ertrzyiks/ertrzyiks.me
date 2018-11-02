@@ -1,4 +1,3 @@
-import 'core-js/es6/promise'
 import './styles.sass'
 
 const warriors = document.getElementById('warriors')
