@@ -1,8 +1,12 @@
 import {Unit} from './unit'
 
-export interface IMovable {
+export interface IMovable extends Unit {
   canMove(): boolean
   step(cost: number): void
+}
+
+export function isMovable(arg: any): arg is IMovable {
+  return arg && arg.canMove && typeof(arg.canMove) == 'function'
 }
 
 export function Movable<TBase extends Constructor<Unit>>(Base: TBase, baseMovementPoints: number) {
