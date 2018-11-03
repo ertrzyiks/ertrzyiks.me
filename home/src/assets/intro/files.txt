@@ -1,0 +1,2 @@
+original/PixelHex_zeshio_tile-988.png
+custom/ship.png
