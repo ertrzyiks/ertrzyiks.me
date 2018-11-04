@@ -1,5 +1,5 @@
-import * as image from '../../assets/sprites/intro.png'
-import data from '../../assets/sprites/intro.json'
+import * as image from '../../assets/sprites/intro-0.png'
+import data from '../../assets/sprites/intro-0.json'
 import {loaders, Spritesheet} from 'pixi.js'
 
 export function preload(loader: loaders.Loader) {

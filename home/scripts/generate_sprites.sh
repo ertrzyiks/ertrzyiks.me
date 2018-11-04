@@ -1,6 +1,7 @@
 #!/bin/sh
 
 function build {
+  sprite_name="$1"
   file_list_txt=./src/assets/${1}/files.txt
     echo "> Build ${1}"
 
@@ -14,7 +15,7 @@ function build {
     ALL_PATHS="${ALL_PATHS} ./node_modules/pixel-hex-tileset/$p"
   done <./src/assets/${1}/files.txt
 
-  TexturePacker --format json --trim-sprite-names --sheet ./src/assets/sprites/${1}.png --data ./src/assets/sprites/${1}.json ${ALL_PATHS}
+  TexturePacker --format json --multipack --trim-sprite-names --sheet "./src/assets/sprites/${sprite_name}-{n}.png" --data "./src/assets/sprites/${sprite_name}-{n}.json" ${ALL_PATHS}
 }
 
 for dir in ./src/assets/*

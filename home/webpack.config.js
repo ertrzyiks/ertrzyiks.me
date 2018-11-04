@@ -32,15 +32,18 @@ const toRemove = [
 
 module.exports = {
   mode: devMode ? 'development' : 'production',
-  entry: [
-    'core-js/modules/es6.promise',
-    'core-js/modules/es6.array.iterator',
-    './src/game/index.ts',
-  ],
+  entry: {
+    index: [
+      'core-js/modules/es6.promise',
+      'core-js/modules/es6.array.iterator',
+      './src/game/index.ts'
+    ],
+    editor: './src/game/board_editor.ts'
+  },
   devtool: 'cheap-module-source-map',
   output: {
     path: path.resolve('.git-deploy/'),
-    filename: devMode ? 'index.js' : 'index-[contenthash].js',
+    filename: devMode ? '[name].js' : '[name]-[contenthash].js',
     publicPath: '/'
   },
   plugins:
@@ -66,7 +69,8 @@ module.exports = {
       }),
       new HtmlWebpackPlugin({
         template: './src/index.html',
-        warriors: 'assets/intro/cta.png'
+        warriors: 'assets/intro/cta.png',
+        excludeChunks: [ 'editor' ]
       }),
       new PreloadWebpackPlugin({
         include: 'allAssets',
