@@ -1,9 +1,11 @@
 import {extendHex, defineGrid} from 'honeycomb-grid'
 import {Board} from '../board'
 
+const TILE_SIZE = 46
+
 export function createGrid(board: Board) {
   const Hex = extendHex({
-    size: board.tile_size,
+    size: TILE_SIZE,
     orientation: 'flat',
     terrain: null
   })

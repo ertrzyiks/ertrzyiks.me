@@ -1,3 +1,4 @@
+const fs = require('fs')
 const path = require('path')
 const webpack = require('webpack')
 const middleware = require('webpack-dev-middleware')
@@ -11,11 +12,14 @@ const instance = middleware(compiler, {
 })
 
 app.use(instance)
+app.use(express.json())
 
 app.use('/assets', express.static('src/assets'))
+
 app.get('/editor', (req, res) => {
   res.sendFile(path.resolve('./src/editor.html'))
 })
+
 app.get('/', (req, res) => {
   instance.waitUntilValid(() => {
     res.send(instance.fileSystem.readFileSync(path.resolve('.git-deploy/index.html')).toString())
@@ -23,8 +27,9 @@ app.get('/', (req, res) => {
 })
 
 app.get('/levels', (req, res) => {
+  const jsonFiles = fs.readdirSync('./src/game/main/boards/').filter(fileName => fileName.match(/\.json$/i))
   res.send({
-    levels: ['board1']
+    levels: jsonFiles.map(fileName => fileName.substr(0, fileName.length - 5))
   })
 })
 
@@ -35,7 +40,9 @@ app.get('/levels/:name', (req, res) => {
 
 app.put('/levels/:name', (req, res) => {
   const name = req.params.name
-  res.sendFile(path.resolve(`./src/game/main/boards/${name}.json`))
+  const filePath = path.resolve(`./src/game/main/boards/${name}.json`)
+  fs.writeFileSync(filePath, JSON.stringify(req.body || {}))
+  res.sendFile(filePath)
 })
 
 app.listen(1234, () => {
