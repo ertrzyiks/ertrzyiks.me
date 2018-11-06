@@ -1,7 +1,0 @@
-{
-  "rows": 30,
-  "cols": 30,
-  "terrain": [
-    {"x": 0, "y": 0, "width": 30, "height": 30, "type": "PixelHex_zeshio_tile-988"}
-  ]
-}

@@ -8,12 +8,12 @@ export interface UnitPosition {
 }
 
 export class BoardState {
-  constructor(public terrain: Array<GameTileHex> = [], public units: Array<UnitPosition> = []) {}
+  constructor(public tiles: Array<GameTileHex> = [], public units: Array<UnitPosition> = []) {}
 
   updateUnit(unit: Unit, position: CubeCoordinates) {
     const units = this.units.slice()
 
-    return new BoardState(this.terrain, units.map(u => {
+    return new BoardState(this.tiles, units.map(u => {
       if (u.unit != unit) { return u }
       return {unit: unit, position: position}
     }))
@@ -21,6 +21,6 @@ export class BoardState {
 
   addUnit(unit: Unit, position: CubeCoordinates) {
     const units = this.units.slice().concat([{unit: unit, position: position}])
-    return new BoardState(this.terrain, units)
+    return new BoardState(this.tiles, units)
   }
 }
