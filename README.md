@@ -31,8 +31,8 @@ To start local server watching for changes run:
 
 ```
 cd blog
-npm run build:prod
-npm run deploy
+npm start
+
 ```
 
 ### Deployment
@@ -42,5 +42,6 @@ Make sure you have access to `dokku` user on the destination Dokku server and ru
 
 ```
 cd blog
-npm start
+npm run build:prod
+npm run deploy
 ```
