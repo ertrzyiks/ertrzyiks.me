@@ -2,11 +2,17 @@ import {Container, loaders, ticker, interaction, DestroyOptions, Texture, Sprite
 import {GameViewport} from './viewport'
 import {Tile} from './renderable/tile'
 import * as TWEEN from '@tweenjs/tween.js'
-import {Board, Game, GameTileHex, WorldState, GameEventType} from '../core'
+import {Board, Game, GameTileHex, State, GameEventType} from '../core'
 import {CubeCoordinates} from 'honeycomb-grid'
 import {cubeToCartesian} from '../core/grid/helpers'
 import {TerrainTiles} from './terrain_tiles'
 import {Observable, ObservableSubscriptionDone} from './observable'
+import {GameEvent} from '../core/game_event'
+
+interface WorldUpdateTuple {
+  action: GameEvent
+  state: State
+}
 
 export class GameWorld extends Container {
   protected game: Game
@@ -14,7 +20,7 @@ export class GameWorld extends Container {
   protected currentTween: TWEEN.Tween
   protected tickerFunction = () => this.cull()
   protected terrainTiles: TerrainTiles = new TerrainTiles()
-  protected worldObservable: Observable<WorldState>
+  protected worldObservable: Observable<WorldUpdateTuple>
 
   protected ship: Tile
 
@@ -23,8 +29,8 @@ export class GameWorld extends Container {
     this.game = new Game(board)
 
     this.viewport = new GameViewport({
-      worldWidth: this.game.world.width,
-      worldHeight: this.game.world.height,
+      worldWidth: this.game.world.getState().worldWidth,
+      worldHeight: this.game.world.getState().worldHeight,
       ticker,
       interaction
     })
@@ -39,22 +45,20 @@ export class GameWorld extends Container {
 
   protected observeWorldUpdates() {
     this.worldObservable = new Observable()
-    this.game.onUpdate(state => this.worldObservable.push(state))
+    this.game.onUpdate((state, action) => this.worldObservable.push({state, action}))
     this.worldObservable.subscribe(this.onWorldUpdate.bind(this))
   }
 
-  protected onWorldUpdate(state: WorldState, done: ObservableSubscriptionDone) {
-    const event = state.lastEvent
-
-    switch(event.type) {
+  protected onWorldUpdate({state, action}: {state: State, action: GameEvent}, done: ObservableSubscriptionDone) {
+    switch(action.type) {
       case GameEventType.TurnEnd:
         this.game.proceed()
         done()
         break
 
       case GameEventType.Spawn:
-        const tile = this.getTerrainAt(event.position)
-        this.ship = new Tile(Texture.fromFrame('ship'), event.position)
+        const tile = this.getTerrainAt(action.position)
+        this.ship = new Tile(Texture.fromFrame('ship'), action.position)
         this.ship.scale.x = -1
         this.ship.x = tile.x
         this.ship.y = tile.y
@@ -63,10 +67,10 @@ export class GameWorld extends Container {
         break
 
       case GameEventType.Move:
-        const tile1 = this.getTerrainAt(event.position)
+        const tile1 = this.getTerrainAt(action.position)
 
         this.currentTween = new TWEEN.Tween(this.ship).to({x: tile1.x, y: tile1.y}, 1000).delay(300).onComplete(() => {
-          this.ship.coordinates = event.position
+          this.ship.coordinates = action.position
           done()
         })
 
@@ -94,7 +98,7 @@ export class GameWorld extends Container {
   }
 
   protected renderTerrain() {
-    this.game.world.currentState.boardState.terrain.forEach((hex: GameTileHex) => {
+    this.game.world.getState().terrain.forEach((hex: GameTileHex) => {
       const sprite = this.createWorldTile(hex)
       const coords = hex.coordinates()
 

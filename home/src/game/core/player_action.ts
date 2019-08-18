@@ -11,8 +11,7 @@ export enum PlayerActionType {
 }
 
 interface AbstractAction {
-  type: PlayerActionType,
-  player: Player
+  type: PlayerActionType
 }
 
 export interface EndTurnAction extends AbstractAction {

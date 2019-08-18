@@ -1,32 +1,39 @@
+import {CubeCoordinates} from 'honeycomb-grid'
 import {Direction, directions, opposite} from '../direction'
 import {Player} from '../player'
 import {Unit} from '../units'
-import {PlayerActionType} from '../player_action'
-import {Controller} from '../controller'
+import {PlayerAction, PlayerActionType} from '../player_action'
 import {positionAt, cubeToCartesian} from '../grid'
 import {isMovable, IMovable} from '../units'
-import {CubeCoordinates} from 'honeycomb-grid'
+import {StoreProxy} from '../store'
+import {State} from '../world'
+import {GameEvent} from '../game_event'
 
-export class Explorer extends Player {
+export class Explorer {
+  protected store: StoreProxy<GameEvent, State, PlayerAction>
   protected lastDirection: {[id: number]: Direction} = {}
 
-  takeActions(ctrl: Controller) {
-    this.units.forEach(unit => {
-      if (isMovable(unit)) {
-        this.exploreWith(ctrl, unit)
+  constructor(store: StoreProxy<GameEvent, State, PlayerAction>) {
+    this.store = store
+  }
+
+  takeActions() {
+    this.store.getState().units.forEach(u => {
+      if (isMovable(u.unit)) {
+        this.exploreWith(u.unit)
       }
     })
 
-    ctrl.do({type: PlayerActionType.EndTurn, player: this})
+    this.store.dispatch({type: PlayerActionType.EndTurn})
   }
 
-  protected exploreWith(ctrl: Controller, unit: IMovable) {
-    const pos = ctrl.getUnitPosition(unit)
+  protected exploreWith(unit: IMovable) {
+    const unitPosition = this.store.getState().units.filter(u => u.unit === unit)[0]
+    const pos = unitPosition.position
     this.lastDirection[unit.id] = this.randomDirection(this.lastDirection[unit.id], pos)
 
-    ctrl.do({
+    this.store.dispatch({
       type: PlayerActionType.Move,
-      player: this,
       unit: unit,
       direction: this.lastDirection[unit.id]
     })

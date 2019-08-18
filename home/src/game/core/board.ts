@@ -1,4 +1,5 @@
-import {Hex} from 'honeycomb-grid'
+import {CubeCoordinates, Hex} from 'honeycomb-grid'
+import {Unit} from './units'
 
 export enum Terrain {
   WATER = 'water'
@@ -9,6 +10,11 @@ export interface GameTile {
 }
 
 export type GameTileHex = Hex<GameTile>
+
+export interface UnitPosition {
+  unit: Unit,
+  position: CubeCoordinates
+}
 
 export interface BoardTerrain {
   readonly x: number,

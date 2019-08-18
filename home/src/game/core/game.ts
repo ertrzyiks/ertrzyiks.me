@@ -1,15 +1,12 @@
 import {CubeCoordinates} from 'honeycomb-grid'
 import {Unit} from './units'
-import {Player} from './player'
+import {Player, Explorer} from './player'
 import {Board} from './board'
-import {Controller} from './controller'
-import {World} from './world'
+import {World, WorldUpdateCallback} from './world'
 import {PlayerAction, PlayerActionType} from './player_action'
-import {WorldState} from './world'
 import {GameEvent, GameEventType} from './game_event'
 import {createGrid, positionAt} from './grid'
-
-export type WorldUpdateCallback = (state: WorldState) => void
+import {proxyStore} from "./store";
 
 export enum GamePhase {
   Setup = 'setup',
@@ -20,10 +17,7 @@ export enum GamePhase {
 export class Game {
   public players: Array<Player> = []
   public world: World
-  public currentPlayer: Player | null
   public state: GamePhase = GamePhase.Setup
-
-  protected updateCallbacks: Array<WorldUpdateCallback> = []
 
   constructor(protected board: Board) {
     const grid = createGrid(board)
@@ -43,8 +37,6 @@ export class Game {
   spawn(player: Player, unit: Unit, position: CubeCoordinates) {
     this.allowedIn(GamePhase.Setup, GamePhase.Idle)
 
-    player.units.push(unit)
-
     this.update({
       type: GameEventType.Spawn,
       owner: player,
@@ -56,7 +48,6 @@ export class Game {
   proceed() {
     this.allowedIn(GamePhase.Setup, GamePhase.Idle)
 
-    this.assignNextPlayer()
     this.startTurn()
   }
 
@@ -78,8 +69,7 @@ export class Game {
         this.update({
           type: GameEventType.Move,
           unit: action.unit,
-          position: positionAt(this.getUnitPosition(action.unit), action.direction),
-          player: this.currentPlayer
+          position: positionAt(this.getUnitPosition(action.unit), action.direction)
         })
         break;
 
@@ -90,11 +80,11 @@ export class Game {
   }
 
   onUpdate(fn: WorldUpdateCallback) {
-    this.updateCallbacks.push(fn)
+    this.world.subscribe(fn)
   }
 
   getUnitPosition(unit: Unit) {
-    const u = this.world.currentState.boardState.units.filter(u => u.unit == unit)
+    const u = this.world.getState().units.filter(u => u.unit == unit)
 
     return u[0].position
   }
@@ -108,17 +98,35 @@ export class Game {
   protected startTurn() {
     this.state = GamePhase.Turn
 
-    this.world.unitsOf(this.currentPlayer).forEach(u => u.unit.replenish())
+    this.update({type: GameEventType.TurnStart})
 
-    this.update({type: GameEventType.TurnStart, player: this.currentPlayer})
+    const proxy = proxyStore(this.world.store, {
+      proxyAction: (action: PlayerAction, dispatch) => {
+        switch(action.type) {
+          case PlayerActionType.EndTurn:
+            this.state = GamePhase.Idle
+            dispatch({type: GameEventType.TurnEnd})
+            break
 
-    const controller = new Controller(this, this.currentPlayer)
-    this.currentPlayer.takeActions(controller)
+          case PlayerActionType.Move:
+            dispatch({
+              type: GameEventType.Move,
+              unit: action.unit,
+              position: positionAt(this.getUnitPosition(action.unit), action.direction)
+            })
+            break
+        }
+      },
+      proxyState: (s) => s
+    })
+
+    const explorer = new Explorer(proxy)
+    explorer.takeActions()
   }
 
   protected endTurn() {
     this.state = GamePhase.Idle
-    this.update({type: GameEventType.TurnEnd, player: this.currentPlayer})
+    this.update({type: GameEventType.TurnEnd})
 
     if (this.endOfGame()) {
       this.update({type: GameEventType.GameEnd})
@@ -131,16 +139,6 @@ export class Game {
   }
 
   protected update(event: GameEvent) {
-    this.world.update(event)
-
-    this.updateCallbacks.forEach(fn => {
-      fn(this.world.currentState)
-    })
-  }
-
-  protected assignNextPlayer() {
-    const currentIndex = this.players.indexOf(this.currentPlayer)
-    const nextIndex = (currentIndex + 1) % this.players.length
-    this.currentPlayer = this.players[nextIndex]
+    this.world.dispatch(event)
   }
 }

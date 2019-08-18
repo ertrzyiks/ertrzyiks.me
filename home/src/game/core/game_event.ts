@@ -18,10 +18,6 @@ export interface AbstractEvent {
   type: GameEventType
 }
 
-export interface AbstractEventWithPlayer {
-  player: Player
-}
-
 export interface GameStartEvent extends AbstractEvent {
   type: GameEventType.GameStart
 }
@@ -41,25 +37,26 @@ export interface ResetEvent extends AbstractEvent {
   type: GameEventType.Reset
 }
 
-export interface PlayerJoinEvent extends AbstractEventWithPlayer {
+export interface PlayerJoinEvent extends AbstractEvent {
   type: GameEventType.PlayerJoin
+  player: Player
 }
 
-export interface TurnStartEvent extends AbstractEventWithPlayer {
+export interface TurnStartEvent extends AbstractEvent {
   type: GameEventType.TurnStart
 }
 
-export interface TurnEndEvent extends AbstractEventWithPlayer {
+export interface TurnEndEvent extends AbstractEvent {
   type: GameEventType.TurnEnd
 }
 
-export interface MoveEvent extends AbstractEventWithPlayer {
+export interface MoveEvent extends AbstractEvent {
   type: GameEventType.Move,
   unit: Unit,
   position: CubeCoordinates
 }
 
-export interface TakeDamageEvent extends AbstractEventWithPlayer {
+export interface TakeDamageEvent extends AbstractEvent {
   type: GameEventType.TakeDamage,
   target: Unit,
   inflictor: Unit,
