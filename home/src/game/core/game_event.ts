@@ -6,8 +6,8 @@ export enum GameEventType {
   GameStart,
   GameEnd,
   PlayerJoin,
-  TurnStart,
-  TurnEnd,
+  StartTurn,
+  EndTurn,
   Spawn,
   Move,
   TakeDamage,
@@ -42,12 +42,12 @@ export interface PlayerJoinEvent extends AbstractEvent {
   player: Player
 }
 
-export interface TurnStartEvent extends AbstractEvent {
-  type: GameEventType.TurnStart
+export interface StartTurnEvent extends AbstractEvent {
+  type: GameEventType.StartTurn
 }
 
-export interface TurnEndEvent extends AbstractEvent {
-  type: GameEventType.TurnEnd
+export interface EndTurnEvent extends AbstractEvent {
+  type: GameEventType.EndTurn
 }
 
 export interface MoveEvent extends AbstractEvent {
@@ -64,4 +64,4 @@ export interface TakeDamageEvent extends AbstractEvent {
 }
 
 export type SystemEvent = GameStartEvent | GameEndEvent | SpawnEvent | ResetEvent
-export type GameEvent = SystemEvent | PlayerJoinEvent | TurnStartEvent | TurnEndEvent | MoveEvent | TakeDamageEvent
+export type GameEvent = SystemEvent | PlayerJoinEvent | StartTurnEvent | EndTurnEvent | MoveEvent | TakeDamageEvent

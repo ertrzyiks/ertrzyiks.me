@@ -4,8 +4,21 @@ import * as TWEEN from '@tweenjs/tween.js'
 import {interaction, loaders, Point, ticker, utils} from 'pixi.js'
 import {GridSpreadAnimation} from './grid/spreading_animation'
 import {CubeCoordinates} from 'honeycomb-grid'
-import {cartesianToCube, GameTileHex, Board, Player, PlayerColor, Movable, Unit} from '../core'
+import {
+  cartesianToCube,
+  GameTileHex,
+  Board,
+  StoreProxy,
+  GameEvent,
+  Player,
+  Explorer,
+  PlayerColor,
+  Movable,
+  Unit
+} from '../core'
 import {Ship} from './units'
+import {State} from '../core/world'
+import {PlayerAction} from '../core/player_action'
 
 export class IntroWorld extends GameWorld {
   public emitter: utils.EventEmitter
@@ -23,6 +36,11 @@ export class IntroWorld extends GameWorld {
     this.emitter = new utils.EventEmitter()
   }
 
+  onTurnStart(store: StoreProxy<GameEvent, State, PlayerAction>) {
+    const explorer = new Explorer(store)
+    explorer.takeActions()
+  }
+
   setup(point: Point) {
     const tile = this.interaction.hitTest(point, this.viewport)
 
@@ -35,7 +53,7 @@ export class IntroWorld extends GameWorld {
 
         this.game.add(this.player)
         this.game.spawn(this.player, new Ship(), coords)
-        this.game.proceed()
+        this.game.nextTurn()
       })
 
       this.teardown()

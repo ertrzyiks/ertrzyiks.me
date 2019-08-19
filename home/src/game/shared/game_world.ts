@@ -6,13 +6,14 @@ import {Board, Game, GameTileHex, State, GameEventType} from '../core'
 import {CubeCoordinates} from 'honeycomb-grid'
 import {cubeToCartesian} from '../core/grid/helpers'
 import {TerrainTiles} from './terrain_tiles'
-import {Observable, ObservableSubscriptionDone} from './observable'
-import {GameEvent} from '../core/game_event'
+import {ObservableSubscriptionDone} from './observable'
+import {
+  GameEvent,
+  createPlayerStore,
+  StoreProxy,
+  PlayerAction
+} from '../core'
 
-interface WorldUpdateTuple {
-  action: GameEvent
-  state: State
-}
 
 export class GameWorld extends Container {
   protected game: Game
@@ -20,11 +21,15 @@ export class GameWorld extends Container {
   protected currentTween: TWEEN.Tween
   protected tickerFunction = () => this.cull()
   protected terrainTiles: TerrainTiles = new TerrainTiles()
-  protected worldObservable: Observable<WorldUpdateTuple>
 
   protected ship: Tile
 
-  constructor (protected board: Board, protected resources: loaders.ResourceDictionary, protected ticker: ticker.Ticker, protected interaction: interaction.InteractionManager) {
+  constructor (
+    protected board: Board,
+    protected resources: loaders.ResourceDictionary,
+    protected ticker: ticker.Ticker,
+    protected interaction: interaction.InteractionManager
+  ) {
     super()
     this.game = new Game(board)
 
@@ -43,17 +48,19 @@ export class GameWorld extends Container {
     this.addChild(this.viewport)
   }
 
+  protected onTurnStart(store: StoreProxy<GameEvent, State, PlayerAction>) {
+    throw new Error('Not implemented')
+  }
+
   protected observeWorldUpdates() {
-    this.worldObservable = new Observable()
-    this.game.onUpdate((state, action) => this.worldObservable.push({state, action}))
-    this.worldObservable.subscribe(this.onWorldUpdate.bind(this))
+    this.game.worldObservable.subscribe(this.onWorldUpdate.bind(this))
   }
 
   protected onWorldUpdate({state, action}: {state: State, action: GameEvent}, done: ObservableSubscriptionDone) {
     switch(action.type) {
-      case GameEventType.TurnEnd:
-        this.game.proceed()
+      case GameEventType.StartTurn:
         done()
+        this.onTurnStart(createPlayerStore(this.game.world.store, state.currentPlayer))
         break
 
       case GameEventType.Spawn:

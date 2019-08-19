@@ -11,10 +11,24 @@ const rotate = (value: number, edgeValue: number) => {
 
 export function gameReducer(state: State, action: GameEvent) {
   switch(action.type) {
-    case GameEventType.TurnStart:
+    case GameEventType.PlayerJoin:
       return {
         ...state,
-        currentPlayer: state.currentPlayer === null ? 0 : rotate(state.currentPlayer + 1, state.players.length)
+        players: [
+          ...state.players,
+          action.player
+        ]
+      }
+    case GameEventType.EndTurn:
+      // Do nothing, waiting for StartTurn
+      break
+
+    case GameEventType.StartTurn:
+      const currentPlayerIndex = state.currentPlayer === null ? 0 : rotate(state.currentPlayerIndex + 1, state.players.length)
+      return {
+        ...state,
+        currentPlayerIndex,
+        currentPlayer: state.players[currentPlayerIndex]
       }
 
     case GameEventType.Move:

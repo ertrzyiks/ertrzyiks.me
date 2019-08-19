@@ -10,7 +10,8 @@ export type WorldUpdateCallback = (state: State, action: GameEvent) => void
 
 export interface State {
   players: Array<{id: string, name: string}>
-  currentPlayer: number | null
+  currentPlayerIndex: number | null
+  currentPlayer: Player | null
   worldWidth: number
   worldHeight: number
   terrain: Array<GameTileHex>
@@ -30,6 +31,7 @@ export class World {
 
     this.store = new Store(gameReducer, {
       players: [],
+      currentPlayerIndex: null,
       currentPlayer: null,
       terrain,
       units: [],

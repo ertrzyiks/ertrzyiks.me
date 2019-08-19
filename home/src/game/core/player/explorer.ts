@@ -2,20 +2,13 @@ import {CubeCoordinates} from 'honeycomb-grid'
 import {Direction, directions, opposite} from '../direction'
 import {Player} from '../player'
 import {Unit} from '../units'
-import {PlayerAction, PlayerActionType} from '../player_action'
+import {PlayerActionType} from '../player_action'
 import {positionAt, cubeToCartesian} from '../grid'
 import {isMovable, IMovable} from '../units'
-import {StoreProxy} from '../store'
-import {State} from '../world'
-import {GameEvent} from '../game_event'
+import {Behavior} from './behavior'
 
-export class Explorer {
-  protected store: StoreProxy<GameEvent, State, PlayerAction>
+export class Explorer extends Behavior {
   protected lastDirection: {[id: number]: Direction} = {}
-
-  constructor(store: StoreProxy<GameEvent, State, PlayerAction>) {
-    this.store = store
-  }
 
   takeActions() {
     this.store.getState().units.forEach(u => {
