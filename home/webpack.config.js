@@ -91,6 +91,18 @@ module.exports = {
         exclude: /node_modules/
       },
       {
+        test: /\.jsx?$/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            babelrc: true,
+            extends: path.join(__dirname + '/.babelrc'),
+            cacheDirectory: true
+          }
+        },
+        exclude: /node_modules(?!\/pixi-viewport)/
+      },
+      {
         test: /\.sass$/,
         use: [
           devMode ? 'style-loader' : MiniCssExtractPlugin.loader,

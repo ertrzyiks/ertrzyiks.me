@@ -1,9 +1,11 @@
 import 'pixi.js'
 import {DestroyOptions} from 'pixi.js'
-import * as Viewport from 'pixi-viewport'
+import {Viewport} from 'pixi-viewport'
 
 export class GameViewport extends Viewport {
-  constructor(options?: Viewport.Options) {
+  screenHeight: number
+
+  constructor(options?: any) {
     const hexSize = 100
     super({
       screenWidth: window.innerWidth,

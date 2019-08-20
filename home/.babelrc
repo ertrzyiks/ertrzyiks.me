@@ -5,8 +5,9 @@
       {
         "targets": {
           "browsers": [
-            "last 2 versions",
-            "IE >= 11"
+            "last 5 versions",
+            "IE >= 11",
+            "> 0.25%"
           ]
         },
         "useBuiltIns": "usage",
@@ -15,5 +16,8 @@
       }
     ]
   ],
-  "plugins": ["@babel/plugin-syntax-dynamic-import"]
+  "plugins": [
+    "@babel/plugin-syntax-dynamic-import",
+    "@babel/plugin-transform-classes"
+  ]
 }
