@@ -14,7 +14,7 @@ export interface State {
   currentPlayer: Player | null
   worldWidth: number
   worldHeight: number
-  terrain: Array<GameTileHex>
+  tiles: Array<GameTileHex>
   units: Array<UnitPosition>
 }
 
@@ -22,7 +22,7 @@ export class World {
   store: Store<GameEvent, State>
 
   constructor(grid: Grid) {
-    const terrain = grid.reduce((acc, hex) => {
+    const tiles = grid.reduce((acc, hex) => {
       acc.push(hex)
       return acc
     }, [])
@@ -33,7 +33,7 @@ export class World {
       players: [],
       currentPlayerIndex: null,
       currentPlayer: null,
-      terrain,
+      tiles,
       units: [],
       worldWidth,
       worldHeight

@@ -3,6 +3,7 @@
 html, body
   margin: 0
   padding: 0
+  background-color: #fff
 
 .game-wrapper
   canvas
@@ -11,6 +12,7 @@ html, body
     height: 100vh
     top: 0
     left: 0
+    z-index: 2
 
 h1
   color: #4aadd6
@@ -57,6 +59,10 @@ body
 .init-button
   position: relative
 
+  > img
+    position: relative
+    z-index: 1
+
   &:after
     content: ""
     display: block
@@ -71,7 +77,6 @@ body
     background-position: 50%
     transform: scale(0)
     opacity: 0
-    z-index: -1
 
   &.is-animated
     &:after

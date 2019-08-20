@@ -6,7 +6,7 @@ export enum Terrain {
 }
 
 export interface GameTile {
-  terrain: Terrain
+  textureName: string
 }
 
 export type GameTileHex = Hex<GameTile>
@@ -22,11 +22,11 @@ export interface BoardTerrain {
   readonly width?: number,
   readonly height?: number,
   readonly type: Terrain
+  readonly textureName: string
 }
 
 export interface Board {
   readonly rows: number,
   readonly cols: number,
-  readonly tile_size: number,
-  readonly terrain: Array<BoardTerrain>
+  readonly tiles: Array<BoardTerrain>
 }

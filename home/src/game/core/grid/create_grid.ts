@@ -1,11 +1,14 @@
 import {extendHex, defineGrid} from 'honeycomb-grid'
 import {Board} from '../board'
 
+const TILE_SIZE = 46
+
 export function createGrid(board: Board) {
   const Hex = extendHex({
-    size: board.tile_size,
+    size: TILE_SIZE,
     orientation: 'flat',
-    terrain: null
+    terrain: null,
+    textureName: null
   })
 
   const Grid = defineGrid(Hex)
@@ -15,13 +18,15 @@ export function createGrid(board: Board) {
     height: board.rows,
   })
 
-  board.terrain.forEach(tile => {
+  board.tiles.forEach(tile => {
     const width = tile.width || 1
     const height = tile.height || 1
 
     for (let dx = 0; dx < width; dx++) {
       for (let dy = 0; dy < height; dy++) {
-        grid.get({x: tile.x + dx, y: tile.y + dy}).terrain = tile.type
+        const hex = grid.get({x: tile.x + dx, y: tile.y + dy})
+        hex.terrain = tile.type
+        hex.textureName = tile.textureName
       }
     }
   })

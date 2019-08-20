@@ -95,7 +95,7 @@ export class GameWorld extends Container {
 
     const coords = hex.cube()
 
-    const sprite = new Tile(Texture.fromFrame(hex.terrain), coords)
+    const sprite = new Tile(Texture.fromFrame(hex.textureName), coords)
 
     sprite.position.set(x, y)
     sprite.interactive = true
@@ -105,7 +105,7 @@ export class GameWorld extends Container {
   }
 
   protected renderTerrain() {
-    this.game.world.getState().terrain.forEach((hex: GameTileHex) => {
+    this.game.world.getState().tiles.forEach((hex: GameTileHex) => {
       const sprite = this.createWorldTile(hex)
       const coords = hex.coordinates()
 
