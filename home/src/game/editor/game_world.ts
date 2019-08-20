@@ -1,4 +1,4 @@
-import * as dat from 'dat.gui'
+import {GUI} from 'dat.gui'
 import {Container, interaction, loaders, Texture, ticker} from 'pixi.js'
 import {Grid} from 'honeycomb-grid'
 import {World, Board, createGrid} from '../core'
@@ -22,8 +22,8 @@ export class EditorWorld extends Container {
   protected world: World
 
   protected viewport: GameViewport
-  protected gui: dat.GUI = new dat.GUI({ hideable: false })
-  protected setupFolder: dat.GUI
+  protected gui: GUI = new GUI({ hideable: false })
+  protected setupFolder: GUI
   protected terrainTiles: TerrainTiles = new TerrainTiles()
 
   protected game_data: GameEditorData = {
