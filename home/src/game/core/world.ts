@@ -2,7 +2,7 @@ import {Grid} from 'honeycomb-grid'
 import {GameEvent} from './game_event'
 import {getGridBoundingBox} from './grid'
 import {Player} from './player'
-import {Store} from './store'
+import {createStore, Store} from './store'
 import {GameTileHex, UnitPosition} from './board'
 import {gameReducer} from './reducers'
 
@@ -29,7 +29,7 @@ export class World {
 
     const {worldWidth, worldHeight} = getGridBoundingBox(grid)
 
-    this.store = new Store(gameReducer, {
+    this.store = createStore(gameReducer, {
       players: [],
       currentPlayerIndex: null,
       currentPlayer: null,

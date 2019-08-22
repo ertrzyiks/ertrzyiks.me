@@ -25,4 +25,12 @@ export class TerrainTiles {
 
     return points
   }
+
+  allValues() {
+    return this.keys().map(point => this.get(point))
+  }
+
+  clear() {
+    this.objects = {}
+  }
 }

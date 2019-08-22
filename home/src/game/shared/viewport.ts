@@ -5,23 +5,19 @@ import {Viewport} from 'pixi-viewport'
 export class GameViewport extends Viewport {
   screenHeight: number
 
+  protected hexSize = 100
+  protected offset = this.hexSize * 0.75
+
   constructor(options?: any) {
-    const hexSize = 100
     super({
       screenWidth: window.innerWidth,
       screenHeight: window.innerHeight,
       ...options
     })
 
-    const offset = hexSize * 0.75
-    this
-      .clamp({
-        left: offset,
-        top: offset,
-        right: options.worldWidth - offset,
-        bottom: options.worldHeight - offset
-      })
-      .drag()
+
+    this.drag()
+    this.worldClamp(options.worldWidth, options.worldHeight)
 
     this.onResize = this.onResize.bind(this)
 
@@ -34,8 +30,27 @@ export class GameViewport extends Viewport {
     })
   }
 
+  worldClamp(width: number, height: number) {
+    return this
+      .clamp({
+        left: this.offset,
+        top: this.offset,
+        right: width - this.offset,
+        bottom: height - this.offset
+      })
+  }
+
   onResize() {
     this.resize(window.innerWidth, window.innerHeight, this.worldWidth, this.worldHeight)
+  }
+
+  resize(screenWidth: number, screenHeight: number, worldWidth?: number, worldHeight?: number) {
+    super.resize(screenWidth, screenHeight, worldWidth, worldHeight)
+
+    if (worldWidth !== null && worldHeight !== null) {
+      this.plugins.remove('clamp')
+      this.worldClamp(worldWidth, worldHeight)
+    }
   }
 
   destroy (options?: DestroyOptions) {

@@ -1,12 +1,21 @@
 import {GUI} from 'dat.gui'
+import * as debounce from 'debounce'
 import {Container, interaction, loaders, Texture, ticker} from 'pixi.js'
-import {Grid} from 'honeycomb-grid'
-import {World, Board, createGrid} from '../core'
+import {
+  World,
+  Board,
+  BoardTerrain,
+  GameTileHex,
+  Terrain
+} from '../core'
 import Api from './api_service'
 import {GameViewport} from '../shared/viewport'
-import {BoardTerrain, GameTileHex, Terrain} from "../core/board";
 import {Tile} from "../shared/renderable/tile";
 import {TerrainTiles} from "../shared/terrain_tiles";
+import {createStore, Store} from '../core/store'
+import {EditorEvent, EditorEventType} from './editor_event'
+import {State} from '../core/world'
+import {editorReducer} from './reducer'
 
 interface GameEditorData {
   level: string,
@@ -18,8 +27,8 @@ interface GameEditorData {
 }
 
 export class EditorWorld extends Container {
-  protected grid: Grid
-  protected world: World
+  protected store: Store<EditorEvent, State>
+
 
   protected viewport: GameViewport
   protected gui: GUI = new GUI({ hideable: false })
@@ -42,31 +51,42 @@ export class EditorWorld extends Container {
   ) {
     super()
 
-    const board = {
-      cols: 30,
-      rows: 30,
-      tiles: [{x: 0, y: 0, width: 30, height: 30, type: Terrain.WATER, textureName: 'water'}]
-    }
-
-    this.grid = createGrid(board)
-    this.world = new World(this.grid)
+    this.store = createStore(editorReducer, {
+      players: [],
+      currentPlayerIndex: null,
+      currentPlayer: null,
+      tiles: [],
+      units: [],
+      worldWidth: 1000,
+      worldHeight: 1000
+    })
 
     this.viewport = new GameViewport({
-      worldWidth: this.world.getState().worldWidth,
-      worldHeight: this.world.getState().worldHeight,
+      worldWidth: this.store.getState().worldWidth,
+      worldHeight: this.store.getState().worldHeight,
       ticker,
       interaction
     })
 
     this.setupGui()
 
-    this.renderTerrain()
+    this.store.subscribe(state => {
+      this.renderTerrain()
+
+      this.viewport.resize(window.innerWidth, window.innerHeight, state.worldWidth, state.worldHeight)
+    })
 
     this.addChild(this.viewport)
   }
 
   protected renderTerrain() {
-    this.world.getState().tiles.forEach((hex: GameTileHex) => {
+    this.terrainTiles.allValues().forEach(sprite => {
+      this.viewport.removeChild(sprite)
+    })
+
+    this.terrainTiles.clear()
+
+    this.store.getState().tiles.forEach((hex: GameTileHex) => {
       const sprite = this.createWorldTile(hex)
       const coords = hex.coordinates()
 
@@ -113,11 +133,26 @@ export class EditorWorld extends Container {
       this.game_data.rows = data.rows || this.game_data.rows
       this.game_data.columns = data.cols || this.game_data.columns
 
+      const updateSize = debounce(this.updateSize.bind(this), 100)
+
       const settingsFolder = this.gui.addFolder('Main settings')
       settingsFolder.open()
       settingsFolder.add(this.game_data, 'save')
-      settingsFolder.add(this.game_data, 'rows', 1, 100)
-      settingsFolder.add(this.game_data, 'columns', 1, 100)
+      settingsFolder.add(this.game_data, 'rows', 1, 100, 1).onChange(updateSize)
+      settingsFolder.add(this.game_data, 'columns', 1, 100, 1).onChange(updateSize)
+
+      this.store.dispatch({
+        type: EditorEventType.LoadBoard,
+        data
+      })
+    })
+  }
+
+  updateSize() {
+    this.store.dispatch({
+      type: EditorEventType.SetSize,
+      cols: this.game_data.columns,
+      rows: this.game_data.rows,
     })
   }
 
@@ -138,8 +173,8 @@ export class EditorWorld extends Container {
     const name = this.game_data.name
 
     const payload = {
-      rows: Math.round(this.game_data.rows),
-      cols: Math.round(this.game_data.columns)
+      rows: this.game_data.rows,
+      cols: this.game_data.columns
     }
 
     Api.save(name, payload).catch(e => {
