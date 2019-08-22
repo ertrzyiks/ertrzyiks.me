@@ -17,13 +17,16 @@ export interface UnitPosition {
   position: CubeCoordinates
 }
 
-export interface BoardTerrain {
-  readonly x: number,
-  readonly y: number,
-  readonly width?: number,
-  readonly height?: number,
+export interface BoardTile {
+  readonly x: number
+  readonly y: number
   readonly type: Terrain
   readonly textureName: string
+}
+
+export interface BoardTerrain extends BoardTile {
+  readonly width?: number
+  readonly height?: number
 }
 
 export interface Board {

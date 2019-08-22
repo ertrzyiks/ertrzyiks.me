@@ -100,7 +100,6 @@ export class EditorWorld extends Container {
 
     const coords = hex.cube()
 
-    console.log('textureName', hex.textureName)
     const sprite = new Tile(Texture.fromFrame(hex.textureName), coords)
 
     sprite.position.set(x, y)
