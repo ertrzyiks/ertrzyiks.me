@@ -7,6 +7,7 @@ export enum Terrain {
 
 export interface GameTile {
   textureName: string
+  type: Terrain
 }
 
 export type GameTileHex = Hex<GameTile>

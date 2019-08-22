@@ -100,6 +100,7 @@ export class EditorWorld extends Container {
 
     const coords = hex.cube()
 
+    console.log('textureName', hex.textureName)
     const sprite = new Tile(Texture.fromFrame(hex.textureName), coords)
 
     sprite.position.set(x, y)
@@ -171,10 +172,12 @@ export class EditorWorld extends Container {
 
   save() {
     const name = this.game_data.name
+    const state = this.store.getState()
 
     const payload = {
       rows: this.game_data.rows,
-      cols: this.game_data.columns
+      cols: this.game_data.columns,
+      tiles: state.tiles
     }
 
     Api.save(name, payload).catch(e => {

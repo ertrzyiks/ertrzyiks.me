@@ -23,7 +23,7 @@
     "debounce": "^1.2.0",
     "honeycomb-grid": "^1.4.0",
     "node-noop": "^1.0.0",
-    "pixi-viewport": "^4.2.0",
+    "pixi-viewport": "^4.2.1",
     "pixi.js": "^4.8.1",
     "webpack": "^4.16.5",
     "webpack-dev-middleware": "^3.1.3"

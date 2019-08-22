@@ -39,12 +39,7 @@ export function editorReducer(state: State, action: EditorEvent) {
     case EditorEventType.LoadBoard:
       return {
         ...state,
-        ...stateFromBoard({
-          ...action.data,
-          tiles: [{
-            x: 0, y: 0, width: action.data.cols, height: action.data.rows, type: Terrain.WATER, textureName: 'water'
-          }]
-        })
+        ...stateFromBoard(action.data)
       }
   }
 

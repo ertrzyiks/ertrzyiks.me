@@ -7,7 +7,7 @@ export function createGrid(board: Board) {
   const Hex = extendHex({
     size: TILE_SIZE,
     orientation: 'flat',
-    terrain: null,
+    type: null,
     textureName: null
   })
 
@@ -25,7 +25,7 @@ export function createGrid(board: Board) {
     for (let dx = 0; dx < width; dx++) {
       for (let dy = 0; dy < height; dy++) {
         const hex = grid.get({x: tile.x + dx, y: tile.y + dy})
-        hex.terrain = tile.type
+        hex.type = tile.type
         hex.textureName = tile.textureName
       }
     }

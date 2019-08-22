@@ -3,8 +3,6 @@ import {DestroyOptions} from 'pixi.js'
 import {Viewport} from 'pixi-viewport'
 
 export class GameViewport extends Viewport {
-  screenHeight: number
-
   protected hexSize = 100
   protected offset = this.hexSize * 0.75
 
@@ -14,7 +12,6 @@ export class GameViewport extends Viewport {
       screenHeight: window.innerHeight,
       ...options
     })
-
 
     this.drag()
     this.worldClamp(options.worldWidth, options.worldHeight)

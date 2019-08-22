@@ -1,6 +1,14 @@
+import {Terrain} from '../core/board'
+
 export interface ApiLevelPayload {
   rows: number,
-  cols: number
+  cols: number,
+  tiles: Array<{
+    x: number,
+    y: number,
+    textureName: string
+    type: Terrain
+  }>
 }
 
 export default class Api {
