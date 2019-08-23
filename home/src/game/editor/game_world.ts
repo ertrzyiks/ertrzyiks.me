@@ -1,6 +1,6 @@
 import {GUI} from 'dat.gui'
 import * as debounce from 'debounce'
-import {Container, interaction, loaders, Texture, ticker} from 'pixi.js'
+import {Container, interaction, loaders, Texture, ticker, DisplayObject} from 'pixi.js'
 import {
   World,
   Board,
@@ -68,6 +68,13 @@ export class EditorWorld extends Container {
       interaction
     })
 
+    this.viewport.on('clicked', e => {
+      console.log(e)
+      const target = interaction.hitTest(e.screen, this.viewport)
+
+      this.onClick(target)
+    })
+
     this.setupGui()
 
     this.store.subscribe(state => {
@@ -77,6 +84,12 @@ export class EditorWorld extends Container {
     })
 
     this.addChild(this.viewport)
+  }
+
+  protected onClick(el: DisplayObject) {
+    if (el instanceof Tile) {
+      console.log(el.coordinates)
+    }
   }
 
   protected renderTerrain() {
