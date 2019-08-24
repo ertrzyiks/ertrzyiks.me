@@ -20,7 +20,7 @@ export class GameWorld extends Container {
   protected viewport: GameViewport
   protected currentTween: TWEEN.Tween
   protected tickerFunction = () => this.cull()
-  protected terrainTiles: TerrainTiles = new TerrainTiles()
+  protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles()
 
   protected ship: Tile
 

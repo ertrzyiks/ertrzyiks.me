@@ -1,15 +1,15 @@
 import {PointLike} from 'honeycomb-grid'
 import {DisplayObject} from 'pixi.js'
 
-export class TerrainTiles {
-  protected objects: {[x: number]: {[y: number]: DisplayObject}} = {}
+export class TerrainTiles<T> {
+  protected objects: {[x: number]: {[y: number]: T}} = {}
 
   get(point: PointLike) {
     if (!this.objects[point.x]) { return null }
     return this.objects[point.x][point.y]
   }
 
-  set(point: PointLike, object: DisplayObject) {
+  set(point: PointLike, object: T) {
     this.objects[point.x] = this.objects[point.x] || {}
     this.objects[point.x][point.y] = object
   }

@@ -6,7 +6,8 @@ import {
   Board,
   BoardTerrain,
   GameTileHex,
-  Terrain
+  Terrain,
+  cubeToCartesian
 } from '../core'
 import Api from './api_service'
 import {GameViewport} from '../shared/viewport'
@@ -16,12 +17,17 @@ import {createStore, Store} from '../core/store'
 import {EditorEvent, EditorEventType} from './editor_event'
 import {State} from '../core/world'
 import {editorReducer} from './reducer'
+import {getTile} from './utils'
+import {PointLike} from 'honeycomb-grid'
 
 interface GameEditorData {
-  level: string,
-  name: string,
-  rows: number,
-  columns: number,
+  level: string
+  name: string
+  rows: number
+  columns: number
+  tile: {
+    textureName: string
+  }
   save: () => void
   create: () => void
 }
@@ -29,17 +35,22 @@ interface GameEditorData {
 export class EditorWorld extends Container {
   protected store: Store<EditorEvent, State>
 
-
   protected viewport: GameViewport
   protected gui: GUI = new GUI({ hideable: false })
   protected setupFolder: GUI
-  protected terrainTiles: TerrainTiles = new TerrainTiles()
+  protected tileFolder: GUI
+  protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles()
+
+  protected selectedTile: PointLike | null = null
 
   protected game_data: GameEditorData = {
     level: '',
     name: '',
     rows: 1,
     columns: 1,
+    tile: {
+      textureName: 'water'
+    },
     save: () => this.save(),
     create: () => this.create()
   }
@@ -69,7 +80,6 @@ export class EditorWorld extends Container {
     })
 
     this.viewport.on('clicked', e => {
-      console.log(e)
       const target = interaction.hitTest(e.screen, this.viewport)
 
       this.onClick(target)
@@ -77,18 +87,43 @@ export class EditorWorld extends Container {
 
     this.setupGui()
 
-    this.store.subscribe(state => {
-      this.renderTerrain()
+    this.store.subscribe((state, action) => {
 
-      this.viewport.resize(window.innerWidth, window.innerHeight, state.worldWidth, state.worldHeight)
+      switch(action.type) {
+        case EditorEventType.SetSize:
+        case EditorEventType.LoadBoard:
+          this.renderTerrain()
+          this.viewport.resize(window.innerWidth, window.innerHeight, state.worldWidth, state.worldHeight)
+          break
+
+        case EditorEventType.SetTileTexture:
+          const tile = this.terrainTiles.get({x: action.x, y: action.y})
+          tile.texture = Texture.fromFrame(action.textureName)
+          break
+      }
+
     })
 
     this.addChild(this.viewport)
   }
 
+  protected onTextureNameChange() {
+    this.store.dispatch({
+      type: EditorEventType.SetTileTexture,
+      x: this.selectedTile.x,
+      y: this.selectedTile.y,
+      textureName: this.game_data.tile.textureName
+    })
+  }
+
   protected onClick(el: DisplayObject) {
     if (el instanceof Tile) {
-      console.log(el.coordinates)
+      const point = cubeToCartesian(el.coordinates)
+      this.setupTileFolder(point)
+    } else if (this.tileFolder) {
+      this.gui.removeFolder(this.tileFolder)
+      this.tileFolder = null
+      this.selectedTile = null
     }
   }
 
@@ -137,6 +172,20 @@ export class EditorWorld extends Container {
         this.onLevelSelect(value)
       })
     })
+  }
+
+  setupTileFolder(point: PointLike) {
+    this.selectedTile = point
+
+    if (!this.tileFolder) {
+      this.tileFolder = this.gui.addFolder('Tile settings')
+      this.tileFolder.add(this.game_data.tile, 'textureName', ['water', 'grass']).onChange(this.onTextureNameChange.bind(this))
+    }
+
+    const tile = getTile(this.store.getState().tiles, point.x, point.y)
+    this.game_data.tile.textureName = tile.textureName
+    this.tileFolder.updateDisplay()
+    this.tileFolder.open()
   }
 
   onLevelSelect(name: string) {

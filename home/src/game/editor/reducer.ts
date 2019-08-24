@@ -1,7 +1,8 @@
 import {EditorEvent, EditorEventType} from './editor_event'
 import {State} from '../core/world'
-import {Board, BoardTile, Terrain} from '../core/board'
+import {Board, Terrain} from '../core/board'
 import {createGrid, getGridBoundingBox} from '../core/grid'
+import {getTile} from './utils'
 
 function stateFromBoard(board: Board) {
   const grid = createGrid(board)
@@ -17,14 +18,6 @@ function stateFromBoard(board: Board) {
     tiles,
     worldWidth,
     worldHeight
-  }
-}
-
-const getTile = (tiles: Array<BoardTile>, x: number, y: number) => {
-  const found = tiles.filter(tile => tile.x === x && tile.y === y)
-
-  if (found.length > 0) {
-    return found[0]
   }
 }
 
@@ -60,6 +53,18 @@ export function editorReducer(state: State, action: EditorEvent) {
       return {
         ...state,
         ...stateFromBoard(action.data)
+      }
+
+    case EditorEventType.SetTileTexture:
+      return {
+        ...state,
+        tiles: state.tiles.map(tile => {
+          if (tile.x === action.x && tile.y === action.y) {
+            return {...tile, textureName: action.textureName}
+          }
+
+          return tile
+        })
       }
   }
 

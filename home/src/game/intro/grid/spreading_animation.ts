@@ -4,10 +4,11 @@ import {getNextSpreadingWave} from './get_spreading_wave'
 import {cartesianToCube} from '../../core/grid'
 import {CubeCoordinates, PointLike} from 'honeycomb-grid'
 import {TerrainTiles} from '../../shared/terrain_tiles'
+import {Tile} from '../../shared/renderable/tile'
 
 export interface GridSpreadAnimationOptions {
   startCube: CubeCoordinates,
-  terrainTiles: TerrainTiles
+  terrainTiles: TerrainTiles<Tile>
   duration: number
 }
 
