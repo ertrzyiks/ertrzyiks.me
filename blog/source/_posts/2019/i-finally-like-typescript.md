@@ -48,7 +48,10 @@ export interface IMovable extends Unit {
   step(cost: number): void
 }
 
-export function Movable<TBase extends Constructor<Unit>>(Base: TBase, baseMovementPoints: number) {
+export function Movable<TBase extends Constructor<Unit>>(
+  Base: TBase, 
+  baseMovementPoints: number
+) {
   return class extends Base implements IMovable {
     protected movementPoints: number = 0
 
@@ -121,7 +124,10 @@ function isAlive(unit: {health: number}) {
 How about taking damage?
 
 ```ts
-function takeDamage<T extends { health: number }>(unit: T, value: number ): T {
+function takeDamage<T extends { health: number }>(
+  unit: T, 
+  value: number
+): T {
     return {
       ...unit,
       health: unit.health - value

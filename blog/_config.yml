@@ -28,6 +28,7 @@ code_dir: downloads/code
 i18n_dir: :lang
 skip_render:
   - /categories/**
+  - content/assets/**
 
 # Writing
 new_post_name: :title.md # File name of new posts
@@ -45,10 +46,22 @@ highlight:
   auto_detect: false
   tab_replace:
 
-prism_plugin:
-  mode: 'preprocess'    # realtime/preprocess
-  theme: 'default'
-  line_number: false    # default false
+prism_plus:
+  enable: true
+  # Default language if not specified inline in code blocks
+  default_lang: js
+  vendors:
+    base_url: /content/assets/
+    prism:
+      - js/prism-1.18.0.js
+    prism_css:
+      - css/prism-1.18.0.css
+  # Default preset if no preset is specified inline
+  default_preset:
+    lineno: false
+    styles:
+      max-height: 30em
+      font-size: 16px
 
 # Home page setting
 # path: Root path for your blogs index page. (default = '')
