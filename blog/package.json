@@ -12,6 +12,7 @@
     "build-theme": "NODE_ENV=production webpack",
     "test": "npm run build",
     "build:prod": "hexo clean && npm run build-theme && hexo generate --config _config.yml,_config.prod.yml && touch public/.static",
+    "predeploy": "yarn build:prod",
     "deploy": "hexo deploy"
   },
   "dependencies": {
@@ -30,11 +31,11 @@
     "hexo-generator-tag": "^0.2.0",
     "hexo-inject": "^1.0.0",
     "hexo-migrator-ghost": "^0.1.0",
-    "hexo-prism-plus": "^1.1.0",
     "hexo-render-pug": "^1.2.0",
     "hexo-renderer-markdown-it": "^3.4.1",
     "hexo-server": "^0.2.0",
     "lodash.throttle": "^4.1.1",
+    "markdown-it-prism": "^2.0.3",
     "webpack-dev-server": "^2.9.7"
   },
   "devDependencies": {

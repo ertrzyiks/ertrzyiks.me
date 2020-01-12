@@ -19,22 +19,22 @@ Dokku is an open source copy of Heroku Platform as a Service. I met it because l
 How to start? To use Dokku you need a server with an ssh access. On [documentation page](http://progrium.viewdocs.io/dokku/) or [repository](https://github.com/progrium/dokku) there is one-liner to set it up. 
 
 To have an access to deployment and `dokku` user, you need to send your public key from your computer to the server:
-```sh
+```bash
 cat ~/.ssh/id_rsa.pub | ssh [sudouser]@[server-address] "sudo sshcommand acl-add dokku [description]"
 ```
 
 Now you can create an app:
-```sh
+```bash
 ssh dokku@<server_address> apps:create my-awesome-app
 ```
 
 add new remote to your local git repository:
-```sh
+```bash
 git remote add dokku dokku@<server-address>:my-awesome-app
 ```
 
 and push your master there:
-```sh
+```bash
 git push dokku master
 ```
 
@@ -68,7 +68,7 @@ ghost({
 ##### Database
 Ghost use SQL database for storing page settings and posts. For local preview it's fine to use sqlite3 adapter, for the actual blog it's recommended to use MySQL or Postgresql. I've created a Postgres database server, because I used to MySQL and wanted to try something new. The [postgres plugin](https://github.com/Kloadut/dokku-pg-plugin) for Dokku made this task very simple:
 
-```sh
+```bash
 ssh dokku@<server_address> postgresql:create blog-db
 ssh dokku@<server_address> postgresql:link blog-app blog-db
 ```
@@ -118,13 +118,13 @@ Wercker need access to our Dokku server, so we can use the *SSH keys* section in
 
 Copy the public key and add it to your server, exactly like you added your own key:
 
-```sh
+```bash
 echo "WERCKER PUBLIC KEY HERE" | ssh [sudouser]@[server-address] "sudo sshcommand acl-add dokku [description]"
 ```
 
 Additionally, the deploy target can build dokku git url from environment variables. We need the hostname alone to add it to known hosts anyway. Let's put it all together:
 
-```sh
+```bash
 GIT_DEPLOY_APP=<app_name>
 GIT_DEPLOY_USER=dokku
 GIT_DEPLOY_HOST=<server_address>
