@@ -1,6 +1,7 @@
 import {Application, Point, ticker, utils} from 'pixi.js'
 import * as TWEEN from '@tweenjs/tween.js'
 import {create as createIntro} from './intro'
+import {create as createMain} from './main'
 import {GameViewport} from './shared/viewport'
 
 ticker.shared.autoStart = false
@@ -71,15 +72,19 @@ function close() {
 }
 
 function reinitialize() {
-  initGame().then(startingPoint => loadIntro(startingPoint))
+  initGame()
+    .then(startingPoint => initialize(startingPoint.x, startingPoint.y))
+
 }
 
-export function initialize(x: number, y: number) {
-  loadIntro(new Point(x, y))
+export async function initialize(x: number, y: number) {
+  const viewport = await loadIntro(new Point(x, y))
+  console.log('LOADED INTRO')
+  const newViewport = await createMain(app)
 
-  // .then(({viewport, newViewport}) => {
-  //   newViewport.moveCenter(viewport.center)
-  //   app.stage.removeChild(viewport)
-  //   app.stage.addChild(newViewport)
-  // })
+  console.log('LOADED Main')
+
+  // newViewport.moveCenter(viewport.center)
+  app.stage.removeChild(viewport)
+  app.stage.addChild(newViewport)
 }

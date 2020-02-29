@@ -1,7 +1,6 @@
 import {Application, Point, loaders} from 'pixi.js'
 import {IntroWorld} from './game_world'
 import {preload} from './preload'
-import {Board} from '../core'
 
 import board from './board.json'
 

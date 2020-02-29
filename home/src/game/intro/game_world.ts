@@ -13,8 +13,6 @@ import {
   Player,
   Explorer,
   PlayerColor,
-  Movable,
-  Unit
 } from '../core'
 import {Ship} from './units'
 import {State} from '../core/world'
