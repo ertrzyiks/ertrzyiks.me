@@ -5,6 +5,7 @@ const middleware = require('webpack-dev-middleware')
 const webpackConfig = require('./webpack.config.js')
 const compiler = webpack(webpackConfig)
 const express = require('express')
+const mkdirp = require('mkdirp')
 const app = express()
 
 const instance = middleware(compiler, {
@@ -43,8 +44,9 @@ app.put('/levels/:name', (req, res) => {
   const filePath = path.resolve(`./src/game/main/boards/${name}.json`)
   fs.writeFileSync(filePath, JSON.stringify(req.body || {}))
 
-  const assetsPath = path.resolve(`./src/assets/${name}/files.txt`)
-  const allTextures = req.body.tiles.reduce((list, item) => {
+  const assetsFolder = path.resolve(`./src/assets/${name}`)
+  const assetsPath = path.resolve(`${assetsFolder}/files.txt`)
+  const allTextures = (req.body.tiles || []).reduce((list, item) => {
     if (!list.includes(item.textureName)) {
       return list.concat(item.textureName)
     }
@@ -52,6 +54,7 @@ app.put('/levels/:name', (req, res) => {
     return list
   }, [])
 
+  mkdirp.sync(assetsFolder)
   fs.writeFileSync(assetsPath, allTextures.map(name => `${name}.png`).join('\n'))
 
   res.sendFile(filePath)
