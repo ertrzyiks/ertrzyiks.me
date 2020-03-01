@@ -7,6 +7,7 @@ export enum Terrain {
 
 export interface GameTile {
   textureName: string
+  sectionName: string
   type: Terrain
 }
 
@@ -22,6 +23,7 @@ export interface BoardTile {
   readonly y: number
   readonly type: Terrain
   readonly textureName: string
+  readonly sectionName: string
 }
 
 export interface BoardTerrain extends BoardTile {

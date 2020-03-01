@@ -3,7 +3,8 @@ import {ApiLevelPayload} from './api_service'
 export enum EditorEventType {
   SetSize,
   LoadBoard,
-  SetTileTexture
+  SetTileTexture,
+  SetTileSectionName
 }
 
 export interface AbstractEvent {
@@ -28,4 +29,11 @@ export interface SetTileTextureEvent extends AbstractEvent {
   textureName: string
 }
 
-export type EditorEvent = SetSizeEvent | LoadBoardEvent | SetTileTextureEvent
+export interface SetTileSectionNameEvent extends AbstractEvent {
+  type: EditorEventType.SetTileSectionName
+  x: number
+  y: number
+  sectionName: string
+}
+
+export type EditorEvent = SetSizeEvent | LoadBoardEvent | SetTileTextureEvent | SetTileSectionNameEvent

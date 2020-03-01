@@ -1,8 +1,9 @@
-import {Application, Point, ticker, utils} from 'pixi.js'
+import {Application, DisplayObject, Point, ticker, utils} from 'pixi.js'
 import * as TWEEN from '@tweenjs/tween.js'
 import {create as createIntro} from './intro'
-import {create as createMain} from './main'
 import {GameViewport} from './shared/viewport'
+
+const main = () => import('./main')
 
 ticker.shared.autoStart = false
 ticker.shared.stop()
@@ -51,6 +52,11 @@ const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint).then
   return viewport
 })
 
+const loadMain = async function (app: Application) {
+  const mainModule = await main()
+  return mainModule.create(app)
+}
+
 const launch = () => new Promise(resolve => {
   emitter.once('launch', (coordinates: Point) => {
     resolve(coordinates)
@@ -77,14 +83,30 @@ function reinitialize() {
 
 }
 
+function fadeOut(viewport: DisplayObject) {
+  let state = { alpha: 1}
+  return new Promise(resolve => {
+    const tween = new TWEEN.Tween(state).to({ alpha: 0 }, 700).onUpdate(() => {
+      viewport.alpha = state.alpha
+    }).onComplete(() => resolve())
+
+    tween.start()
+  })
+}
+
 export async function initialize(x: number, y: number) {
   const viewport = await loadIntro(new Point(x, y))
-  console.log('LOADED INTRO')
-  const newViewport = await createMain(app)
+  const onIntroFinish = new Promise(resolve => {
+    viewport.emitter.on('finish', () => resolve())
+  })
 
-  console.log('LOADED Main')
+  const [newViewport] = await Promise.all([
+    loadMain(app),
+    onIntroFinish
+  ])
 
   // newViewport.moveCenter(viewport.center)
+  app.stage.addChildAt(newViewport, 0)
+  await fadeOut(viewport)
   app.stage.removeChild(viewport)
-  app.stage.addChild(newViewport)
 }

@@ -16,9 +16,9 @@ export class MainWorld extends GameWorld {
   constructor (protected board: Board, protected resources: loaders.ResourceDictionary, protected ticker: ticker.Ticker, protected interaction: interaction.InteractionManager) {
     super(board, resources, ticker, interaction)
     this.player = {
-      id: 'cpu',
-      name: 'ship',
-      color: PlayerColor.RED
+      id: 'human',
+      name: 'Adventurer',
+      color: PlayerColor.BLUE
     }
   }
 

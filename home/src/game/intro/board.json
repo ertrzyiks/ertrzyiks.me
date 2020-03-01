@@ -2,6 +2,6 @@
   "rows": 30,
   "cols": 30,
   "tiles": [
-    {"x": 0, "y": 0, "width": 30, "height": 30, "type": "water", "textureName": "water"}
+    {"x": 0, "y": 0, "width": 30, "height": 30, "type": "water", "textureName": "water", "sectionName": "none" }
   ]
 }

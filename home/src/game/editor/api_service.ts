@@ -7,6 +7,7 @@ export interface ApiLevelPayload {
     x: number,
     y: number,
     textureName: string
+    sectionName: string
     type: Terrain
   }>
 }

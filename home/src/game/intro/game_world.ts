@@ -52,6 +52,7 @@ export class IntroWorld extends GameWorld {
         this.game.add(this.player)
         this.game.spawn(this.player, new Ship(), coords)
         this.game.nextTurn()
+        this.emitter.emit('finish')
       })
 
       this.teardown()
