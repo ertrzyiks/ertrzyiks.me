@@ -31,8 +31,6 @@ function initGame(): Promise<Point> {
   })
 }
 
-const emitter = new utils.EventEmitter()
-
 const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint).then(viewport => {
   app.stage.addChild(viewport)
   resize()
@@ -56,12 +54,6 @@ const loadMain = async function (app: Application) {
   const mainModule = await main()
   return mainModule.create(app)
 }
-
-const launch = () => new Promise(resolve => {
-  emitter.once('launch', (coordinates: Point) => {
-    resolve(coordinates)
-  })
-})
 
 function close() {
   app.stop()
