@@ -48,21 +48,12 @@ export class GameWorld extends Container {
     this.addChild(this.viewport)
   }
 
-  protected onTurnStart(store: StoreProxy<GameEvent, State, PlayerAction>) {
-    throw new Error('Not implemented')
-  }
-
   protected observeWorldUpdates() {
     this.game.worldObservable.subscribe(this.onWorldUpdate.bind(this))
   }
 
   protected onWorldUpdate({state, action}: {state: State, action: GameEvent}, done: ObservableSubscriptionDone) {
     switch(action.type) {
-      case GameEventType.StartTurn:
-        done()
-        this.onTurnStart(createPlayerStore(this.game.world.store, state.currentPlayer))
-        break
-
       case GameEventType.Spawn:
         const tile = this.getTerrainAt(action.position)
         this.ship = new Tile(Texture.fromFrame('ship'), action.position)
