@@ -101,4 +101,5 @@ export async function initialize(x: number, y: number) {
   app.stage.addChildAt(newViewport, 0)
   await fadeOut(viewport)
   app.stage.removeChild(viewport)
+  viewport.destroy()
 }

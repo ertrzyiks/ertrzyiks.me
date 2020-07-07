@@ -67,7 +67,9 @@ export class EditorWorld extends Container {
       tiles: [],
       units: [],
       worldWidth: 1000,
-      worldHeight: 1000
+      worldHeight: 1000,
+      cols: 0,
+      rows: 0
     })
 
     this.viewport = new GameViewport({

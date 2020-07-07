@@ -36,15 +36,18 @@ export class Explorer extends Behavior {
     const except = opposite(previousDirection)
     let availableDirections = directions.filter(d => d != except)
 
-    const worldWidth = 30
-    const worldHeight = 30
+    const state = this.store.getState()
+    const worldWidth = state.cols
+    const worldHeight = state.rows
 
-    for (let i = 0; i < availableDirections.length; i++) {
+    const attempts = availableDirections.length
+
+    for (let i = 0; i < attempts; i++) {
       const randomDir = availableDirections.splice(Math.floor(Math.random() * availableDirections.length), 1)[0]
       const newPos = positionAt(position, randomDir)
       const cartesianPos = cubeToCartesian(newPos)
-      if (cartesianPos.x == 0 || cartesianPos.x >= worldWidth - 1) continue
-      if (cartesianPos.y == 0 || cartesianPos.y >= worldHeight - 1) continue
+      if (cartesianPos.x < 0 || cartesianPos.x >= worldWidth - 1) continue
+      if (cartesianPos.y < 0 || cartesianPos.y >= worldHeight - 1) continue
       return randomDir
     }
 

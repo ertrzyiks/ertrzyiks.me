@@ -139,6 +139,7 @@ export class GameWorld extends Container {
     }
 
     this.ticker.remove(this.tickerFunction)
+    this.game.finish()
     super.destroy(options)
   }
 }

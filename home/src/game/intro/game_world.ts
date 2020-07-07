@@ -7,13 +7,7 @@ import {CubeCoordinates} from 'honeycomb-grid'
 import {
   GameTileHex,
   Board,
-  StoreProxy,
-  GameEvent,
-  Explorer,
 } from '../core'
-import {Ship} from './units'
-import {State} from '../core/world'
-import {PlayerAction} from '../core/player_action'
 import {Scenario} from './scenario'
 
 export class IntroWorld extends GameWorld {
@@ -35,9 +29,6 @@ export class IntroWorld extends GameWorld {
       const coords = tile.coordinates
 
       this.currentAnimation = this.animateFrom(coords).start().onComplete(() => {
-        const ship = new Ship()
-        ship.textureName = 'ship'
-
         this.scenario.start(coords)
 
         setTimeout(() => {

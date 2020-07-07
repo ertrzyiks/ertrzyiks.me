@@ -24,11 +24,19 @@ export class Game {
     this.world.subscribe(this.onWorldUpdate.bind(this))
   }
 
+  finish() {
+    // Unsubscribe
+  }
+
   add(player: Player) {
     this.dispatch({
       type: GameEventType.PlayerJoin,
       player: player
     })
+  }
+
+  spawnInSection(player: Player, unit: Unit, sectionName: string) {
+    this.spawn(player, unit, this.world.tileBySection(sectionName).cube())
   }
 
   spawn(player: Player, unit: Unit, position: CubeCoordinates) {
