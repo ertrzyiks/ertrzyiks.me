@@ -1,6 +1,6 @@
 import {Grid} from 'honeycomb-grid'
 import {GameEvent} from './game_event'
-import {getGridBoundingBox} from './grid'
+import {getGridBoundingBox, getGridSize} from './grid'
 import {Player} from './player'
 import {createStore, Store} from './store'
 import {GameTileHex, UnitPosition} from './board'
@@ -14,6 +14,8 @@ export interface State {
   currentPlayer: Player | null
   worldWidth: number
   worldHeight: number
+  cols: number
+  rows: number
   tiles: Array<GameTileHex>
   units: Array<UnitPosition>
 }
@@ -28,6 +30,7 @@ export class World {
     }, [])
 
     const {worldWidth, worldHeight} = getGridBoundingBox(grid)
+    const {cols, rows} = getGridSize(grid)
 
     this.store = createStore(gameReducer, {
       players: [],
@@ -36,7 +39,9 @@ export class World {
       tiles,
       units: [],
       worldWidth,
-      worldHeight
+      worldHeight,
+      cols,
+      rows
     })
   }
 
@@ -50,6 +55,10 @@ export class World {
 
   subscribe(fn: WorldUpdateCallback) {
     this.store.subscribe(fn)
+  }
+
+  tileBySection(sectionName: string) {
+    return this.getState().tiles[0]
   }
 
   // TODO: fix it

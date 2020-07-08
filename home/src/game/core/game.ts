@@ -1,10 +1,10 @@
 import {CubeCoordinates} from 'honeycomb-grid'
 import {Unit} from './units'
-import {Player, Explorer} from './player'
+import {Player} from './player'
 import {Board} from './board'
 import {World, State} from './world'
 import {GameEvent, GameEventType} from './game_event'
-import {createGrid, positionAt} from './grid'
+import {createGrid} from './grid'
 import {Observable} from '../shared/observable'
 
 interface WorldUpdateTuple {
@@ -24,11 +24,19 @@ export class Game {
     this.world.subscribe(this.onWorldUpdate.bind(this))
   }
 
+  finish() {
+    // Unsubscribe
+  }
+
   add(player: Player) {
     this.dispatch({
       type: GameEventType.PlayerJoin,
       player: player
     })
+  }
+
+  spawnInSection(player: Player, unit: Unit, sectionName: string) {
+    this.spawn(player, unit, this.world.tileBySection(sectionName).cube())
   }
 
   spawn(player: Player, unit: Unit, position: CubeCoordinates) {

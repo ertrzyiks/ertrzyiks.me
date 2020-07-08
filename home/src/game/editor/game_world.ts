@@ -2,11 +2,7 @@ import {GUI} from 'dat.gui'
 import * as debounce from 'debounce'
 import {Container, interaction, loaders, Texture, ticker, DisplayObject} from 'pixi.js'
 import {
-  World,
-  Board,
-  BoardTerrain,
   GameTileHex,
-  Terrain,
   cubeToCartesian
 } from '../core'
 import Api from './api_service'
@@ -27,6 +23,7 @@ interface GameEditorData {
   columns: number
   tile: {
     textureName: string
+    sectionName: string
   }
   save: () => void
   create: () => void
@@ -49,7 +46,8 @@ export class EditorWorld extends Container {
     rows: 1,
     columns: 1,
     tile: {
-      textureName: 'water'
+      textureName: 'water',
+      sectionName: 'none'
     },
     save: () => this.save(),
     create: () => this.create()
@@ -69,7 +67,9 @@ export class EditorWorld extends Container {
       tiles: [],
       units: [],
       worldWidth: 1000,
-      worldHeight: 1000
+      worldHeight: 1000,
+      cols: 0,
+      rows: 0
     })
 
     this.viewport = new GameViewport({
@@ -113,6 +113,15 @@ export class EditorWorld extends Container {
       x: this.selectedTile.x,
       y: this.selectedTile.y,
       textureName: this.game_data.tile.textureName
+    })
+  }
+
+  protected onSectionNameChange() {
+    this.store.dispatch({
+      type: EditorEventType.SetTileSectionName,
+      x: this.selectedTile.x,
+      y: this.selectedTile.y,
+      sectionName: this.game_data.tile.sectionName
     })
   }
 
@@ -180,10 +189,12 @@ export class EditorWorld extends Container {
     if (!this.tileFolder) {
       this.tileFolder = this.gui.addFolder('Tile settings')
       this.tileFolder.add(this.game_data.tile, 'textureName', ['water', 'grass']).onChange(this.onTextureNameChange.bind(this))
+      this.tileFolder.add(this.game_data.tile, 'sectionName', ['none', 'spawn_a', 'spawn_b']).onChange(this.onSectionNameChange.bind(this))
     }
 
     const tile = getTile(this.store.getState().tiles, point.x, point.y)
     this.game_data.tile.textureName = tile.textureName
+    this.game_data.tile.sectionName = tile.sectionName
     this.tileFolder.updateDisplay()
     this.tileFolder.open()
   }

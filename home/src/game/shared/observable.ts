@@ -4,7 +4,7 @@ export type DrainCallback = () => void
 
 export class Observable<T> {
   protected items: Array<T> = []
-  protected subscription: ObservableSubscription<T>
+  protected subscriptions: ObservableSubscription<T>[] = []
   protected isWaiting = false
   protected nextDrainCallback: DrainCallback | null = null
 
@@ -14,8 +14,7 @@ export class Observable<T> {
   }
 
   subscribe(fn: ObservableSubscription<T>) {
-    if (this.subscription != null) throw new Error('Already subscribed')
-    this.subscription = fn
+    this.subscriptions.push(fn)
     this.publishNext()
   }
 
@@ -37,14 +36,18 @@ export class Observable<T> {
       return
     }
 
-    if (this.subscription == null) return
+    if (this.subscriptions.length === 0) return
     if (this.isWaiting) return
 
     this.isWaiting = true
 
     const item = this.items.shift()
 
-    this.subscription(item, () => {
+    const allSubscriptions = this.subscriptions.map(subscription => {
+      return new Promise(resolve => subscription(item, resolve))
+    })
+
+    Promise.all(allSubscriptions).then(() => {
       this.isWaiting = false
       this.publishNext()
     })

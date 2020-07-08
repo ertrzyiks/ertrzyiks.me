@@ -5,40 +5,21 @@ import {interaction, loaders, Point, ticker, utils} from 'pixi.js'
 import {GridSpreadAnimation} from './grid/spreading_animation'
 import {CubeCoordinates} from 'honeycomb-grid'
 import {
-  cartesianToCube,
   GameTileHex,
   Board,
-  StoreProxy,
-  GameEvent,
-  Player,
-  Explorer,
-  PlayerColor,
-  Movable,
-  Unit
 } from '../core'
-import {Ship} from './units'
-import {State} from '../core/world'
-import {PlayerAction} from '../core/player_action'
+import {Scenario} from './scenario'
 
 export class IntroWorld extends GameWorld {
   public emitter: utils.EventEmitter
 
+  protected scenario: Scenario
   protected currentAnimation: GridSpreadAnimation = null
-  protected player: Player
 
   constructor (protected board: Board, protected resources: loaders.ResourceDictionary, protected ticker: ticker.Ticker, protected interaction: interaction.InteractionManager) {
     super(board, resources, ticker, interaction)
-    this.player = {
-      id: 'cpu',
-      name: 'ship',
-      color: PlayerColor.RED
-    }
     this.emitter = new utils.EventEmitter()
-  }
-
-  onTurnStart(store: StoreProxy<GameEvent, State, PlayerAction>) {
-    const explorer = new Explorer(store)
-    explorer.takeActions()
+    this.scenario = new Scenario(this.game)
   }
 
   setup(point: Point) {
@@ -48,12 +29,11 @@ export class IntroWorld extends GameWorld {
       const coords = tile.coordinates
 
       this.currentAnimation = this.animateFrom(coords).start().onComplete(() => {
-        const ship = new Ship()
-        ship.textureName = 'ship'
+        this.scenario.start(coords)
 
-        this.game.add(this.player)
-        this.game.spawn(this.player, new Ship(), coords)
-        this.game.nextTurn()
+        setTimeout(() => {
+          this.emitter.emit('finish')
+        }, 1000)
       })
 
       this.teardown()

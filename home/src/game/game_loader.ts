@@ -1,7 +1,9 @@
-import {Application, Point, ticker, utils} from 'pixi.js'
+import {Application, DisplayObject, Point, ticker, utils} from 'pixi.js'
 import * as TWEEN from '@tweenjs/tween.js'
 import {create as createIntro} from './intro'
 import {GameViewport} from './shared/viewport'
+
+const main = () => import('./main')
 
 ticker.shared.autoStart = false
 ticker.shared.stop()
@@ -29,8 +31,6 @@ function initGame(): Promise<Point> {
   })
 }
 
-const emitter = new utils.EventEmitter()
-
 const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint).then(viewport => {
   app.stage.addChild(viewport)
   resize()
@@ -50,11 +50,10 @@ const loadIntro = (startingPoint: Point) => createIntro(app, startingPoint).then
   return viewport
 })
 
-const launch = () => new Promise(resolve => {
-  emitter.once('launch', (coordinates: Point) => {
-    resolve(coordinates)
-  })
-})
+const loadMain = async function (app: Application) {
+  const mainModule = await main()
+  return mainModule.create(app)
+}
 
 function close() {
   app.stop()
@@ -71,15 +70,36 @@ function close() {
 }
 
 function reinitialize() {
-  initGame().then(startingPoint => loadIntro(startingPoint))
+  initGame()
+    .then(startingPoint => initialize(startingPoint.x, startingPoint.y))
+
 }
 
-export function initialize(x: number, y: number) {
-  loadIntro(new Point(x, y))
+function fadeOut(viewport: DisplayObject) {
+  let state = { alpha: 1}
+  return new Promise(resolve => {
+    const tween = new TWEEN.Tween(state).to({ alpha: 0 }, 700).onUpdate(() => {
+      viewport.alpha = state.alpha
+    }).onComplete(() => resolve())
 
-  // .then(({viewport, newViewport}) => {
-  //   newViewport.moveCenter(viewport.center)
-  //   app.stage.removeChild(viewport)
-  //   app.stage.addChild(newViewport)
-  // })
+    tween.start()
+  })
+}
+
+export async function initialize(x: number, y: number) {
+  const viewport = await loadIntro(new Point(x, y))
+  const onIntroFinish = new Promise(resolve => {
+    viewport.emitter.on('finish', () => resolve())
+  })
+
+  const [newViewport] = await Promise.all([
+    loadMain(app),
+    onIntroFinish
+  ])
+
+  // newViewport.moveCenter(viewport.center)
+  app.stage.addChildAt(newViewport, 0)
+  await fadeOut(viewport)
+  app.stage.removeChild(viewport)
+  viewport.destroy()
 }

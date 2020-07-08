@@ -8,7 +8,8 @@ export function createGrid(board: Board) {
     size: TILE_SIZE,
     orientation: 'flat',
     type: null,
-    textureName: null
+    textureName: null,
+    sectionName: null
   })
 
   const Grid = defineGrid(Hex)
@@ -27,6 +28,7 @@ export function createGrid(board: Board) {
         const hex = grid.get({x: tile.x + dx, y: tile.y + dy})
         hex.type = tile.type
         hex.textureName = tile.textureName
+        hex.sectionName = tile.sectionName
       }
     }
   })

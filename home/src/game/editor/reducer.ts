@@ -33,6 +33,7 @@ export function editorReducer(state: State, action: EditorEvent) {
             y,
             type: Terrain.WATER,
             textureName: 'water',
+            sectionName: 'none',
             ...getTile(state.tiles, x, y)
           })
         }
@@ -61,6 +62,18 @@ export function editorReducer(state: State, action: EditorEvent) {
         tiles: state.tiles.map(tile => {
           if (tile.x === action.x && tile.y === action.y) {
             return {...tile, textureName: action.textureName}
+          }
+
+          return tile
+        })
+      }
+
+    case EditorEventType.SetTileSectionName:
+      return {
+        ...state,
+        tiles: state.tiles.map(tile => {
+          if (tile.x === action.x && tile.y === action.y) {
+            return {...tile, sectionName: action.sectionName}
           }
 
           return tile
