@@ -18,8 +18,10 @@ from a website. Are they inevitably bad and should be avoided at any cost? I dec
 ![](/content/2021/example_notification.jpg)
 
 I was wondering how it works though and that curiosity led to creating a simple 
-[demo page](https://notifications-demo.ertrzyiks.me/). The source code of the demo page is 
-available on Github: [https://github.com/ertrzyiks/web-push-demo](https://github.com/ertrzyiks/web-push-demo)
+[Push Notification API Demo page](https://notifications-demo.ertrzyiks.me/). 
+
+The source code of the demo page is 
+available on Github: [ertrzyiks/web-push-demo](https://github.com/ertrzyiks/web-push-demo)
  
 I found out that web push notifications are a combination of three browser APIs.
  
