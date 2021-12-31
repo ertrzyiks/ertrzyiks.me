@@ -111,6 +111,6 @@ lqip:
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: dokku@ertrzyiks.me:blog
+  repo: dokku@167.71.190.115:blog
   branch: master
   ignore_hidden: false
