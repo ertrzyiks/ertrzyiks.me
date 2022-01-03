@@ -1,6 +1,6 @@
 ---
 title: Draggable with a link
-permalink: draggable-with-a-link
+permalink: draggable-with-a-link/
 updated: '2017-07-20 19:44:45'
 date: 2017-07-20 16:28:44
 tags: snippet

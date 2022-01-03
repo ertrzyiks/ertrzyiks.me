@@ -1,6 +1,6 @@
 ---
 title: A short journey from cutting edge to legacy
-permalink: short-journey-from-cutting-edge-to-legacy
+permalink: short-journey-from-cutting-edge-to-legacy/
 updated: '2017-06-05 19:17:58'
 date: 2016-05-17 17:47:38
 tags: 

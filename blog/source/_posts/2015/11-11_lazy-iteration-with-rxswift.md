@@ -1,6 +1,6 @@
 ---
 title: Lazy iteration with RxSwift
-permalink: lazy-iteration-with-rxswift
+permalink: lazy-iteration-with-rxswift/
 updated: '2017-11-11 21:17:33'
 date: 2015-11-11 10:32:05
 tags: 

@@ -1,6 +1,6 @@
 ---
 title: How I moved my blog from Ghost to Hexo
-permalink: how-i-moved-my-blog-from-ghost-to-hexo
+permalink: how-i-moved-my-blog-from-ghost-to-hexo/
 updated: '2017-12-02 19:18:57'
 date: 2017-12-02 19:18:57
 tags: devops

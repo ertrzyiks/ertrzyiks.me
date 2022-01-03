@@ -1,6 +1,6 @@
 ---
 title: 3. Making assertions with Chai
-permalink: 3-making-assertions-with-chai
+permalink: 3-making-assertions-with-chai/
 updated: '2017-06-08 22:13:19'
 date: 2017-06-17 20:13:27
 tags: 

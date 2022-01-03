@@ -1,6 +1,6 @@
 ---
 title: Exploration of web notifications
-permalink: exploration-of-web-notifications
+permalink: exploration-of-web-notifications/
 updated: '2021-01-23 20:01:14'
 date: 2021-01-23 20:01:14
 featured_image: /content/2021/notifications.jpeg

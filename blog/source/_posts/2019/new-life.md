@@ -1,6 +1,6 @@
 ---
 title: New life
-permalink: new-life
+permalink: new-life/
 updated: '2019-08-09 18:13:14'
 date: 2019-08-09 18:13:14
 featured_image: /content/2019/new-life.jpeg

@@ -1,6 +1,6 @@
 ---
 title: I do not write tests
-permalink: i-do-not-write-tests
+permalink: i-do-not-write-tests/
 updated: '2017-06-05 19:22:18'
 date: 2016-03-06 17:40:09
 tags: 

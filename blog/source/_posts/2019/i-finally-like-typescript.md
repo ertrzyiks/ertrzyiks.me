@@ -1,6 +1,6 @@
 ---
 title: I finally like Typescript
-permalink: i-finally-like-typescript
+permalink: i-finally-like-typescript/
 updated: '2019-11-23 20:01:14'
 date: 2019-11-23 20:01:14
 featured_image: /content/2019/typescript.jpeg

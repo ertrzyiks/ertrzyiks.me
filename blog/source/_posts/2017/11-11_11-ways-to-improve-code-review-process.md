@@ -1,6 +1,6 @@
 ---
 title: 11 ways to improve code review process
-permalink: 11-ways-to-improve-code-review-process
+permalink: 11-ways-to-improve-code-review-process/
 updated: '2017-11-13 09:34:27'
 date: 2017-11-11 12:18:57
 tags: testing

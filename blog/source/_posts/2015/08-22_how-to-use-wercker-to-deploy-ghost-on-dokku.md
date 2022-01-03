@@ -1,6 +1,6 @@
 ---
 title: How to use Wercker to deploy Ghost on Dokku
-permalink: how-to-use-wercker-to-deploy-ghost-on-dokku
+permalink: how-to-use-wercker-to-deploy-ghost-on-dokku/
 updated: '2017-06-05 19:15:37'
 date: 2015-08-22 08:33:54
 tags: devops

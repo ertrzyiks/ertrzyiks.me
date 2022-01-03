@@ -1,6 +1,6 @@
 ---
 title: How not to be productive
-permalink: how-not-to-be-productive
+permalink: how-not-to-be-productive/
 updated: '2018-04-13 21:29:14'
 date: 2018-04-12 19:02:14
 featured_image: /content/2018/distractions.jpeg

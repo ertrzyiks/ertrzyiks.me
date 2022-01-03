@@ -1,6 +1,6 @@
 ---
 title: 'It works, I promise'
-permalink: it-works-i-promise
+permalink: it-works-i-promise/
 updated: '2017-11-11 21:18:51'
 date: 2015-08-15 19:26:08
 tags: javascript

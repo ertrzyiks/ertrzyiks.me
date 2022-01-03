@@ -1,6 +1,6 @@
 ---
 title: Weekend on Mars
-permalink: weekend-on-mars
+permalink: weekend-on-mars/
 updated: '2017-06-05 19:18:34'
 date: 2016-08-31 08:00:04
 tags: and stuff

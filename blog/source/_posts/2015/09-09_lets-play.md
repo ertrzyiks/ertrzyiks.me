@@ -1,6 +1,6 @@
 ---
 title: Let's play
-permalink: lets-play
+permalink: lets-play/
 updated: '2017-06-05 19:16:04'
 date: 2015-09-09 09:17:29
 tags: and stuff

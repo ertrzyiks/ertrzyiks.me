@@ -1,6 +1,6 @@
 ---
 title: Introduction to the BDD c(o)urse
-permalink: introduction-to-the-bdd-c-o-urse
+permalink: introduction-to-the-bdd-c-o-urse/
 updated: '2017-06-05 19:23:13'
 date: 2017-02-27 20:51:44
 tags: 

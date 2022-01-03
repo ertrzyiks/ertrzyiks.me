@@ -1,6 +1,6 @@
 ---
 title: 1. An idea around specs
-permalink: an-idea-around-specs
+permalink: an-idea-around-specs/
 updated: '2017-06-05 19:20:12'
 date: 2017-03-12 11:47:17
 tags: 

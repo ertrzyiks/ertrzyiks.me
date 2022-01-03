@@ -1,6 +1,6 @@
 ---
 title: 2. The structure of a mocha test
-permalink: 2-the-structure-of-a-mocha-test
+permalink: 2-the-structure-of-a-mocha-test/
 updated: '2017-06-05 19:20:40'
 date: 2017-04-27 18:23:23
 tags: 
