@@ -1,7 +1,8 @@
 #!/bin/sh
 
 rm -fr ./.git-deploy
-npm run build
+mkdir ./.git-deploy
+yarn build
 touch ./.git-deploy/.static
 cd .git-deploy
 git init
