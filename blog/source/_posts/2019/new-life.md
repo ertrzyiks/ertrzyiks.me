@@ -14,14 +14,14 @@ We have August now, but who cares.
 
 ## Summary of 2018
 
-I finally moved from Kraków to Gdańsk. Air polution in Kraków was too painful to stay.
+I finally moved from Kraków to Gdańsk. Air pollution in Kraków was too painful to stay.
 Me and my wife had ~600km trip with our stuff in a rented minivan first.
 We also used a bunch of parcel packages to move
 some of the most important things like a few 100g bags of rice. No food must be wasted.
-First we rented an appartment for a year with a plan to finally find our own
+First we rented an apartment for a year with a plan to finally find our own
 place to live. After taking a deep breath on the seaside, juggling our
 requirements and wishes about our new perfect home and months of searching through
-the offers we finally found it. About the same time we bought an appartment
+the offers we finally found it. About the same time we bought an apartment
 we discovered a new development and potentially a major event of the upcoming
 2019 year - my wife was pregnant.
 

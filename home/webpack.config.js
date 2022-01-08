@@ -1,44 +1,21 @@
 const path = require('path')
 const webpack = require('webpack')
-const UglifyJsPlugin = require("uglifyjs-webpack-plugin")
 const MiniCssExtractPlugin = require("mini-css-extract-plugin")
-const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin")
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const PreloadWebpackPlugin = require('preload-webpack-plugin')
 const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer')
 
 const devMode = process.env.NODE_ENV !== 'production'
 const analyzeBundle = !!process.env.ANALYZE
 
-const toRemove = [
-  'pixi.js/lib/deprecation.js',
-  'pixi.js/lib/mesh',
-  'pixi.js/lib/particles',
-  'pixi.js/lib/core/text/',
-  'pixi.js/lib/filters/colormatrix',
-  'pixi.js/lib/filters/blur',
-  'pixi.js/lib/extras/TilingSprite',
-  'pixi.js/lib/extras/BitmapText',
-  'pixi-viewport/dist/decelerate.js',
-  'pixi-viewport/dist/bounce.js',
-  'pixi-viewport/dist/mouse-edges.js',
-  'pixi-viewport/dist/snap-zoom.js',
-  'pixi-viewport/dist/wheel.js',
-  'pixi-viewport/dist/follow.js',
-  'pixi-viewport/dist/pinch.js',
-  'pixi-viewport/dist/snap.js',
-  'pixi-viewport/dist/clamp-zoom.js',
-]
 
 module.exports = {
   mode: devMode ? 'development' : 'production',
   entry: {
     index: [
-      'core-js/modules/es6.promise',
-      'core-js/modules/es6.array.iterator',
+      'core-js/modules/es.promise',
+      'core-js/modules/es.array.iterator',
       './src/game/index.ts',
-    ],
-    editor: './src/game/board_editor.ts'
+    ]
   },
   devtool: 'cheap-module-source-map',
   output: {
@@ -46,20 +23,8 @@ module.exports = {
     filename: devMode ? '[name].js' : '[name]-[contenthash].js',
     publicPath: '/'
   },
-  plugins:
-    toRemove.map(pattern => {
-      return new webpack.NormalModuleReplacementPlugin(new RegExp(pattern), require.resolve('node-noop'))
-    })
+  plugins: []
     .concat([
-      new webpack.NormalModuleReplacementPlugin(
-        /pixi\.js\/lib\/core\/text\//,
-        require.resolve('node-noop')
-      ),
-      new webpack.NormalModuleReplacementPlugin(
-        /pixi\.js\/lib\/mesh/,
-        require.resolve('node-noop')
-      ),
-      new webpack.HashedModuleIdsPlugin(),
       new webpack.DefinePlugin({
         'process.env.NODE_ENV': '"production"'
       }),
@@ -71,12 +36,6 @@ module.exports = {
         template: './src/index.html',
         warriors: 'assets/intro/cta.png',
         excludeChunks: ['editor']
-      }),
-      new PreloadWebpackPlugin({
-        include: 'allAssets',
-        fileWhitelist: [/plain-tile/],
-        as: 'image',
-        rel: 'prefetch',
       })
     ])
     .concat(analyzeBundle ? [new BundleAnalyzerPlugin()] : []),
@@ -85,8 +44,7 @@ module.exports = {
       {
         test: /\.tsx?$/,
         use: [
-          'babel-loader',
-          'ts-loader'
+          'babel-loader'
         ],
         exclude: /node_modules/
       },
@@ -103,12 +61,11 @@ module.exports = {
         exclude: /node_modules(?!\/pixi-viewport)/
       },
       {
-        test: /\.sass$/,
+        test: /\.css$/,
         use: [
           devMode ? 'style-loader' : MiniCssExtractPlugin.loader,
           'css-loader',
-          'postcss-loader',
-          'sass-loader',
+          'postcss-loader'
         ],
       },
       {
@@ -140,14 +97,6 @@ module.exports = {
     extensions: ['.ts', '.js']
   },
   optimization: {
-    minimizer: [
-      new UglifyJsPlugin({
-        cache: true,
-        parallel: true,
-        sourceMap: true // set to true if you want JS source maps
-      }),
-      new OptimizeCSSAssetsPlugin({})
-    ],
     splitChunks: {
       maxAsyncRequests: 1
     }

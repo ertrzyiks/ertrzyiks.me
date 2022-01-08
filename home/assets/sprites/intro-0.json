@@ -1,0 +1,28 @@
+{"frames": {
+
+"ship":
+{
+	"frame": {"x":0,"y":0,"w":51,"h":30},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":51,"h":30},
+	"sourceSize": {"w":51,"h":30}
+},
+"water":
+{
+	"frame": {"x":0,"y":30,"w":96,"h":96},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":96,"h":96},
+	"sourceSize": {"w":96,"h":96}
+}},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "intro-0.png",
+	"format": "RGBA8888",
+	"size": {"w":96,"h":126},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:f47834c1e5ba10633fe9d69ad5c8a9da:a936d8d6b826bcd049751a55c7b3b747:a686161982893e2799df3cc8eb2c1aae$"
+}
+}
