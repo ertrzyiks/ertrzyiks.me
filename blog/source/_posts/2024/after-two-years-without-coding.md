@@ -3,7 +3,7 @@ title: After two years without coding
 permalink: after-two-years-without-coding/
 updated: "2024-01-07 21:06:31"
 date: 2024-01-07 20:06:31
-featured_image: /content/2021/notifications.jpeg
+featured_image: /content/2024/after-two-years.jpg
 ---
 
 I went through a major role change in my professional life recently. I switched from a Front-end Architect position
