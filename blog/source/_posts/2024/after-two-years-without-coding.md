@@ -44,4 +44,4 @@ Finally, I’ve learned a very important aspect leadership. It’s a painful exp
 
 ## Would I do it again?
 
-Absolutely yes! The opportunity to focus a lot of my attention on software development beyond coding opened my eyes in many areas. I had an opportunity to be part of so many projects at once, experience unavailable to me as a developer. I see how this time improved me as a software engineer. My contributions to the team have much broader impact. I connected with many outstanding folks.
+Absolutely yes! The opportunity to focus a lot of my attention on software development beyond coding opened my eyes in many areas. I had an opportunity to be part of so many projects at once, experience unavailable to me as a developer. I see how this time improved me as a software engineer. My contributions to the team have had much broader impact ever since.
