@@ -1,0 +1,57 @@
+---
+import HeaderLink from './HeaderLink.astro';
+import { SITE_TITLE } from '../consts';
+---
+
+<header>
+	<nav>
+		<div class="internal-links">
+			<HeaderLink href="/">Home</HeaderLink>
+		</div>
+	</nav>
+
+  <div>
+    <h1>
+      <a href="/">ertrzyiks</a>
+    </h1>
+
+    <p>Programming and stuff</p>
+  </div>
+</header>
+<style>
+	header {
+		margin: 0;
+		padding: 0;
+    border-bottom: 1px dotted #ababab;
+    padding-bottom: 2em;
+	}
+
+	nav {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+    padding: 0.5em;
+	}
+	nav a {
+		padding: 1em;
+    font-size: 0.9em;
+		color: #ababab;
+    letter-spacing: 1px;
+		text-decoration: none;
+    text-transform: uppercase;
+	}
+	nav a.active {
+		text-decoration: none;
+	}
+
+  h1 {
+    font-size: 3em;
+    text-align: center;
+  }
+
+  p {
+    text-align: center;
+    margin: 0;
+    padding: 1em 0;
+  }
+</style>

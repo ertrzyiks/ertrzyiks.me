@@ -1,0 +1,81 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../consts';
+import { getCollection } from 'astro:content';
+import FormattedDate from '../components/FormattedDate.astro';
+
+const posts = (await getCollection('blog')).sort(
+	(a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+		<style>
+      ul {
+        padding: 0;
+        margin: 0;
+      }
+
+      li {
+        margin: 2em 0;
+        list-style-type: none;
+      }
+
+      h3 {
+        display: flex;
+        font-size: 1.5em;
+        margin: 12px 0;
+        align-items: baseline;
+      }
+
+      .post-content {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .post-content img {
+        margin-right: 1em;
+        border: 1px dotted #ababab;
+      }
+
+      .date {
+        margin-left: 0.4em;
+        color: #999;
+        font-size: 16px;
+      }
+
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main>
+			<section>
+				<ul>
+					{
+						posts.map((post) => (
+							<li>
+                <h3>
+								  <a href={`/${post.data.permalink}`}>{post.data.title}</a>
+                  <span class="date"><FormattedDate date={post.data.date} /></span>
+                </h3>
+
+                <div class="post-content">
+                  <img width={134} height={134} src={post.data.featured_image} alt="" />
+
+                  <p><Fragment set:text={post.body} /></p>
+                </div>
+							</li>
+						))
+					}
+				</ul>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
