@@ -1,0 +1,31 @@
+---
+interface Props {
+	url: string;
+	identifier: string;
+}
+
+// const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+
+const { url, identifier } = Astro.props;
+---
+<div id="comments">
+<div id="disqus_thread"></div>
+<script define:vars={{ url, identifier }}>
+    window.disqus_config = function () {
+      this.page.url = url;
+      this.page.identifier = identifier;
+    };
+
+
+    var disqus_shortname = 'ertrzyiksblog';
+    // var disqus_identifier = '25';
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+    var d = document, s = d.createElement('script');
+    s.src = 'https://' + disqus_shortname + '.disqus.com/embed.js';
+    s.setAttribute('data-timestamp', +new Date());
+    (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>

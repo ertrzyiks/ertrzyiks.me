@@ -44,6 +44,10 @@ const posts = (await getCollection('blog')).sort(
         border: 1px dotted #ababab;
       }
 
+      .post-excerpt {
+        line-height: 140%;
+      }
+
       .date {
         margin-left: 0.4em;
         color: #999;
@@ -58,20 +62,23 @@ const posts = (await getCollection('blog')).sort(
 			<section>
 				<ul>
 					{
-						posts.map((post) => (
-							<li>
-                <h3>
-								  <a href={`/${post.data.permalink}`}>{post.data.title}</a>
-                  <span class="date"><FormattedDate date={post.data.date} /></span>
-                </h3>
+						posts.map(async (post) => {
+              const { remarkPluginFrontmatter }=  await post.render()
 
-                <div class="post-content">
-                  <img width={134} height={134} src={post.data.featured_image} alt="" />
+              return (
+                <li>
+                  <h3>
+                    <a href={`/${post.data.permalink}`}>{post.data.title}</a>
+                    <span class="date"><FormattedDate date={post.data.date} /></span>
+                  </h3>
 
-                  <p><Fragment set:text={post.body} /></p>
-                </div>
-							</li>
-						))
+                  <div class="post-content">
+                    <img width={134} height={134} src={post.data.featured_image} alt="" />
+
+                    <p class="post-excerpt"><Fragment set:text={remarkPluginFrontmatter.excerpt} /></p>
+                  </div>
+                </li>
+						  )})
 					}
 				</ul>
 			</section>
