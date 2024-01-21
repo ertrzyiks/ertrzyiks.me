@@ -63,6 +63,7 @@ jobs:
 
       - working-directory: ./blog-new/dist
         run: |
+          touch .static
           git init
           git config --global user.email "deploy-bot@ertrzyiks.me"
           git config --global user.name "Deploy Bot"
