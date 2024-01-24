@@ -1,0 +1,13 @@
+name: Main
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  release:
+    uses: ./.github/workflows/release_blog.yml
+    with:
+      ref: ${{ github.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
