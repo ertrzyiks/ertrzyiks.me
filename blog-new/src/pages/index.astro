@@ -1,5 +1,4 @@
 ---
-import { ViewTransitions } from 'astro:transitions';
 import { Image } from 'astro:assets'
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
@@ -61,8 +60,6 @@ const posts = (await getCollection('blog')).sort(
       }
 
 		</style>
-
-    <ViewTransitions />
 	</head>
 	<body>
 		<Header />
