@@ -1,4 +1,5 @@
 ---
+import { ViewTransitions } from 'astro:transitions';
 import { Image } from 'astro:assets'
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
@@ -60,6 +61,8 @@ const posts = (await getCollection('blog')).sort(
       }
 
 		</style>
+
+    <ViewTransitions />
 	</head>
 	<body>
 		<Header />
@@ -73,14 +76,14 @@ const posts = (await getCollection('blog')).sort(
               return (
                 <li>
                   <h3>
-                    <a href={`/${post.data.permalink}`}>{post.data.title}</a>
-                    <span class="date"><FormattedDate date={post.data.date} /></span>
+                    <a transition:name={`post-title-${post.data.permalink}`} href={`/${post.data.permalink}`}>{post.data.title}</a>
+                    <span transition:name={`post-date-${post.data.permalink}`} class="date"><FormattedDate date={post.data.date} /></span>
                   </h3>
 
                   <div class="post-content">
                     { post.data.featured_image ? <Image width={134} height={134} src={post.data.featured_image} class="featured-image" alt="" /> : null }
 
-                    <p class="post-excerpt"><Fragment set:text={remarkPluginFrontmatter.excerpt} /></p>
+                    <p class="post-excerpt" transition:name={`post-content-${post.data.permalink}`} ><Fragment set:text={remarkPluginFrontmatter.excerpt} /></p>
                   </div>
                 </li>
 						  )})
