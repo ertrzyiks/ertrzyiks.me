@@ -2,19 +2,27 @@
 
 "grass":
 {
-	"frame": {"x":0,"y":0,"w":100,"h":88},
+	"frame": {"x":1,"y":1,"w":100,"h":87},
 	"rotated": false,
 	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":88},
-	"sourceSize": {"w":100,"h":88}
+	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
+	"sourceSize": {"w":100,"h":87}
+},
+"water":
+{
+	"frame": {"x":103,"y":1,"w":100,"h":87},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
+	"sourceSize": {"w":100,"h":87}
 }},
 "meta": {
 	"app": "https://www.codeandweb.com/texturepacker",
 	"version": "1.0",
 	"image": "board1-0.png",
 	"format": "RGBA8888",
-	"size": {"w":100,"h":88},
+	"size": {"w":204,"h":89},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:4d7d4e49bab383780d844dccb848d4f1:b0e70ee44edb69ec776b26e5aaa0e462:8d56cc8117b3a4f76d94e4a663da9c0a$"
+	"smartupdate": "$TexturePacker:SmartUpdate:e84bde1e3c76239d23b600e02784634c:6a6892d53e87fd3bee0110ed369e53e0:8d56cc8117b3a4f76d94e4a663da9c0a$"
 }
 }

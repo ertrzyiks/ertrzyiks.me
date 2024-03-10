@@ -1,0 +1,20 @@
+{"frames": {
+
+"water":
+{
+	"frame": {"x":1,"y":1,"w":100,"h":87},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
+	"sourceSize": {"w":100,"h":87}
+}},
+"meta": {
+	"app": "https://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "board2-0.png",
+	"format": "RGBA8888",
+	"size": {"w":102,"h":89},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:074d21a7b354b02189cfbb900ee32ed0:3bb8c7388a068f81553b3f5cf0e77f33:055fcde64c1ef2ef356763d8e4e46c23$"
+}
+}
