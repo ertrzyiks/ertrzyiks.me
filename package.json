@@ -4,9 +4,6 @@
   "description": "",
   "main": "index.js",
   "private": true,
-  "scripts": {
-    "postinstall": "npm install --prefix blog"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ertrzyiks/ertrzyiks.me.git"

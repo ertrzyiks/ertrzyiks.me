@@ -35,7 +35,6 @@ jobs:
 
       - name: Get pnpm store directory
         shell: bash
-        working-directory: ./blog
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
@@ -49,11 +48,10 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-        working-directory: ./blog
 
       - name: Build
         run: pnpm build
-        working-directory: ./blog
+        working-directory: ./apps/blog
 
       - uses: webfactory/ssh-agent@v0.8.0
         with:
@@ -61,7 +59,7 @@ jobs:
 
       - run: echo '167.71.190.115 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEYg+BGxM8IdEoQ8fx7aDoclC0eNXSpI6l/QkLRMF/cvjJcSCk4kz/4LEkSU8eXFawp8IX/yNOyV11sJZtCVBCs=' >> ~/.ssh/known_hosts
 
-      - working-directory: ./blog/dist
+      - working-directory: ./apps/blog/dist
         run: |
           touch .static
           git init
