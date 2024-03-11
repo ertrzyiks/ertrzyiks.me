@@ -5,7 +5,15 @@ on:
     branches: [master]
 
 jobs:
-  release:
+  release_home:
+    uses: ./.github/workflows/release_homepage.yml
+    with:
+      ref: ${{ github.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  release_blog:
+    needs: release_home
     uses: ./.github/workflows/release_blog.yml
     with:
       ref: ${{ github.ref }}
