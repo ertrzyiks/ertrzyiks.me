@@ -51,7 +51,7 @@ jobs:
 
       - name: Build
         run: pnpm build
-        working-directory: ./apps/home_new
+        working-directory: ./apps/home
 
       - uses: webfactory/ssh-agent@v0.8.0
         with:
@@ -59,7 +59,7 @@ jobs:
 
       - run: echo '167.71.190.115 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEYg+BGxM8IdEoQ8fx7aDoclC0eNXSpI6l/QkLRMF/cvjJcSCk4kz/4LEkSU8eXFawp8IX/yNOyV11sJZtCVBCs=' >> ~/.ssh/known_hosts
 
-      - working-directory: ./apps/home_new/dist
+      - working-directory: ./apps/home/dist
         run: |
           touch .static
           git init
