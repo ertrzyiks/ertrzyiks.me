@@ -1,5 +1,5 @@
 {
-  "name": "",
+  "name": "home",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -11,7 +11,16 @@
   },
   "dependencies": {
     "astro": "^4.5.0",
+    "@tweenjs/tween.js": "^17.2.0",
+    "pixi-viewport": "^5.0.2",
+    "pixi.js": "^7.4.0",
+    "@types/dat.gui": "^0.7.4",
+    "@types/debounce": "^1.2.0",
+    "@types/tween.js": "^16.9.0",
     "@astrojs/check": "^0.5.7",
-    "typescript": "^5.4.2"
+    "typescript": "^5.4.2",
+    "dat.gui": "^0.7.6",
+    "debounce": "^1.2.0",
+    "honeycomb-grid": "1.4.4"
   }
 }
