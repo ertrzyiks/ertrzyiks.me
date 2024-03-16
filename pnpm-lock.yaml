@@ -32,7 +32,7 @@ importers:
         specifier: ^5.3.3
         version: 5.4.2
 
-  apps/home_new:
+  apps/home:
     dependencies:
       '@astrojs/check':
         specifier: ^0.5.7
