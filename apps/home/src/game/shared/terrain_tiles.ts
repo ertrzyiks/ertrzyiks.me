@@ -1,5 +1,4 @@
 import type { PointLike } from "honeycomb-grid";
-import { DisplayObject } from "pixi.js";
 
 export class TerrainTiles<T> {
   protected objects: { [x: number]: { [y: number]: T } } = {};

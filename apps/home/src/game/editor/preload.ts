@@ -1,37 +1,27 @@
-import * as image0 from "../../assets/sprites/editor-0.png";
+import image0 from "../../assets/sprites/editor-0.png";
 import data0 from "../assets/sprites/editor-0.json";
 // import * as image1 from '../../assets/sprites/editor-1.png'
 // import data1 from '../../assets/sprites/editor-1.json'
 // import * as image2 from '../../assets/sprites/editor-2.png'
 // import data2 from '../../assets/sprites/editor-2.json'
-import { Spritesheet } from "pixi.js";
+import { Assets, Spritesheet } from "pixi.js";
 
-export function preload() {
+export async function preload() {
   const images = [image0];
   const data = [data0];
 
-  return new Promise((resolve) => {
-    images.forEach((image, index) => {
-      loader.add(`editor${index}`, image);
-    });
+  images.forEach((image, index) => {
+    Assets.add({ src: image.src, alias: `editor${index}` });
+  });
 
-    loader.load(
-      (loader: loaders.Loader, resources: loaders.ResourceDictionary) => {
-        const sheets = data.map((atlasData, index) => {
-          return new Spritesheet(
-            resources[`editor${index}`].texture.baseTexture,
-            atlasData
-          );
-        });
+  await Assets.load(images.map((_, index) => `editor${index}`));
 
-        Promise.all(sheets.map((sheet) => parse(sheet))).then(resolve);
-      }
+  const sheets = data.map((atlasData, index) => {
+    return new Spritesheet(
+      Assets.get(`editor${index}`).texture.baseTexture,
+      atlasData
     );
   });
-}
 
-function parse(sheet: Spritesheet) {
-  return new Promise((resolve) => {
-    sheet.parse(resolve);
-  });
+  await Promise.all(sheets.map((sheet) => sheet.parse()));
 }

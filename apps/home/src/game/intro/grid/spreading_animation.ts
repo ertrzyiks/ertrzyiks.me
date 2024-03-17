@@ -1,7 +1,7 @@
+import type { DisplayObject } from "pixi.js";
 import RecursiveTween from "../../lib/recursive_tween";
 import { Tween, Easing } from "@tweenjs/tween.js";
 import { getNextSpreadingWave } from "./get_spreading_wave";
-import { cartesianToCube } from "../../core/grid";
 import type { CubeCoordinates, PointLike } from "honeycomb-grid";
 import { TerrainTiles } from "../../shared/terrain_tiles";
 import { Tile } from "../../shared/renderable/tile";
@@ -35,10 +35,10 @@ export class GridSpreadAnimation {
   }
 
   private state: any;
-  private subject: Array<PIXI.DisplayObject> = [];
-  private waveCache: { [wave: number]: Array<PIXI.DisplayObject> } = {};
+  private subject: Array<DisplayObject> = [];
+  private waveCache: { [wave: number]: Array<DisplayObject> } = {};
   private tween: RecursiveTween;
-  private onCompleteCallback?: CompleteCallback = null;
+  private onCompleteCallback?: CompleteCallback | null = null;
 
   constructor(private options: GridSpreadAnimationOptions) {
     this.state = { ...this.from };
@@ -70,16 +70,19 @@ export class GridSpreadAnimation {
   nextWave(currentCycle: number, last: boolean) {
     if (last) {
       return Array.from(this.terrainTiles.keys())
-        .filter((hex) => this.hexToElement(hex).alpha < 0.1)
+        .filter((hex) => {
+          const element = this.hexToElement(hex);
+          return element && element.alpha < 0.1;
+        })
         .map((hex) => this.hexToElement(hex));
     }
 
     return getNextSpreadingWave(this.startCube, currentCycle)
-      .map((point) => this.terrainTiles.get(point))
+      .map((point) => (point ? this.terrainTiles.get(point) : null))
       .filter((sprite) => sprite != null);
   }
 
-  createTween(currentCycle: number) {
+  createTween(_: number) {
     return new Tween(this.state).easing(Easing.Sinusoidal.InOut);
   }
 
@@ -89,14 +92,11 @@ export class GridSpreadAnimation {
     }
   }
 
-  protected applyUpdate(
-    element: PIXI.DisplayObject,
-    values: { alpha: number }
-  ) {
+  protected applyUpdate(element: DisplayObject, values: { alpha: number }) {
     element.alpha = values.alpha;
   }
 
-  handleCycle(oldTween: Tween, currentCycle: number) {
+  handleCycle(_: Tween | null, currentCycle: number) {
     const cycles = 15;
 
     this.state = { ...this.from };

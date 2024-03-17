@@ -7,6 +7,9 @@ interface WorldDimensions {
 
 export function getGridBoundingBox(grid: Grid<Hex<any>>): WorldDimensions {
   const lastHex = grid.get(grid.length - 1);
+
+  if (!lastHex) throw new Error("No hex found in grid");
+
   const lastPoint = lastHex.toPoint();
   const lastCorners = lastHex.corners();
   const worldWidth =

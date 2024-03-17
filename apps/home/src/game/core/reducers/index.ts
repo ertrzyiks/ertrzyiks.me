@@ -23,7 +23,7 @@ export function gameReducer(state: State, action: GameEvent) {
 
     case GameEventType.StartTurn:
       const currentPlayerIndex =
-        state.currentPlayer === null
+        state.currentPlayer === null || state.currentPlayerIndex === null
           ? 0
           : rotate(state.currentPlayerIndex + 1, state.players.length);
       return {

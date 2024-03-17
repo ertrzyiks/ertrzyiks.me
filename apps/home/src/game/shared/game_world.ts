@@ -2,7 +2,6 @@ import {
   Container,
   EventBoundary,
   type IDestroyOptions,
-  Texture,
   Sprite,
   Spritesheet,
   type EventSystem,
@@ -16,12 +15,7 @@ import type { CubeCoordinates } from "honeycomb-grid";
 import { cubeToCartesian } from "../core/grid/helpers";
 import { TerrainTiles } from "./terrain_tiles";
 import type { ObservableSubscriptionDone } from "./observable";
-import {
-  type GameEvent,
-  createPlayerStore,
-  StoreProxy,
-  type PlayerAction,
-} from "../core";
+import { type GameEvent } from "../core";
 
 export class GameWorld extends Container {
   protected game: Game;
@@ -62,33 +56,45 @@ export class GameWorld extends Container {
   }
 
   protected onWorldUpdate(
-    { state, action }: { state: State; action: GameEvent },
+    { action }: { state: State; action: GameEvent },
     done: ObservableSubscriptionDone
   ) {
     switch (action.type) {
       case GameEventType.Spawn:
         const tile = this.getTerrainAt(action.position);
-        // this.ship = new Tile(Texture.fromFrame("ship"), action.position);
-        this.ship = new Tile(this.sheet.textures["ship.png"], action.position);
-        this.ship.scale.x = -1;
-        this.ship.x = tile.x;
-        this.ship.y = tile.y;
-        this.viewport.addChild(this.ship);
+
+        if (tile) {
+          // this.ship = new Tile(Texture.fromFrame("ship"), action.position);
+          this.ship = new Tile(
+            this.sheet.textures["ship.png"],
+            action.position
+          );
+          this.ship.scale.x = -1;
+          this.ship.x = tile.x;
+          this.ship.y = tile.y;
+          this.viewport.addChild(this.ship);
+        }
+
         done();
         break;
 
       case GameEventType.Move:
         const tile1 = this.getTerrainAt(action.position);
 
-        this.currentTween = new TWEEN.Tween(this.ship)
-          .to({ x: tile1.x, y: tile1.y }, 1000)
-          .delay(300)
-          .onComplete(() => {
-            this.ship.coordinates = action.position;
-            done();
-          });
+        if (tile1) {
+          this.currentTween = new TWEEN.Tween(this.ship)
+            .to({ x: tile1.x, y: tile1.y }, 1000)
+            .delay(300)
+            .onComplete(() => {
+              if (this.ship) {
+                this.ship.coordinates = action.position;
+              }
+              done();
+            });
 
-        this.currentTween.start();
+          this.currentTween.start();
+        }
+
         break;
 
       default:
@@ -102,12 +108,11 @@ export class GameWorld extends Container {
 
     const coords = hex.cube();
 
-    // const sprite = new Tile(Texture.fromFrame(hex.textureName), coords);
     const sprite = new Tile(this.sheet.textures[hex.textureName], coords);
 
     sprite.position.set(x, y);
     sprite.eventMode = "dynamic";
-    sprite.buttonMode = false;
+    // sprite.buttonMode = false;
 
     return sprite;
   }

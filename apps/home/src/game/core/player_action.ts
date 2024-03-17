@@ -1,6 +1,5 @@
 import type { CubeCoordinates } from "honeycomb-grid";
 import { Unit } from "./units";
-import type { Player } from "./player";
 
 export enum PlayerActionType {
   EndTurn,

@@ -1,15 +1,21 @@
 import { extendHex, defineGrid } from "honeycomb-grid";
-import type { Board } from "../board";
+import { Terrain, type Board } from "../board";
 
 const TILE_SIZE = 46;
 
 export function createGrid(board: Board) {
-  const Hex = extendHex({
+  const Hex = extendHex<{
+    size: number;
+    orientation: "flat";
+    type: Terrain;
+    textureName: string;
+    sectionName: string;
+  }>({
     size: TILE_SIZE,
     orientation: "flat",
-    type: null,
-    textureName: null,
-    sectionName: null,
+    type: Terrain.WATER,
+    textureName: "",
+    sectionName: "",
   });
 
   const Grid = defineGrid(Hex);
@@ -26,6 +32,11 @@ export function createGrid(board: Board) {
     for (let dx = 0; dx < width; dx++) {
       for (let dy = 0; dy < height; dy++) {
         const hex = grid.get({ x: tile.x + dx, y: tile.y + dy });
+
+        if (!hex) {
+          throw new Error(`No hex found at ${tile.x + dx}, ${tile.y + dy}`);
+        }
+
         hex.type = tile.type;
         hex.textureName = tile.textureName;
         hex.sectionName = tile.sectionName;

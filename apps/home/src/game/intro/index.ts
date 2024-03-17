@@ -7,6 +7,7 @@ import board from "./board.json";
 export async function create(app: Application, startingPoint: Point) {
   const { sheet } = await preload();
 
+  // @ts-ignore
   const world = new IntroWorld(board, app.renderer.events, sheet);
 
   setTimeout(() => {

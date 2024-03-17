@@ -1,30 +1,32 @@
-import {EditorEvent, EditorEventType} from './editor_event'
-import {State} from '../core/world'
-import {Board, Terrain} from '../core/board'
-import {createGrid, getGridBoundingBox} from '../core/grid'
-import {getTile} from './utils'
+import { type EditorEvent, EditorEventType } from "./editor_event";
+import type { State } from "../core/world";
+import { type Board, Terrain } from "../core/board";
+import { createGrid, getGridBoundingBox } from "../core/grid";
+import { getTile } from "./utils";
+import type { Grid } from "honeycomb-grid";
 
+type GridElement<T> = T extends Grid<infer H> ? H : never;
 function stateFromBoard(board: Board) {
-  const grid = createGrid(board)
+  const grid = createGrid(board);
 
   const tiles = grid.reduce((acc, hex) => {
-    acc.push(hex)
-    return acc
-  }, [])
+    acc.push(hex);
+    return acc;
+  }, [] as GridElement<typeof grid>[]);
 
-  const {worldWidth, worldHeight} = getGridBoundingBox(grid)
+  const { worldWidth, worldHeight } = getGridBoundingBox(grid);
 
   return {
     tiles,
     worldWidth,
-    worldHeight
-  }
+    worldHeight,
+  };
 }
 
-export function editorReducer(state: State, action: EditorEvent) {
-  switch(action.type) {
+export function editorReducer(state: State, action: EditorEvent): State {
+  switch (action.type) {
     case EditorEventType.SetSize:
-      let tiles = []
+      let tiles = [];
 
       for (let x = 0; x < action.cols; x++) {
         for (let y = 0; y < action.rows; y++) {
@@ -32,54 +34,52 @@ export function editorReducer(state: State, action: EditorEvent) {
             x,
             y,
             type: Terrain.WATER,
-            textureName: 'water',
-            sectionName: 'none',
-            ...getTile(state.tiles, x, y)
-          })
+            textureName: "water",
+            sectionName: "none",
+            ...getTile(state.tiles, x, y),
+          });
         }
       }
 
       const board = {
         cols: action.cols,
         rows: action.rows,
-        tiles
-      }
+        tiles,
+      };
 
       return {
         ...state,
-        ...stateFromBoard(board)
-      }
+        ...stateFromBoard(board),
+      };
 
     case EditorEventType.LoadBoard:
       return {
         ...state,
-        ...stateFromBoard(action.data)
-      }
+        ...stateFromBoard(action.data),
+      };
 
     case EditorEventType.SetTileTexture:
       return {
         ...state,
-        tiles: state.tiles.map(tile => {
+        tiles: state.tiles.map((tile) => {
           if (tile.x === action.x && tile.y === action.y) {
-            return {...tile, textureName: action.textureName}
+            return { ...tile, textureName: action.textureName };
           }
 
-          return tile
-        })
-      }
+          return tile;
+        }),
+      };
 
     case EditorEventType.SetTileSectionName:
       return {
         ...state,
-        tiles: state.tiles.map(tile => {
+        tiles: state.tiles.map((tile) => {
           if (tile.x === action.x && tile.y === action.y) {
-            return {...tile, sectionName: action.sectionName}
+            return { ...tile, sectionName: action.sectionName };
           }
 
-          return tile
-        })
-      }
+          return tile;
+        }),
+      };
   }
-
-  return state
 }

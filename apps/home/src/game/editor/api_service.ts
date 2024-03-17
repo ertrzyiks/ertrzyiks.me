@@ -1,51 +1,50 @@
-import {Terrain} from '../core/board'
+import { Terrain } from "../core/board";
 
 export interface ApiLevelPayload {
-  rows: number,
-  cols: number,
+  rows: number;
+  cols: number;
   tiles: Array<{
-    x: number,
-    y: number,
-    textureName: string
-    sectionName: string
-    type: Terrain
-  }>
+    x: number;
+    y: number;
+    textureName: string;
+    sectionName: string;
+    type: Terrain;
+  }>;
 }
 
 export default class Api {
-  static getList() {
-    return fetch('/levels').then(res => res.json()).then(data => {
-      return data.levels as string[]
-    })
+  static async getList() {
+    const res = await fetch("/levels");
+    const data = await res.json();
+    return data.levels as string[];
   }
 
-  static get(name: string) {
-    return fetch(`/levels/${name}`).then(res => res.json())
+  static async get(name: string) {
+    const res = await fetch(`/levels/${name}`);
+    return res.json();
   }
 
   static save(name: string, payload: ApiLevelPayload) {
     return fetch(`/levels/${name}`, {
-      method: 'PUT',
+      method: "PUT",
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload)
-    })
+      body: JSON.stringify(payload),
+    });
   }
 
-  static create(name: string) {
+  static async create(name: string) {
     if (!name) {
-      return Promise.reject(new Error('Name is required'))
+      throw new Error("Name is required");
     }
 
-    return fetch(`/levels/${name}`, {method: 'PUT'})
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          throw data.error
-        }
-      })
-  }
+    const res = await fetch(`/levels/${name}`, { method: "PUT" });
+    const data = await res.json();
 
+    if (data.error) {
+      throw data.error;
+    }
+  }
 }

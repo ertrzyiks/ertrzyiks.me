@@ -1,8 +1,8 @@
 import { GUI } from "dat.gui";
-import * as debounce from "debounce";
+import debounce from "debounce";
 import {
   Container,
-  Texture,
+  Assets,
   DisplayObject,
   EventBoundary,
   type EventSystem,
@@ -100,9 +100,8 @@ export class EditorWorld extends Container {
           break;
 
         case EditorEventType.SetTileTexture:
-          const tile = this.terrainTiles.get({ x: action.x, y: action.y });
-          spreadsheet
-          tile.texture = Texture.fromFrame(action.textureName);
+          // const tile = this.terrainTiles.get({ x: action.x, y: action.y });
+          // tile.texture = Texture.fromFrame(action.textureName);
           break;
       }
     });
@@ -111,21 +110,25 @@ export class EditorWorld extends Container {
   }
 
   protected onTextureNameChange() {
-    this.store.dispatch({
-      type: EditorEventType.SetTileTexture,
-      x: this.selectedTile.x,
-      y: this.selectedTile.y,
-      textureName: this.game_data.tile.textureName,
-    });
+    if (this.selectedTile) {
+      this.store.dispatch({
+        type: EditorEventType.SetTileTexture,
+        x: this.selectedTile.x,
+        y: this.selectedTile.y,
+        textureName: this.game_data.tile.textureName,
+      });
+    }
   }
 
   protected onSectionNameChange() {
-    this.store.dispatch({
-      type: EditorEventType.SetTileSectionName,
-      x: this.selectedTile.x,
-      y: this.selectedTile.y,
-      sectionName: this.game_data.tile.sectionName,
-    });
+    if (this.selectedTile) {
+      this.store.dispatch({
+        type: EditorEventType.SetTileSectionName,
+        x: this.selectedTile.x,
+        y: this.selectedTile.y,
+        sectionName: this.game_data.tile.sectionName,
+      });
+    }
   }
 
   protected onClick(el: DisplayObject) {
@@ -141,7 +144,9 @@ export class EditorWorld extends Container {
 
   protected renderTerrain() {
     this.terrainTiles.allValues().forEach((sprite) => {
-      this.viewport.removeChild(sprite);
+      if (sprite) {
+        this.viewport.removeChild(sprite);
+      }
     });
 
     this.terrainTiles.clear();
@@ -160,11 +165,11 @@ export class EditorWorld extends Container {
 
     const coords = hex.cube();
 
-    const sprite = new Tile(Texture.fromFrame(hex.textureName), coords);
+    const sprite = new Tile(Assets.get(hex.textureName), coords);
 
     sprite.position.set(x, y);
     sprite.interactive = true;
-    sprite.buttonMode = false;
+    // sprite.buttonMode = false;
 
     return sprite;
   }
@@ -176,6 +181,10 @@ export class EditorWorld extends Container {
     this.setupFolder.add(this.game_data, "create");
 
     Api.getList().then((levels) => {
+      if (!this.setupFolder) {
+        return;
+      }
+
       const levelController = this.setupFolder.add(
         this.game_data,
         "level",
@@ -184,7 +193,10 @@ export class EditorWorld extends Container {
 
       levelController.name("or select");
       levelController.onChange((value: string) => {
-        this.gui.removeFolder(this.setupFolder);
+        if (this.setupFolder) {
+          this.gui.removeFolder(this.setupFolder);
+        }
+
         this.onLevelSelect(value);
       });
     });
@@ -204,6 +216,10 @@ export class EditorWorld extends Container {
     }
 
     const tile = getTile(this.store.getState().tiles, point.x, point.y);
+
+    if (!tile) {
+      throw new Error(`No tile found at ${point.x}, ${point.y}`);
+    }
     this.game_data.tile.textureName = tile.textureName;
     this.game_data.tile.sectionName = tile.sectionName;
     this.tileFolder.updateDisplay();
@@ -249,7 +265,9 @@ export class EditorWorld extends Container {
 
     Api.create(name)
       .then(() => {
-        this.gui.removeFolder(this.setupFolder);
+        if (this.setupFolder) {
+          this.gui.removeFolder(this.setupFolder);
+        }
         this.onLevelSelect(name);
       })
       .catch((e) => {

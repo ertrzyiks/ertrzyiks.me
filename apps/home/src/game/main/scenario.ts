@@ -1,7 +1,6 @@
 import { Game } from "../core/game";
 import { type Player, PlayerColor } from "../core/player/player";
 import { Hero } from "./units";
-import type { CubeCoordinates } from "honeycomb-grid";
 import type { ObservableSubscriptionDone } from "../shared/observable";
 import { type GameEvent, GameEventType } from "../core/game_event";
 import type { State } from "../core/world";
@@ -28,6 +27,9 @@ export class Scenario {
     switch (action.type) {
       case GameEventType.StartTurn:
         done();
+
+        if (!state.currentPlayer) throw new Error("No current player");
+
         this.onTurnStart(
           state.currentPlayer,
           createPlayerStore(this.game.world.store, state.currentPlayer)
@@ -46,7 +48,7 @@ export class Scenario {
   }
 
   protected onTurnStart(
-    player: Player,
+    _: Player,
     store: StoreProxy<GameEvent, State, PlayerAction>
   ) {
     const explorer = new Explorer(store);

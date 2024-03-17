@@ -25,6 +25,7 @@ export class World {
 
   constructor(grid: Grid) {
     const tiles = grid.reduce((acc, hex) => {
+      // @ts-ignore
       acc.push(hex);
       return acc;
     }, []);
@@ -32,6 +33,7 @@ export class World {
     const { worldWidth, worldHeight } = getGridBoundingBox(grid);
     const { cols, rows } = getGridSize(grid);
 
+    // @ts-ignore
     this.store = createStore(gameReducer, {
       players: [],
       currentPlayerIndex: null,
@@ -57,12 +59,12 @@ export class World {
     this.store.subscribe(fn);
   }
 
-  tileBySection(sectionName: string) {
+  tileBySection(_: string) {
     return this.getState().tiles[0];
   }
 
   // TODO: fix it
-  unitsOf(player: Player) {
+  unitsOf(_: Player) {
     return this.getState().units;
   }
 }

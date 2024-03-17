@@ -1,7 +1,5 @@
 import type { CubeCoordinates } from "honeycomb-grid";
 import { Direction, directions, opposite } from "../direction";
-import type { Player } from ".";
-import type { Unit } from "../units";
 import { PlayerActionType } from "../player_action";
 import { positionAt, cubeToCartesian } from "../grid";
 import { isMovable, type IMovable } from "../units";

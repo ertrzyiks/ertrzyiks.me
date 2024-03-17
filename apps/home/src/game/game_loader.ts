@@ -35,12 +35,15 @@ const loadIntro = async (startingPoint: Point) => {
   app.stage.addChild(viewport);
   resize();
 
+  // @ts-ignore
   if (!document.body.contains(app.view)) {
     const el = document.getElementById("game");
+    // @ts-ignore
     el.parentNode.replaceChild(app.view, el);
   }
 
   app.start();
+  // @ts-ignore
   app.view.style.display = "";
 
   viewport.emitter.on("exit", () => {
@@ -57,6 +60,7 @@ const loadMain = async function (app: Application) {
 
 function close() {
   app.stop();
+  // @ts-ignore
   app.view.style.display = "none";
   // app.loader.reset();
 

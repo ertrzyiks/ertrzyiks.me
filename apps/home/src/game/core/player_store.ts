@@ -12,10 +12,7 @@ const getUnitPosition = (state: State, unit: Unit) => {
   return u[0].position;
 };
 
-export function createPlayerStore(
-  store: Store<GameEvent, State>,
-  player: Player
-) {
+export function createPlayerStore(store: Store<GameEvent, State>, _: Player) {
   return proxyStore(store, {
     proxyAction: (action: PlayerAction, dispatch) => {
       switch (action.type) {

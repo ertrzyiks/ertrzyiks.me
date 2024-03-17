@@ -1,6 +1,5 @@
-import { Polygon, Texture } from "pixi.js";
+import { Polygon, Texture, Graphics } from "pixi.js";
 import { Tileable } from "./tileable";
-import { cartesianToCube } from "../../core/grid";
 import type { CubeCoordinates } from "honeycomb-grid";
 
 const DEBUG = false;
@@ -28,7 +27,7 @@ export class Tile extends Tileable {
     this.hitArea = new Polygon(points);
 
     if (DEBUG) {
-      const graphics = new PIXI.Graphics();
+      const graphics = new Graphics();
       graphics.beginFill(0x121212);
       graphics.drawPolygon(points);
       graphics.endFill();

@@ -27,7 +27,10 @@ export class Scenario {
   ) {
     switch (action.type) {
       case GameEventType.StartTurn:
+        if (!state.currentPlayer) throw new Error("No current player");
+
         done();
+
         this.onTurnStart(
           state.currentPlayer,
           createPlayerStore(this.game.world.store, state.currentPlayer)
@@ -47,7 +50,7 @@ export class Scenario {
   }
 
   protected onTurnStart(
-    player: Player,
+    _: Player,
     store: StoreProxy<GameEvent, State, PlayerAction>
   ) {
     const explorer = new Explorer(store);

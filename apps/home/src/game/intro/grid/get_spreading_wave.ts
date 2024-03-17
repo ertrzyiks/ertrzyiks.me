@@ -1,5 +1,5 @@
 import { cubeToCartesian } from "../../core/grid";
-import type { CubeCoordinates, PointLike } from "honeycomb-grid";
+import type { CubeCoordinates } from "honeycomb-grid";
 
 function pointsBetween(
   cube1: CubeCoordinates,
