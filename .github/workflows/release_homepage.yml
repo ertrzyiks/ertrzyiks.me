@@ -49,6 +49,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Test
+        run: pnpm test
+        working-directory: ./apps/home
+
       - name: Build
         run: pnpm build
         working-directory: ./apps/home
