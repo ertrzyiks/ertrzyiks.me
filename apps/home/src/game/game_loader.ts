@@ -6,6 +6,7 @@ import { GameViewport } from "./shared/viewport";
 const main = () => import("./main");
 
 const app = new Application({
+  backgroundAlpha: 0,
   resolution: window.devicePixelRatio,
 });
 app.ticker.add(() => {
