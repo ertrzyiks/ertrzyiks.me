@@ -1,3 +1,4 @@
+import { expect, test, vi } from "vitest";
 import { createStore, proxyStore } from "./store";
 
 enum TestAction {
@@ -39,7 +40,7 @@ test("subscribe", () => {
     }
   }, 1);
 
-  const fn = jest.fn();
+  const fn = vi.fn();
 
   store.subscribe(fn);
 
