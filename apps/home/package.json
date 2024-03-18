@@ -8,6 +8,7 @@
     "build": "astro check && astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "generate:sprites": "bash ./scripts/generate-sprites.sh",
     "test": "vitest"
   },
   "dependencies": {
