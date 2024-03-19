@@ -2,7 +2,7 @@
 
 "grass":
 {
-	"frame": {"x":1,"y":92,"w":100,"h":87},
+	"frame": {"x":1,"y":91,"w":100,"h":87},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
@@ -10,15 +10,15 @@
 },
 "ship":
 {
-	"frame": {"x":1,"y":1,"w":100,"h":89},
+	"frame": {"x":1,"y":1,"w":100,"h":88},
 	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":89},
-	"sourceSize": {"w":100,"h":89}
+	"trimmed": true,
+	"spriteSourceSize": {"x":0,"y":4,"w":100,"h":88},
+	"sourceSize": {"w":100,"h":92}
 },
 "water":
 {
-	"frame": {"x":1,"y":181,"w":100,"h":87},
+	"frame": {"x":1,"y":180,"w":100,"h":87},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
@@ -29,8 +29,8 @@
 	"version": "1.0",
 	"image": "editor-0.png",
 	"format": "RGBA8888",
-	"size": {"w":102,"h":269},
+	"size": {"w":102,"h":268},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:7eb55b2df6267844312562fbe85904ae:6595b66666fb2fab60b32762964712d4:f6aca49c8576916f28b56b352cba87bc$"
+	"smartupdate": "$TexturePacker:SmartUpdate:ab250a50cb16419e804787cc408593ce:98baef46c23f8d332391ae3fa83c3ca4:f6aca49c8576916f28b56b352cba87bc$"
 }
 }

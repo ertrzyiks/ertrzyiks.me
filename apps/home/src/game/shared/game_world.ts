@@ -43,8 +43,6 @@ export class GameWorld extends Container {
 
     this.boundary = new EventBoundary(this.viewport);
 
-    // ticker.add(this.tickerFunction);
-
     this.renderTerrain();
     this.observeWorldUpdates();
 
@@ -64,13 +62,11 @@ export class GameWorld extends Container {
         const tile = this.getTerrainAt(action.position);
 
         if (tile) {
-          this.ship = new Tile(
-            this.sheet.textures["ship.png"],
-            action.position
-          );
+          this.ship = new Tile(this.sheet.textures["ship"], action.position);
           this.ship.scale.x = -1;
           this.ship.x = tile.x;
           this.ship.y = tile.y;
+
           this.viewport.addChild(this.ship);
         }
 
@@ -120,7 +116,6 @@ export class GameWorld extends Container {
     this.game.world.getState().tiles.forEach((hex: GameTileHex) => {
       const sprite = this.createWorldTile(hex);
       const coords = hex.coordinates();
-
       this.terrainTiles.set(coords, sprite);
       this.viewport.addChild(sprite);
     });

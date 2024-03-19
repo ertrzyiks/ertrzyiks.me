@@ -2,15 +2,15 @@
 
 "ship":
 {
-	"frame": {"x":1,"y":1,"w":100,"h":89},
+	"frame": {"x":1,"y":1,"w":100,"h":88},
 	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":89},
-	"sourceSize": {"w":100,"h":89}
+	"trimmed": true,
+	"spriteSourceSize": {"x":0,"y":4,"w":100,"h":88},
+	"sourceSize": {"w":100,"h":92}
 },
 "water":
 {
-	"frame": {"x":1,"y":92,"w":100,"h":87},
+	"frame": {"x":1,"y":91,"w":100,"h":87},
 	"rotated": false,
 	"trimmed": false,
 	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
@@ -21,8 +21,8 @@
 	"version": "1.0",
 	"image": "intro-0.png",
 	"format": "RGBA8888",
-	"size": {"w":102,"h":180},
+	"size": {"w":102,"h":179},
 	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:516618cb89f71d18ccc35fb187070ab2:8928e7025484cc3e8192e4574a812d40:a686161982893e2799df3cc8eb2c1aae$"
+	"smartupdate": "$TexturePacker:SmartUpdate:8ab94f9a617312074205b1c7fbbc708c:4c81690cce073b308a2614b60f890d87:a686161982893e2799df3cc8eb2c1aae$"
 }
 }
