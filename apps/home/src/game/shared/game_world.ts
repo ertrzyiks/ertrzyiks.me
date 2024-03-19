@@ -64,7 +64,6 @@ export class GameWorld extends Container {
         const tile = this.getTerrainAt(action.position);
 
         if (tile) {
-          // this.ship = new Tile(Texture.fromFrame("ship"), action.position);
           this.ship = new Tile(
             this.sheet.textures["ship.png"],
             action.position
