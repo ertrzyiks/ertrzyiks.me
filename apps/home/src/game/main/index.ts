@@ -7,10 +7,8 @@ import { MainWorld } from "./game_world";
 export async function create(app: Application) {
   const { sheet } = await preload();
 
-  console.log("LOAD SHEET");
-
   // @ts-ignore
-  // const world = new MainWorld(board, app.renderer.events, sheet);
+  const world = new MainWorld(board, app.renderer.events, sheet);
 
-  // return world;
+  return world;
 }

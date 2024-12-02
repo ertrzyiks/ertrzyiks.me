@@ -57,7 +57,7 @@ const loadIntro = async (startingPoint: Point) => {
 const loadMain = async function (app: Application) {
   const mainModule = await main();
 
-  // return mainModule.create(app);
+  return mainModule.create(app);
 };
 
 function close() {
