@@ -66,12 +66,14 @@ terraform apply
 - Use the [Vault provider](https://registry.terraform.io/providers/hashicorp/vault/latest/docs)
 
 ```hcl
-data "vault_generic_secret" "ssh_key" {
-  path = "secret/dokku/ssh_key"
+# For KV v2 secrets engine (recommended)
+data "vault_kv_secret_v2" "ssh_key" {
+  mount = "secret"
+  name  = "dokku/ssh_key"
 }
 
 provider "dokku" {
-  ssh_cert = data.vault_generic_secret.ssh_key.data["private_key"]
+  ssh_cert = data.vault_kv_secret_v2.ssh_key.data["private_key"]
 }
 ```
 
