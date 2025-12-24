@@ -2,7 +2,7 @@
 # Copy this file to terraform.tfvars and fill in your values
 # terraform.tfvars is in .gitignore and will not be committed
 
-dokku_ssh_host = "your-dokku-server.com"
+dokku_ssh_host = "ertrzyiks.me"
 dokku_ssh_user = "dokku"
 dokku_ssh_port = 22
 

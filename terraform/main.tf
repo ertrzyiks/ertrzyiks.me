@@ -14,6 +14,10 @@ provider "dokku" {
   ssh_cert = var.dokku_ssh_cert
 }
 
+# NOTE: Terraform only manages resources defined in this configuration.
+# Existing Dokku apps not defined here will NOT be affected or destroyed.
+# Terraform will only create, update, or destroy the apps explicitly declared below.
+
 # Blog app
 resource "dokku_app" "blog" {
   app_name = "blog"
