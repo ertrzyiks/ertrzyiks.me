@@ -5,6 +5,13 @@ terraform {
       version = "~> 1.0"
     }
   }
+
+  backend "remote"  {
+    organization = "ertrzyiks"
+    workspaces {
+      name = "prod"
+    }
+  }
 }
 
 provider "dokku" {
@@ -21,9 +28,13 @@ provider "dokku" {
 # Blog app
 resource "dokku_app" "blog" {
   app_name = "blog"
+
+  domains = ["blog.ertrzyiks.me"]
 }
 
 # Home app
 resource "dokku_app" "home" {
   app_name = "home"
+
+  domains = ["ertrzyiks.me"]
 }
