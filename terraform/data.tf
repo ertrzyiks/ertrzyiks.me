@@ -23,3 +23,13 @@ data "onepassword_item" "yummy_release_statsig_secret_key" {
   title = "yummy_release_statsig_secret_key"
 }
 
+data "onepassword_item" "yummy_next_statsig_server_key" {
+  vault = "Dokku apps"
+  title = "yummy_next_statsig_server_key"
+}
+
+data "onepassword_item" "yummy_next_algolia_search_key" {
+  vault = "Dokku apps"
+  title = "yummy_next_algolia_search_key"
+}
+

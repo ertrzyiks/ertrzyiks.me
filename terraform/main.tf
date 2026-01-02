@@ -77,3 +77,16 @@ resource "dokku_app" "yummy_release" {
 
   domains = ["yummy-release.ertrzyiks.me"]
 }
+
+resource "dokku_app" "yummy_next" {
+  app_name = "yummy-next"
+
+  config = {
+    NEXT_PUBLIC_STATSIG_CLIENT_KEY = "client-EfXZkJjxGG8j8o2QhZP3aJosLszWNeMR1ouYy9aberF"
+    STATSIG_SERVER_KEY = data.onepassword_item.yummy_next_statsig_server_key.password
+    ALGOLIA_SEARCH_KEY = data.onepassword_item.yummy_next_algolia_search_key.password
+  }
+
+  domains = ["kuchnia-yummy.pl"]
+}
+
