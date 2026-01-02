@@ -24,6 +24,20 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v1
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DOKKU_DEPLOY_KEY }}" > ~/.ssh/dokku_deploy_key
+          chmod 600 ~/.ssh/dokku_deploy_key
+          {
+            echo "TF_VAR_dokku_ssh_cert<<EOF"
+            cat ~/.ssh/dokku_deploy_key
+            echo "EOF"
+          } >> $GITHUB_ENV
+
       - uses: hashicorp/setup-terraform@v3
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
