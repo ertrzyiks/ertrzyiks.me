@@ -27,6 +27,16 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@v1
 
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+      - name: Set SSH Key Path
+        run: |
+          SSH_KEY_PATH=$(find ~/.ssh -name 'agent.*' -type f | head -n 1)
+          echo "TF_VAR_dokku_ssh_cert=$SSH_KEY_PATH" >> $GITHUB_ENV
+
       - uses: hashicorp/setup-terraform@v3
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
@@ -37,4 +47,5 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve
+        run: terraform plan
+        # run: terraform apply -auto-approve
