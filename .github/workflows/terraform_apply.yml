@@ -27,15 +27,12 @@ jobs:
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@v1
 
-      - name: Setup SSH Agent
-        uses: webfactory/ssh-agent@v0.8.0
-        with:
-          ssh-private-key: ${{ secrets.DOKKU_DEPLOY_KEY }}
-
-      - name: Set SSH Key Path
+      - name: Setup SSH Key
         run: |
-          SSH_KEY_PATH=$(find ~/.ssh -name 'agent.*' -type f | head -n 1)
-          echo "TF_VAR_dokku_ssh_cert=$SSH_KEY_PATH" >> $GITHUB_ENV
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DOKKU_DEPLOY_KEY }}" > ~/.ssh/dokku_deploy_key
+          chmod 600 ~/.ssh/dokku_deploy_key
+          echo "TF_VAR_dokku_ssh_cert=$HOME/.ssh/dokku_deploy_key" >> $GITHUB_ENV
 
       - uses: hashicorp/setup-terraform@v3
         with:
