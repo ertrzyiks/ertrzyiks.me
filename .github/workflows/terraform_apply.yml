@@ -33,6 +33,9 @@ jobs:
           echo "${{ secrets.DOKKU_DEPLOY_KEY }}" > ~/.ssh/dokku_deploy_key
           chmod 644 ~/.ssh/dokku_deploy_key
           echo "TF_VAR_dokku_ssh_cert=$HOME/.ssh/dokku_deploy_key" >> $GITHUB_ENV
+          # Verify key format
+          head -1 ~/.ssh/dokku_deploy_key
+          tail -1 ~/.ssh/dokku_deploy_key
 
       - uses: hashicorp/setup-terraform@v3
         with:
