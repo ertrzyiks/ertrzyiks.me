@@ -62,3 +62,18 @@ resource "dokku_app" "woodtime_api" {
     }
   }
 }
+
+resource "dokku_app" "yummy_release" {
+  app_name = "yummy-release"
+
+  config = {
+    APP_ENVIRONMENT = "production"
+    NODE_MODULES_CACHE = true
+    GITHUB_TOKEN = data.onepassword_item.yummy_release_github_token.password
+    HYGRAPH_SECRET = data.onepassword_item.yummy_release_hygraph_secret.password
+    SENTRY_DSN = data.onepassword_item.yummy_release_sentry_dsn.password
+    STATSIG_SECRET_KEY = data.onepassword_item.yummy_release_statsig_secret_key.password
+  }
+
+  domains = ["yummy-release.ertrzyiks.me"]
+}
