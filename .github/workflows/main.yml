@@ -2,7 +2,7 @@ name: Main
 
 on:
   push:
-    branches: [master]
+    branches: [master, configure-terraform-workflow]
 
 jobs:
   terraform_apply:
