@@ -4,6 +4,11 @@ terraform {
       source  = "aliksend/dokku"
       version = "~> 1.0"
     }
+
+    onepassword = {
+      source  = "1Password/onepassword"
+      version = "~> 1.4"
+    }
   }
 
   backend "remote"  {
@@ -13,6 +18,8 @@ terraform {
     }
   }
 }
+
+provider "onepassword" {}
 
 provider "dokku" {
   ssh_host = var.dokku_ssh_host
@@ -37,4 +44,21 @@ resource "dokku_app" "home" {
   app_name = "home"
 
   domains = ["ertrzyiks.me"]
+}
+
+# Woodtime API app
+resource "dokku_app" "woodtime_api" {
+  app_name = "woodtime-api"
+
+  config = {
+    CONFIG_SESSION_SECRET =  data.onepassword_item.woodtime_api_config_session_secret.password
+  }
+
+  domains  = ["woodtime-api.ertrzyiks.me"]
+
+  storage = {
+    woodtime-api = {
+      mount_path = "/app/apps/api/data"
+    }
+  }
 }

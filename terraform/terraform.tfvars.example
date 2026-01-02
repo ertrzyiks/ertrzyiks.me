@@ -7,6 +7,6 @@ dokku_ssh_user = "dokku"
 dokku_ssh_port = 22
 
 # For SSH certificate, you can use the file() function:
-# dokku_ssh_cert = file("~/.ssh/id_rsa")
+# dokku_ssh_cert = "file:~/.ssh/id_rsa"
 # Or directly paste your private key as a string (not recommended for production)
 dokku_ssh_cert = "your-ssh-private-key"
