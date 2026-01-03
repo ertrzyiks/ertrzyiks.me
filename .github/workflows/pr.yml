@@ -9,6 +9,8 @@ jobs:
   build_blog:
     name: Build Blog
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -45,6 +47,8 @@ jobs:
   build_home:
     name: Build Home
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
