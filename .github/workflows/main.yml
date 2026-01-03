@@ -5,17 +5,7 @@ on:
     branches: [master]
 
 jobs:
-  terraform_apply:
-    uses: ./.github/workflows/terraform_apply.yml
-    with:
-      ref: ${{ github.ref }}
-    secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
-      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-
   release_home:
-    needs: terraform_apply
     uses: ./.github/workflows/release_homepage.yml
     with:
       ref: ${{ github.ref }}
