@@ -2,12 +2,12 @@ terraform {
   required_providers {
     dokku = {
       source  = "aliksend/dokku"
-      version = "~> 1.0"
+      version = "1.0.24"
     }
 
     onepassword = {
       source  = "1Password/onepassword"
-      version = "~> 1.4"
+      version = "1.4.3"
     }
   }
 

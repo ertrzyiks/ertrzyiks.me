@@ -11,64 +11,64 @@ importers:
   apps/blog:
     dependencies:
       '@astrojs/check':
-        specifier: ^0.4.1
+        specifier: 0.4.1
         version: 0.4.1(typescript@5.4.2)
       '@astrojs/mdx':
-        specifier: ^2.0.3
+        specifier: 2.1.1
         version: 2.1.1(astro@4.4.15)
       '@astrojs/rss':
-        specifier: ^4.0.1
+        specifier: 4.0.5
         version: 4.0.5
       '@astrojs/sitemap':
-        specifier: ^3.0.4
+        specifier: 3.1.1
         version: 3.1.1
       astro:
         specifier: ^4.1.1
         version: 4.4.15(typescript@5.4.2)
       astro-remark-description:
-        specifier: ^1.1.1
+        specifier: 1.1.2
         version: 1.1.2
       typescript:
-        specifier: ^5.3.3
+        specifier: 5.4.2
         version: 5.4.2
 
   apps/home:
     dependencies:
       '@astrojs/check':
-        specifier: ^0.5.7
+        specifier: 0.5.7
         version: 0.5.7(typescript@5.4.2)
       '@tweenjs/tween.js':
-        specifier: ^17.2.0
+        specifier: 17.6.0
         version: 17.6.0
       '@types/dat.gui':
-        specifier: ^0.7.4
+        specifier: 0.7.12
         version: 0.7.12
       '@types/debounce':
-        specifier: ^1.2.0
+        specifier: 1.2.4
         version: 1.2.4
       '@types/tween.js':
-        specifier: ^16.9.0
+        specifier: 16.9.0
         version: 16.9.0
       astro:
         specifier: ^4.5.0
         version: 4.5.0(typescript@5.4.2)
       dat.gui:
-        specifier: ^0.7.6
+        specifier: 0.7.9
         version: 0.7.9
       debounce:
-        specifier: ^1.2.0
+        specifier: 1.2.1
         version: 1.2.1
       honeycomb-grid:
         specifier: 1.4.4
         version: 1.4.4
       pixi-viewport:
-        specifier: ^5.0.2
+        specifier: 5.0.2
         version: 5.0.2
       pixi.js:
-        specifier: ^7.4.0
+        specifier: 7.4.0
         version: 7.4.0
       typescript:
-        specifier: ^5.4.2
+        specifier: 5.4.2
         version: 5.4.2
     devDependencies:
       vitest:
@@ -91,7 +91,7 @@ packages:
     peerDependencies:
       typescript: ^5.0.0
     dependencies:
-      '@astrojs/language-server': 2.7.6(typescript@5.4.2)
+      '@astrojs/language-server': 2.7.7(typescript@5.4.2)
       chokidar: 3.6.0
       fast-glob: 3.3.2
       kleur: 4.1.5
@@ -129,38 +129,6 @@ packages:
 
   /@astrojs/internal-helpers@0.3.0:
     resolution: {integrity: sha512-tGmHvrhpzuz0JBHaJX8GywN9g4rldVNHtkoVDC3m/DdzBO70jGoVuc0uuNVglRYnsdwkbG0K02Iw3nOOR3/Y4g==}
-    dev: false
-
-  /@astrojs/language-server@2.7.6(typescript@5.4.2):
-    resolution: {integrity: sha512-NhMSmMAuKBMXnvpfn9eYPR7R6zOasAjRb+ta8L+rCHHuKzUc0lBgAF5M6rx01FJqlpGqeqao13eYt4287Ze49g==}
-    hasBin: true
-    peerDependencies:
-      prettier: ^3.0.0
-      prettier-plugin-astro: '>=0.11.0'
-    peerDependenciesMeta:
-      prettier:
-        optional: true
-      prettier-plugin-astro:
-        optional: true
-    dependencies:
-      '@astrojs/compiler': 2.7.0
-      '@jridgewell/sourcemap-codec': 1.4.15
-      '@volar/kit': 2.0.4(typescript@5.4.2)
-      '@volar/language-core': 2.0.4
-      '@volar/language-server': 2.0.4
-      '@volar/language-service': 2.0.4
-      '@volar/typescript': 2.0.4
-      fast-glob: 3.3.2
-      volar-service-css: 0.0.30(@volar/language-service@2.0.4)
-      volar-service-emmet: 0.0.30(@volar/language-service@2.0.4)
-      volar-service-html: 0.0.30(@volar/language-service@2.0.4)
-      volar-service-prettier: 0.0.30(@volar/language-service@2.0.4)
-      volar-service-typescript: 0.0.30(@volar/language-service@2.0.4)(@volar/typescript@2.0.4)
-      volar-service-typescript-twoslash-queries: 0.0.30(@volar/language-service@2.0.4)
-      vscode-html-languageservice: 5.1.2
-      vscode-uri: 3.0.8
-    transitivePeerDependencies:
-      - typescript
     dev: false
 
   /@astrojs/language-server@2.7.7(typescript@5.4.2):
@@ -4175,7 +4143,7 @@ packages:
     dependencies:
       '@types/hast': 3.0.4
       '@types/mdast': 4.0.3
-      mdast-util-to-hast: 13.0.2
+      mdast-util-to-hast: 13.1.0
       unified: 11.0.4
       vfile: 6.0.1
     dev: false
