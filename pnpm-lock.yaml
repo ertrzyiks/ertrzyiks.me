@@ -41,8 +41,8 @@ importers:
         specifier: 17.6.0
         version: 17.6.0
       '@types/dat.gui':
-        specifier: 0.7.12
-        version: 0.7.12
+        specifier: 0.7.13
+        version: 0.7.13
       '@types/debounce':
         specifier: 1.2.4
         version: 1.2.4
@@ -1796,8 +1796,8 @@ packages:
     resolution: {integrity: sha512-x2tZZYkSxXqWvTDgveSynfjq/T2HyiZHXb00j/+gy19yp70PHCizM48XFdjBCWH7eHBD0R5i/pw9yMBP/BH5uA==}
     dev: false
 
-  /@types/dat.gui@0.7.12:
-    resolution: {integrity: sha512-el5dYeQZu2r6YW6Ft4rGtjr/dLe/uzXESMoie5UM6/weVShB1V8IRpXtTKrczd4qe7044fTKZS2l8d6EBFOkoA==}
+  /@types/dat.gui@0.7.13:
+    resolution: {integrity: sha512-LmG4Pr0mbsB/1WVttf8xaHx45BvSBDGY5D9+0/9AZCbI4vvOguwBHZdKyJMxt5Yst8+icRSHKmr7ClV2u5ZtDA==}
     dev: false
 
   /@types/debounce@1.2.4:
