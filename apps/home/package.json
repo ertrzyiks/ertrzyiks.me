@@ -12,18 +12,18 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@astrojs/check": "^0.5.7",
-    "@tweenjs/tween.js": "^17.2.0",
-    "@types/dat.gui": "^0.7.4",
-    "@types/debounce": "^1.2.0",
-    "@types/tween.js": "^16.9.0",
+    "@astrojs/check": "0.5.7",
+    "@tweenjs/tween.js": "17.6.0",
+    "@types/dat.gui": "0.7.12",
+    "@types/debounce": "1.2.4",
+    "@types/tween.js": "16.9.0",
     "astro": "^4.5.0",
-    "dat.gui": "^0.7.6",
-    "debounce": "^1.2.0",
+    "dat.gui": "0.7.9",
+    "debounce": "1.2.1",
     "honeycomb-grid": "1.4.4",
-    "pixi-viewport": "^5.0.2",
-    "pixi.js": "^7.4.0",
-    "typescript": "^5.4.2"
+    "pixi-viewport": "5.0.2",
+    "pixi.js": "7.4.0",
+    "typescript": "5.4.2"
   },
   "devDependencies": {
     "vitest": "^1.4.0"
