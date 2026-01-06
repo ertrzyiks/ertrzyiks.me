@@ -62,8 +62,8 @@ importers:
         specifier: 1.4.4
         version: 1.4.4
       pixi-viewport:
-        specifier: 5.0.3
-        version: 5.0.3
+        specifier: 5.1.0
+        version: 5.1.0(@pixi/display@6.5.10)(@pixi/interaction@6.5.10)(@pixi/math@6.5.10)(@pixi/ticker@6.5.10)
       pixi.js:
         specifier: 7.4.3
         version: 7.4.3
@@ -1076,7 +1076,7 @@ packages:
     dependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/events': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/events': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
     dev: false
 
   /@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3):
@@ -1118,6 +1118,10 @@ packages:
       '@pixi/core': 7.4.3
     dev: false
 
+  /@pixi/constants@6.5.10:
+    resolution: {integrity: sha512-PUF2Y9YISRu5eVrVVHhHCWpc/KmxQTg3UH8rIUs8UI9dCK41/wsPd3pEahzf7H47v7x1HCohVZcFO3XQc1bUDw==}
+    dev: false
+
   /@pixi/constants@7.4.3:
     resolution: {integrity: sha512-QGmwJUNQy/vVEHzL6VGQvnwawLZ1wceZMI8HwJAT4/I2uAzbBeFDdmCS8WsTpSWLZjF/DszDc1D8BFp4pVJ5UQ==}
     dev: false
@@ -1135,6 +1139,20 @@ packages:
       '@pixi/utils': 7.4.3
     dev: false
 
+  /@pixi/display@6.5.10(@pixi/constants@6.5.10)(@pixi/math@6.5.10)(@pixi/settings@6.5.10)(@pixi/utils@6.5.10):
+    resolution: {integrity: sha512-NxFdDDxlbH5fQkzGHraLGoTMucW9pVgXqQm13TSmkA3NWIi/SItHL4qT2SI8nmclT9Vid1VDEBCJFAbdeuQw1Q==}
+    peerDependencies:
+      '@pixi/constants': 6.5.10
+      '@pixi/math': 6.5.10
+      '@pixi/settings': 6.5.10
+      '@pixi/utils': 6.5.10
+    dependencies:
+      '@pixi/constants': 6.5.10
+      '@pixi/math': 6.5.10
+      '@pixi/settings': 6.5.10(@pixi/constants@6.5.10)
+      '@pixi/utils': 6.5.10(@pixi/constants@6.5.10)(@pixi/settings@6.5.10)
+    dev: false
+
   /@pixi/display@7.4.3(@pixi/core@7.4.3):
     resolution: {integrity: sha512-b5m2dAaoNAVdxz1oDaxl3XZ059NEOcNtGkxTOZ4EYCw/jcp9sZXkgSROHRzsGn4k+NugH7+9MP4Id2Z0kkdUhw==}
     peerDependencies:
@@ -1143,14 +1161,18 @@ packages:
       '@pixi/core': 7.4.3
     dev: false
 
-  /@pixi/events@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3):
+  /@pixi/events@7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10):
     resolution: {integrity: sha512-o3j/5Dxq6WDVS6eHfURB/cf/MP+NcsF/eC5PnbSHjXxJmDE7PoTVwLvxexm5uuvNRpFh/6/Fn0V8Vl4gV8sc8w==}
     peerDependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3
     dependencies:
       '@pixi/core': 7.4.3
-      '@pixi/display': 7.4.3(@pixi/core@7.4.3)
+      '@pixi/display': 6.5.10(@pixi/constants@6.5.10)(@pixi/math@6.5.10)(@pixi/settings@6.5.10)(@pixi/utils@6.5.10)
+    dev: false
+
+  /@pixi/extensions@6.5.10:
+    resolution: {integrity: sha512-EIUGza+E+sCy3dupuIjvRK/WyVyfSzHb5XsxRaxNrPwvG1iIUIqNqZ3owLYCo4h17fJWrj/yXVufNNtUKQccWQ==}
     dev: false
 
   /@pixi/extensions@7.4.3:
@@ -1213,7 +1235,7 @@ packages:
       '@pixi/core': 7.4.3
     dev: false
 
-  /@pixi/graphics@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3):
+  /@pixi/graphics@7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)(@pixi/sprite@7.4.3):
     resolution: {integrity: sha512-wWLivD8/URb8A7X4TqCZGG39C91IE+aOuWY/z9NCz5Z6WvA/VWnsc5fLTlO+ggjGHgKF0cSucCXZfUe1wm0AOQ==}
     peerDependencies:
       '@pixi/core': 7.4.3
@@ -1221,8 +1243,28 @@ packages:
       '@pixi/sprite': 7.4.3
     dependencies:
       '@pixi/core': 7.4.3
-      '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/display': 6.5.10(@pixi/constants@6.5.10)(@pixi/math@6.5.10)(@pixi/settings@6.5.10)(@pixi/utils@6.5.10)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
+    dev: false
+
+  /@pixi/interaction@6.5.10(@pixi/core@7.4.3)(@pixi/display@6.5.10)(@pixi/math@6.5.10)(@pixi/ticker@6.5.10)(@pixi/utils@6.5.10):
+    resolution: {integrity: sha512-v809pJmXA2B9dV/vdrDMUqJT+fBB/ARZli2YRmI2dPbEbkaYr8FNmxCAJnwT8o+ymTx044Ie820hn9tVrtMtfA==}
+    peerDependencies:
+      '@pixi/core': 6.5.10
+      '@pixi/display': 6.5.10
+      '@pixi/math': 6.5.10
+      '@pixi/ticker': 6.5.10
+      '@pixi/utils': 6.5.10
+    dependencies:
+      '@pixi/core': 7.4.3
+      '@pixi/display': 6.5.10(@pixi/constants@6.5.10)(@pixi/math@6.5.10)(@pixi/settings@6.5.10)(@pixi/utils@6.5.10)
+      '@pixi/math': 6.5.10
+      '@pixi/ticker': 6.5.10(@pixi/extensions@6.5.10)(@pixi/settings@6.5.10)
+      '@pixi/utils': 6.5.10(@pixi/constants@6.5.10)(@pixi/settings@6.5.10)
+    dev: false
+
+  /@pixi/math@6.5.10:
+    resolution: {integrity: sha512-fxeu7ykVbMGxGV2S3qRTupHToeo1hdWBm8ihyURn3BMqJZe2SkZEECPd5RyvIuuNUtjRnmhkZRnF3Jsz2S+L0g==}
     dev: false
 
   /@pixi/math@7.4.3:
@@ -1236,17 +1278,17 @@ packages:
       '@pixi/mesh': 7.4.3
     dependencies:
       '@pixi/core': 7.4.3
-      '@pixi/mesh': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/mesh': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
     dev: false
 
-  /@pixi/mesh@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3):
+  /@pixi/mesh@7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10):
     resolution: {integrity: sha512-CikqFPtKvU3Zj986/MSoC8X39CWv5CEpiEW/tYp47p4tgQNDSkNWYnDiNYgb+4VX6pNsBrgX4DALLdTR17SlSA==}
     peerDependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3
     dependencies:
       '@pixi/core': 7.4.3
-      '@pixi/display': 7.4.3(@pixi/core@7.4.3)
+      '@pixi/display': 6.5.10(@pixi/constants@6.5.10)(@pixi/math@6.5.10)(@pixi/settings@6.5.10)(@pixi/utils@6.5.10)
     dev: false
 
   /@pixi/mixin-cache-as-bitmap@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3):
@@ -1258,7 +1300,7 @@ packages:
     dependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
     dev: false
 
   /@pixi/mixin-get-child-by-name@7.4.3(@pixi/display@7.4.3):
@@ -1288,7 +1330,7 @@ packages:
     dependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
     dev: false
 
   /@pixi/prepare@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/graphics@7.4.3)(@pixi/text@7.4.3):
@@ -1301,12 +1343,20 @@ packages:
     dependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/graphics': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3)
+      '@pixi/graphics': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)(@pixi/sprite@7.4.3)
       '@pixi/text': 7.4.3(@pixi/core@7.4.3)(@pixi/sprite@7.4.3)
     dev: false
 
   /@pixi/runner@7.4.3:
     resolution: {integrity: sha512-TJyfp7y23u5vvRAyYhVSa7ytq0PdKSvPLXu4G3meoFh1oxTLHH6g/RIzLuxUAThPG2z7ftthuW3qWq6dRV+dhw==}
+    dev: false
+
+  /@pixi/settings@6.5.10(@pixi/constants@6.5.10):
+    resolution: {integrity: sha512-ypAS5L7pQ2Qb88yQK72bXtc7sD8OrtLWNXdZ/gnw5kwSWCFaOSoqhKqJCXrR5DQtN98+RQefwbEAmMvqobhFyw==}
+    peerDependencies:
+      '@pixi/constants': 6.5.10
+    dependencies:
+      '@pixi/constants': 6.5.10
     dev: false
 
   /@pixi/settings@7.4.3:
@@ -1324,7 +1374,7 @@ packages:
       '@pixi/sprite': 7.4.3
     dependencies:
       '@pixi/core': 7.4.3
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
     dev: false
 
   /@pixi/sprite-tiling@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3):
@@ -1336,17 +1386,17 @@ packages:
     dependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
     dev: false
 
-  /@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3):
+  /@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10):
     resolution: {integrity: sha512-iNBrpOFF9nXDT6m2jcyYy6l/sRzklLDDck1eFHprHZwvNquY2nzRfh+RGBCecxhBcijiLJ3fsZN33fP0LDXkvw==}
     peerDependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3
     dependencies:
       '@pixi/core': 7.4.3
-      '@pixi/display': 7.4.3(@pixi/core@7.4.3)
+      '@pixi/display': 6.5.10(@pixi/constants@6.5.10)(@pixi/math@6.5.10)(@pixi/settings@6.5.10)(@pixi/utils@6.5.10)
     dev: false
 
   /@pixi/spritesheet@7.4.3(@pixi/assets@7.4.3)(@pixi/core@7.4.3):
@@ -1371,7 +1421,7 @@ packages:
       '@pixi/assets': 7.4.3(@pixi/core@7.4.3)
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/mesh': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/mesh': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
       '@pixi/text': 7.4.3(@pixi/core@7.4.3)(@pixi/sprite@7.4.3)
     dev: false
 
@@ -1385,7 +1435,7 @@ packages:
     dependencies:
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
       '@pixi/text': 7.4.3(@pixi/core@7.4.3)(@pixi/sprite@7.4.3)
     dev: false
 
@@ -1396,7 +1446,17 @@ packages:
       '@pixi/sprite': 7.4.3
     dependencies:
       '@pixi/core': 7.4.3
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
+    dev: false
+
+  /@pixi/ticker@6.5.10(@pixi/extensions@6.5.10)(@pixi/settings@6.5.10):
+    resolution: {integrity: sha512-UqX1XYtzqFSirmTOy8QAK4Ccg4KkIZztrBdRPKwFSOEiKAJoGDCSBmyQBo/9aYQKGObbNnrJ7Hxv3/ucg3/1GA==}
+    peerDependencies:
+      '@pixi/extensions': 6.5.10
+      '@pixi/settings': 6.5.10
+    dependencies:
+      '@pixi/extensions': 6.5.10
+      '@pixi/settings': 6.5.10(@pixi/constants@6.5.10)
     dev: false
 
   /@pixi/ticker@7.4.3:
@@ -1405,6 +1465,20 @@ packages:
       '@pixi/extensions': 7.4.3
       '@pixi/settings': 7.4.3
       '@pixi/utils': 7.4.3
+    dev: false
+
+  /@pixi/utils@6.5.10(@pixi/constants@6.5.10)(@pixi/settings@6.5.10):
+    resolution: {integrity: sha512-4f4qDMmAz9IoSAe08G2LAxUcEtG9jSdudfsMQT2MG+OpfToirboE6cNoO0KnLCvLzDVE/mfisiQ9uJbVA9Ssdw==}
+    peerDependencies:
+      '@pixi/constants': 6.5.10
+      '@pixi/settings': 6.5.10
+    dependencies:
+      '@pixi/constants': 6.5.10
+      '@pixi/settings': 6.5.10(@pixi/constants@6.5.10)
+      '@types/earcut': 2.1.4
+      earcut: 2.2.4
+      eventemitter3: 3.1.2
+      url: 0.11.3
     dev: false
 
   /@pixi/utils@7.4.3:
@@ -2979,6 +3053,10 @@ packages:
     dependencies:
       '@types/estree': 1.0.8
 
+  /eventemitter3@3.1.2:
+    resolution: {integrity: sha512-tvtQIeLVHjDkJYnzf2dgVMxfuSGJeM/7UCG17TT4EumTfNtF+0nebF/4zWOIkCreAbtNqhGEboB6BWrwqNaw4Q==}
+    dev: false
+
   /eventemitter3@4.0.7:
     resolution: {integrity: sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==}
     dev: false
@@ -4552,8 +4630,18 @@ packages:
     engines: {node: '>=6'}
     dev: false
 
-  /pixi-viewport@5.0.3:
-    resolution: {integrity: sha512-DGG7cg2vUltAiL2fanzYPLR+L6qBeoskPfbUXxN6CYKW+fkni5cF9J1t2WBTmyBnC3kVq3ATFE2KDi7zy2FY8A==}
+  /pixi-viewport@5.1.0(@pixi/display@6.5.10)(@pixi/interaction@6.5.10)(@pixi/math@6.5.10)(@pixi/ticker@6.5.10):
+    resolution: {integrity: sha512-CNvw0H+Z+OfVCIAUkQ5TmwLEe+7W1dcIS6Wjt+AwQXWEjZPL3QpH2xFE/GAaqZ0qRkDxDV07dbRetZULFOvoew==}
+    peerDependencies:
+      '@pixi/display': ^6.5.8
+      '@pixi/interaction': ^6.5.8
+      '@pixi/math': ^6.5.8
+      '@pixi/ticker': ^6.5.8
+    dependencies:
+      '@pixi/display': 6.5.10(@pixi/constants@6.5.10)(@pixi/math@6.5.10)(@pixi/settings@6.5.10)(@pixi/utils@6.5.10)
+      '@pixi/interaction': 6.5.10(@pixi/core@7.4.3)(@pixi/display@6.5.10)(@pixi/math@6.5.10)(@pixi/ticker@6.5.10)(@pixi/utils@6.5.10)
+      '@pixi/math': 6.5.10
+      '@pixi/ticker': 6.5.10(@pixi/extensions@6.5.10)(@pixi/settings@6.5.10)
     dev: false
 
   /pixi.js@7.4.3:
@@ -4565,7 +4653,7 @@ packages:
       '@pixi/compressed-textures': 7.4.3(@pixi/assets@7.4.3)(@pixi/core@7.4.3)
       '@pixi/core': 7.4.3
       '@pixi/display': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/events': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/events': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
       '@pixi/extensions': 7.4.3
       '@pixi/extract': 7.4.3(@pixi/core@7.4.3)
       '@pixi/filter-alpha': 7.4.3(@pixi/core@7.4.3)
@@ -4574,15 +4662,15 @@ packages:
       '@pixi/filter-displacement': 7.4.3(@pixi/core@7.4.3)
       '@pixi/filter-fxaa': 7.4.3(@pixi/core@7.4.3)
       '@pixi/filter-noise': 7.4.3(@pixi/core@7.4.3)
-      '@pixi/graphics': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3)
-      '@pixi/mesh': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/graphics': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)(@pixi/sprite@7.4.3)
+      '@pixi/mesh': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
       '@pixi/mesh-extras': 7.4.3(@pixi/core@7.4.3)(@pixi/mesh@7.4.3)
       '@pixi/mixin-cache-as-bitmap': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3)
       '@pixi/mixin-get-child-by-name': 7.4.3(@pixi/display@7.4.3)
       '@pixi/mixin-get-global-position': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
       '@pixi/particle-container': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3)
       '@pixi/prepare': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/graphics@7.4.3)(@pixi/text@7.4.3)
-      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)
+      '@pixi/sprite': 7.4.3(@pixi/core@7.4.3)(@pixi/display@6.5.10)
       '@pixi/sprite-animated': 7.4.3(@pixi/core@7.4.3)(@pixi/sprite@7.4.3)
       '@pixi/sprite-tiling': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3)(@pixi/sprite@7.4.3)
       '@pixi/spritesheet': 7.4.3(@pixi/assets@7.4.3)(@pixi/core@7.4.3)
