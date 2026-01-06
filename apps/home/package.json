@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@astrojs/check": "0.9.6",
-    "@tweenjs/tween.js": "17.6.0",
+    "@tweenjs/tween.js": "25.0.0",
     "@types/dat.gui": "0.7.13",
     "@types/debounce": "1.2.4",
     "@types/tween.js": "16.9.0",
