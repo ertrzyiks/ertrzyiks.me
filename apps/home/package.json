@@ -16,7 +16,7 @@
     "@tweenjs/tween.js": "17.6.0",
     "@types/dat.gui": "0.7.13",
     "@types/debounce": "1.2.4",
-    "@types/tween.js": "16.9.0",
+    "@types/tween.js": "18.6.1",
     "astro": "^4.5.0",
     "dat.gui": "0.7.9",
     "debounce": "1.2.1",
