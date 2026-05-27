@@ -1,4 +1,4 @@
-import { Application, DisplayObject, Point } from "pixi.js";
+import { Application, type ContainerChild, Point } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
 import { create as createIntro } from "./intro";
 import { GameViewport } from "./shared/viewport";
@@ -69,7 +69,7 @@ function close() {
   while (app.stage.children[0]) {
     const child = app.stage.children[0] as GameViewport;
     app.stage.removeChild(child);
-    child.destroy({ children: true, texture: true, baseTexture: true });
+    child.destroy({ children: true, texture: true });
   }
 
   reinitialize();
@@ -81,7 +81,7 @@ function reinitialize() {
   );
 }
 
-function fadeOut(viewport: DisplayObject) {
+function fadeOut(viewport: ContainerChild) {
   let state = { alpha: 1 };
   return new Promise<void>((resolve) => {
     const tween = new TWEEN.Tween(state)
