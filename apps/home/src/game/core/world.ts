@@ -9,7 +9,7 @@ import { gameReducer } from "./reducers";
 export type WorldUpdateCallback = (state: State, action: GameEvent) => void;
 
 export interface State {
-  players: Array<{ id: string; name: string }>;
+  players: Array<Player>;
   currentPlayerIndex: number | null;
   currentPlayer: Player | null;
   worldWidth: number;

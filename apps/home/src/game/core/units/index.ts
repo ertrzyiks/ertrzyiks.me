@@ -1,5 +1,6 @@
 export * from './damaging'
 export * from './damageable'
 export * from './movable'
+export * from './pack'
 export * from './sightful'
 export * from './unit'

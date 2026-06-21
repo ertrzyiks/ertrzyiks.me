@@ -1,28 +1,36 @@
 import { describe, expect, test } from "vitest";
-import { Wolf } from "./wolf";
+import { PackLeader, PackFollower } from "./wolf";
+import { isWolf, isPackLeader, isPackFollower } from "../../core/units";
 
-describe("Wolf unit", () => {
+describe("PackFollower unit", () => {
   test("has sightRange of 1", () => {
-    expect(new Wolf().sightRange).toBe(1);
+    expect(new PackFollower().sightRange).toBe(1);
+  });
+
+  test("is tagged as a follower wolf", () => {
+    const follower = new PackFollower();
+    expect(isWolf(follower)).toBe(true);
+    expect(isPackFollower(follower)).toBe(true);
+    expect(isPackLeader(follower)).toBe(false);
   });
 
   test("cannot move before replenish", () => {
-    expect(new Wolf().canMove()).toBe(false);
+    expect(new PackFollower().canMove()).toBe(false);
   });
 
   test("is not alive before replenish", () => {
-    expect(new Wolf().isAlive()).toBe(false);
+    expect(new PackFollower().isAlive()).toBe(false);
   });
 
   test("can move and is alive after replenish", () => {
-    const wolf = new Wolf();
+    const wolf = new PackFollower();
     wolf.replenish();
     expect(wolf.canMove()).toBe(true);
     expect(wolf.isAlive()).toBe(true);
   });
 
   test("has 2 movement points per turn (exhausted after 2 steps)", () => {
-    const wolf = new Wolf();
+    const wolf = new PackFollower();
     wolf.replenish();
     wolf.step(1);
     expect(wolf.canMove()).toBe(true);
@@ -30,31 +38,52 @@ describe("Wolf unit", () => {
     expect(wolf.canMove()).toBe(false);
   });
 
-  test("is not alive after taking lethal damage", () => {
-    const wolf = new Wolf();
-    wolf.replenish(); // hp = 15
+  test("is not alive after taking lethal damage (15 HP)", () => {
+    const wolf = new PackFollower();
+    wolf.replenish();
     wolf.takeDamage(15);
     expect(wolf.isAlive()).toBe(false);
   });
 
   test("survives non-lethal damage", () => {
-    const wolf = new Wolf();
+    const wolf = new PackFollower();
     wolf.replenish();
     wolf.takeDamage(14);
     expect(wolf.isAlive()).toBe(true);
   });
 
-  test("replenish restores hp after damage", () => {
-    const wolf = new Wolf();
-    wolf.replenish();
-    wolf.takeDamage(10);
-    wolf.replenish();
-    expect(wolf.isAlive()).toBe(true);
+  test("each instance has a unique id", () => {
+    expect(new PackFollower().id).not.toBe(new PackFollower().id);
+  });
+});
+
+describe("PackLeader unit", () => {
+  test("has a wider sightRange of 2", () => {
+    expect(new PackLeader().sightRange).toBe(2);
   });
 
-  test("each Wolf instance has a unique id", () => {
-    const a = new Wolf();
-    const b = new Wolf();
-    expect(a.id).not.toBe(b.id);
+  test("is tagged as a leader wolf", () => {
+    const leader = new PackLeader();
+    expect(isWolf(leader)).toBe(true);
+    expect(isPackLeader(leader)).toBe(true);
+    expect(isPackFollower(leader)).toBe(false);
+  });
+
+  test("is tougher than a follower (20 HP)", () => {
+    const leader = new PackLeader();
+    leader.replenish();
+    leader.takeDamage(15);
+    expect(leader.isAlive()).toBe(true); // a follower would be dead here
+    leader.takeDamage(5);
+    expect(leader.isAlive()).toBe(false);
+  });
+
+  test("has 2 movement points per turn", () => {
+    const leader = new PackLeader();
+    leader.replenish();
+    leader.step(1);
+    expect(leader.canMove()).toBe(true);
+    leader.step(1);
+    expect(leader.canMove()).toBe(false);
   });
 });

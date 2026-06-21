@@ -12,24 +12,34 @@ Prioritized list of items yet to be implemented or fixed. Check specs/* for beha
 - [x] **Replenishment on turn start** — reducer calls `replenish()` on all units belonging to the current player at StartTurn.
 - [x] **Fog of war** — `Sightful` mixin, `revealedTiles` per player in State, hex fog Graphics layer in renderer. Tests passing.
 - [x] **Wolf unit** — `Wolf = Sightful(Movable(Damageable(Unit, 15), 2), 1)`. Tests passing.
-- [x] **Stage 1 scenario (partial)** — Scenario spawns Whirley + 3 wandering Wolves; board1.json has `spawn_a`, `wolf_1/2/3`. Human turn auto-passes (no input yet).
-- [x] **Unit tests** — 79 tests across grid helpers, Sightful, Movable, reducer, World, PlayerStore, Explorer, Wolf.
+- [x] **Stage 1 scenario (partial)** — Scenario spawns Whirley + a wolf pack (1 PackLeader at `wolf_1`, 2 PackFollowers at `wolf_2/3`). Human turn auto-passes (no input yet).
+- [x] **Wolf Pack Leader / Follower units** — `PackLeader = Leader(Sightful(Movable(Damageable(Unit,20),2),2))`, `PackFollower = Follower(Sightful(Movable(Damageable(Unit,15),2),1))` in `main/units/wolf.ts`. Core role mixins `Leader`/`Follower` + `isWolf`/`isPackLeader`/`isPackFollower` guards in `core/units/pack.ts`. (Old generic `Wolf` removed — single source of truth.)
+- [x] **Movement AI helpers** — `core/player/movement.ts`: `createMoveContext` (bounds from actual tiles, occupancy from units), `validDirections`, `directionToward`, `directionAway`, `randomValidDirection` (injectable rng, no-backtrack). Reusable by all enemy behaviors.
+- [x] **Pack movement AI + dissolution** — `core/player/pack_behavior.ts` `PackBehavior`: leader wanders (random valid dir, avoids backtracking across turns via `PackMemory`), followers step toward the living leader (stay if adjacent), and when no living leader is present the pack dissolves to wandering. Leader-first action order. Wired into `main/scenario.ts`. **Attack-on-adjacency is intentionally NOT emitted** — it depends on the combat system (TakeDamage), a later increment; see Stage 2 list.
+- [x] **Fix `State.players` type** — was `Array<{id;name}>`, causing pre-existing `tsc`/`astro check` type errors in `player_store.test.ts` and `reducers/index.test.ts` (currentPlayer is `Player`, needs `color`). Now `Array<Player>`. Build + typecheck clean.
+- [x] **Unit tests** — 106 tests. Added: `core/units/pack.test.ts`, `core/player/movement.test.ts`, `core/player/pack_behavior.test.ts`, expanded `main/units/wolf.test.ts` (PackLeader + PackFollower).
 
 ---
+
+## Architectural notes for future work (READ BEFORE seeker/flee AI)
+
+- **Player-store proxy filters units to the current player.** `createPlayerStore` (`proxyState`) returns only the owning player's units (asserted by `player_store.test.ts`). This is fine for the wolf pack (followers track the leader — same player) but **Seeker (bandit) and Flee (Wanderer) behaviors need ENEMY positions**, which the proxy hides. Before implementing those, expose all units to behaviors — e.g. add an `allUnits` field on the proxied state (keep `units` filtered for backward compat) or pass the full `World` to the behavior. Do NOT add an adapter layer; change the source of truth.
+- **Occupancy vs. unseen enemies.** `PackBehavior` only sees wolf units, so a wolf could legally step onto the Hero's tile (Hero is invisible through the proxy). True occupied-tile enforcement belongs in the reducer (reject `Move` onto an occupied hex), evaluated against ALL units — see the "Occupied-tile enforcement" item. Fixing it there fixes it for every mover at once.
+- **One step per unit per turn.** Both `Explorer` and `PackBehavior` dispatch a single Move per unit even when the unit has >1 movement point. Matches spec wording ("moves one step") but means multi-point budgets are underused. Revisit if a behavior needs to close distance faster.
 
 ## Stage 1 — The Wreck (make it playable)
 
 Priority: highest — entry point for everything else.
 
+- [x] **Wolf Pack Leader unit** — done (see Completed). Stats `Damageable 20 / move 2 / sight 2`.
+- [x] **Wolf Pack Follower unit** — done; `Wolf` renamed to `PackFollower`.
+- [x] **Pack Leader AI** — done (wander, no-backtracking). Attack-on-adjacency deferred to combat system.
+- [x] **Pack Follower AI** — done (step toward leader, stay if adjacent, `directionToward` handles blocked shortest path). Attack deferred.
+- [x] **Pack dissolution on leader death** — done; `PackBehavior` treats a missing/non-alive leader as dissolved → followers wander.
 - [ ] **Add `goal` section to board1.json** — add `sectionName: "village"` to the tile at the far right grass edge. Stage 1 win requires reaching this tile.
-- [ ] **Wolf Pack Leader unit** — `PackLeader = Sightful(Movable(Damageable(Unit, 20), 2), 2)`. Stronger than a follower, initiates pack.
-- [ ] **Wolf Pack Follower unit** — rename/refactor current `Wolf` to `PackFollower`. Follows Pack Leader rather than wandering.
-- [ ] **Pack Leader AI** — `PackLeaderBehavior`: wanders randomly (no backtracking), attacks adjacent non-wolf units. Does NOT target player. See `specs/06-enemy-ai.md`.
-- [ ] **Pack Follower AI** — `PackFollowerBehavior`: moves toward the Pack Leader's current position each turn using shortest-path logic; stays if already adjacent; attacks adjacent non-wolf units. See `specs/06-enemy-ai.md`.
-- [ ] **Pack dissolution on leader death** — when Pack Leader unit is removed from state, all associated Pack Followers switch to wanderer movement. See `specs/06-enemy-ai.md`.
 - [ ] **Wanderer NPC unit** — non-combat unit, cannot be attacked. `Wanderer = Sightful(Movable(Unit, 3), 2)`. No Damageable mixin.
-- [ ] **Flee AI behavior** — `FleeBehavior`: each turn moves in direction maximizing distance from nearest player unit; stays if no move increases distance. See `specs/06-enemy-ai.md`.
-- [ ] **Update Stage 1 scenario** — spawn: Whirley at `spawn_a`, 1 PackLeader at `wolf_leader`, 2 PackFollowers at `wolf_1/wolf_2`, Wanderer at `wanderer_spawn`. Board sections need updating.
+- [ ] **Flee AI behavior** — `FleeBehavior` using `directionAway` (already implemented in `movement.ts`): each turn moves to maximize distance from nearest player unit; stays if no move increases distance. **BLOCKED on the proxy exposing enemy units** — see Architectural notes above. See `specs/06-enemy-ai.md`.
+- [ ] **Finish Stage 1 scenario** — add Wanderer spawn (needs `wanderer_spawn` section) and a dedicated neutral player for it. Pack already wired. Board section renaming (`wolf_leader`) optional — current `wolf_1/2/3` work fine.
 - [ ] **Win condition check after Move** — after every Move, check if moved unit's tile sectionName matches stage's goal section; emit `GameEvent.GameEnd { outcome: "win" }`. See `specs/05-win-lose-conditions.md`.
 - [ ] **Lose condition check after damage** — after TakeDamage leaves player's unit at ≤ 0 HP, emit `GameEvent.GameEnd { outcome: "lose" }`. See `specs/05-win-lose-conditions.md`.
 - [ ] **`GameEvent.GameEnd` with outcome field** — extend `GameEndEvent` to carry `outcome: "win" | "lose"`.
