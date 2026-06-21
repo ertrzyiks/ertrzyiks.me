@@ -1,7 +1,7 @@
 import type { GameEvent } from "../game_event";
 import { GameEventType } from "../game_event";
 import type { State } from "../world";
-import { isMovable, isSightful } from "../units";
+import { isMovable, isSightful, isDamageable, isDamaging } from "../units";
 import type { CubeCoordinates } from "honeycomb-grid";
 import { hexDistance, cubeKey } from "../grid";
 import type { Player } from "../player";
@@ -73,6 +73,26 @@ export function gameReducer(state: State, action: GameEvent) {
           if (u.unit !== action.unit) return u;
           return { ...u, position: action.position };
         }),
+      };
+    }
+
+    case GameEventType.TakeDamage: {
+      // Apply combat: the attacker spends an attack charge, the target loses HP,
+      // and a target reduced to <= 0 HP is removed from the board immediately.
+      // Only the resolved target is checked for death — other units (e.g. ones
+      // spawned but not yet replenished, which read as 0 HP) are left untouched.
+      // See specs/04-combat-system.md.
+      if (isDamaging(action.inflictor)) action.inflictor.useAttack();
+      if (isDamageable(action.target)) action.target.takeDamage(action.damage);
+
+      const targetDead =
+        isDamageable(action.target) && !action.target.isAlive();
+
+      return {
+        ...state,
+        units: targetDead
+          ? state.units.filter((u) => u.unit !== action.target)
+          : state.units,
       };
     }
 

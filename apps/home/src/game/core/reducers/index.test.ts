@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { gameReducer } from "./index";
 import { GameEventType } from "../game_event";
 import { PlayerColor } from "../player/player";
-import { Unit, Movable, Sightful } from "../units";
+import { Unit, Movable, Sightful, Damageable, Damaging } from "../units";
 import { Terrain } from "../board";
 import { createGrid } from "../grid";
 import { cubeKey } from "../grid/helpers";
@@ -235,6 +235,107 @@ describe("Move", () => {
     state = gameReducer(state, { type: GameEventType.Move, unit, position: tile11.cube() });
 
     expect(state.revealedTiles).toEqual({});
+  });
+});
+
+describe("TakeDamage", () => {
+  const Attacker = Damaging(Unit, 10);
+  const Target = Damageable(Unit, 25);
+
+  test("reduces the target's HP and keeps a survivor on the board", () => {
+    const attacker = new Attacker();
+    attacker.replenish();
+    const target = new Target();
+    target.replenish(); // 25 HP
+
+    let state = makeState({
+      units: [
+        { unit: attacker, position: { q: 0, r: 0, s: 0 }, owner: human },
+        { unit: target, position: { q: 1, r: -1, s: 0 }, owner: wolf },
+      ],
+    });
+    state = gameReducer(state, {
+      type: GameEventType.TakeDamage,
+      inflictor: attacker,
+      target,
+      damage: 10,
+    });
+
+    expect(state.units).toHaveLength(2);
+    expect(target.isAlive()).toBe(true); // 25 - 10 = 15
+  });
+
+  test("removes a target reduced to <= 0 HP from the board", () => {
+    const attacker = new Attacker();
+    attacker.replenish();
+    const target = new (Damageable(Unit, 8))();
+    target.replenish(); // 8 HP, killed by 10 damage
+
+    let state = makeState({
+      units: [
+        { unit: attacker, position: { q: 0, r: 0, s: 0 }, owner: human },
+        { unit: target, position: { q: 1, r: -1, s: 0 }, owner: wolf },
+      ],
+    });
+    state = gameReducer(state, {
+      type: GameEventType.TakeDamage,
+      inflictor: attacker,
+      target,
+      damage: 10,
+    });
+
+    expect(state.units).toHaveLength(1);
+    expect(state.units[0].unit).toBe(attacker);
+  });
+
+  test("consumes the attacker's attack charge", () => {
+    const attacker = new Attacker();
+    attacker.replenish();
+    const target = new Target();
+    target.replenish();
+
+    expect(attacker.canAttack()).toBe(true);
+    const state = makeState({
+      units: [
+        { unit: attacker, position: { q: 0, r: 0, s: 0 }, owner: human },
+        { unit: target, position: { q: 1, r: -1, s: 0 }, owner: wolf },
+      ],
+    });
+    gameReducer(state, {
+      type: GameEventType.TakeDamage,
+      inflictor: attacker,
+      target,
+      damage: 10,
+    });
+    expect(attacker.canAttack()).toBe(false);
+  });
+
+  test("does not remove other units that merely read as 0 HP (unreplenished)", () => {
+    const attacker = new Attacker();
+    attacker.replenish();
+    const target = new Target();
+    target.replenish();
+    // A bystander spawned but not yet replenished reads as 0 HP / not alive.
+    const bystander = new Target();
+    expect(bystander.isAlive()).toBe(false);
+
+    let state = makeState({
+      units: [
+        { unit: attacker, position: { q: 0, r: 0, s: 0 }, owner: human },
+        { unit: target, position: { q: 1, r: -1, s: 0 }, owner: wolf },
+        { unit: bystander, position: { q: 2, r: -2, s: 0 }, owner: wolf },
+      ],
+    });
+    state = gameReducer(state, {
+      type: GameEventType.TakeDamage,
+      inflictor: attacker,
+      target,
+      damage: 10,
+    });
+
+    // target survived (25-10) and bystander is untouched despite reading 0 HP.
+    expect(state.units.some((u) => u.unit === bystander)).toBe(true);
+    expect(state.units).toHaveLength(3);
   });
 });
 

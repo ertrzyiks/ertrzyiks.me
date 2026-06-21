@@ -5,7 +5,8 @@ import { gameReducer } from "./reducers";
 import { GameEventType } from "./game_event";
 import { PlayerActionType } from "./player_action";
 import { PlayerColor } from "./player/player";
-import { Unit, Movable } from "./units";
+import { Unit, Movable, Damageable, Damaging } from "./units";
+import { positionAt } from "./grid";
 import type { State } from "./world";
 
 const human = { id: "human", name: "Human", color: PlayerColor.BLUE };
@@ -97,5 +98,94 @@ describe("createPlayerStore — proxyAction translation", () => {
     // Position should have changed from origin
     const unitPos = store.getState().units.find((u) => u.unit === unit)!.position;
     expect(unitPos).not.toEqual(startPos);
+  });
+});
+
+describe("createPlayerStore — proxyState allUnits", () => {
+  test("allUnits exposes every unit while units stays filtered", () => {
+    const store = makeStore();
+    const heroUnit = new MovableUnit();
+    const wolfUnit = new MovableUnit();
+    store.dispatch({ type: GameEventType.Spawn, unit: heroUnit, position: { q: 0, r: 0, s: 0 }, owner: human });
+    store.dispatch({ type: GameEventType.Spawn, unit: wolfUnit, position: { q: 1, r: -1, s: 0 }, owner: wolf });
+
+    const humanStore = createPlayerStore(store, human);
+    expect(humanStore.getState().units).toHaveLength(1);
+    expect(humanStore.getState().allUnits).toHaveLength(2);
+  });
+});
+
+describe("createPlayerStore — Attack translation", () => {
+  const HeroUnit = Damaging(Damageable(Unit, 30), 10);
+
+  function spawnAttackerAndTarget(targetMaxHp: number, owner = wolf) {
+    const store = makeStore();
+    const attacker = new HeroUnit();
+    attacker.replenish();
+    const TargetUnit = Damageable(Unit, targetMaxHp);
+    const target = new TargetUnit();
+    target.replenish();
+
+    const attackerPos = { q: 0, r: 0, s: 0 };
+    const targetPos = positionAt(attackerPos, "ne"); // adjacent hex
+
+    store.dispatch({ type: GameEventType.Spawn, unit: attacker, position: attackerPos, owner: human });
+    store.dispatch({ type: GameEventType.Spawn, unit: target, position: targetPos, owner });
+    return { store, attacker, target, attackerPos, targetPos };
+  }
+
+  test("attacking an adjacent enemy emits TakeDamage and can kill it", () => {
+    const { store, attacker, target, targetPos } = spawnAttackerAndTarget(8); // dies to 10 dmg
+    const humanStore = createPlayerStore(store, human);
+
+    humanStore.dispatch({ type: PlayerActionType.Attack, unit: attacker, position: targetPos });
+
+    expect(store.getState().units.some((u) => u.unit === target)).toBe(false);
+    expect(attacker.canAttack()).toBe(false); // charge consumed
+  });
+
+  test("attacking a surviving enemy keeps it on the board", () => {
+    const { store, attacker, target, targetPos } = spawnAttackerAndTarget(25);
+    const humanStore = createPlayerStore(store, human);
+
+    humanStore.dispatch({ type: PlayerActionType.Attack, unit: attacker, position: targetPos });
+
+    expect(store.getState().units.some((u) => u.unit === target)).toBe(true);
+    expect(target.isAlive()).toBe(true); // 25 - 10
+  });
+
+  test("ignores an attack on a non-adjacent enemy", () => {
+    const { store, attacker, attackerPos } = spawnAttackerAndTarget(8);
+    // Move the target two hexes away so it's no longer adjacent.
+    const farTarget = new (Damageable(Unit, 8))();
+    farTarget.replenish();
+    const farPos = positionAt(positionAt(attackerPos, "ne"), "ne");
+    store.dispatch({ type: GameEventType.Spawn, unit: farTarget, position: farPos, owner: wolf });
+
+    const humanStore = createPlayerStore(store, human);
+    humanStore.dispatch({ type: PlayerActionType.Attack, unit: attacker, position: farPos });
+
+    expect(store.getState().units.some((u) => u.unit === farTarget)).toBe(true);
+    expect(attacker.canAttack()).toBe(true); // no charge spent
+  });
+
+  test("ignores an attack on a friendly unit", () => {
+    const { store, attacker, target, targetPos } = spawnAttackerAndTarget(8, human);
+    const humanStore = createPlayerStore(store, human);
+
+    humanStore.dispatch({ type: PlayerActionType.Attack, unit: attacker, position: targetPos });
+
+    expect(store.getState().units.some((u) => u.unit === target)).toBe(true);
+    expect(attacker.canAttack()).toBe(true);
+  });
+
+  test("ignores an attack when the attacker has no charge left", () => {
+    const { store, attacker, target, targetPos } = spawnAttackerAndTarget(8);
+    attacker.useAttack(); // exhaust the single charge
+    const humanStore = createPlayerStore(store, human);
+
+    humanStore.dispatch({ type: PlayerActionType.Attack, unit: attacker, position: targetPos });
+
+    expect(store.getState().units.some((u) => u.unit === target)).toBe(true);
   });
 });

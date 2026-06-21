@@ -33,6 +33,9 @@ export interface MoveAction extends AbstractAction {
 
 export interface AttackAction extends AbstractAction {
   type: PlayerActionType.Attack;
+  // The attacking unit (mirrors MoveAction.unit) ...
+  unit: Unit;
+  // ... and the hex of the unit it targets.
   position: CubeCoordinates;
 }
 

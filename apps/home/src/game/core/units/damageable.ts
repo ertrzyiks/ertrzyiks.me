@@ -5,6 +5,10 @@ export interface IDamageable extends Unit {
   isAlive(): boolean
 }
 
+export function isDamageable(arg: any): arg is IDamageable {
+  return !!(arg && typeof arg.takeDamage === 'function' && typeof arg.isAlive === 'function')
+}
+
 export function Damageable<TBase extends Constructor<Unit>>(Base: TBase, maxHp: number) {
   return class extends Base implements IDamageable {
     protected hp: number = 0

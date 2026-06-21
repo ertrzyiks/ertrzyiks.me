@@ -3,8 +3,8 @@ import { PlayerActionType } from "../player_action";
 import { Behavior } from "./behavior";
 import { Direction } from "../direction";
 import { hexDistance } from "../grid";
-import { isMovable, type IMovable } from "../units";
-import { isPackLeader } from "../units/pack";
+import { isMovable, isDamaging, isDamageable, type IMovable } from "../units";
+import { isPackLeader, isWolf } from "../units/pack";
 import {
   createMoveContext,
   directionToward,
@@ -37,9 +37,10 @@ export function createPackMemory(): PackMemory {
  *  - if the leader is gone (defeated), the pack dissolves and every follower
  *    wanders like the leader did.
  *
- * Units act leader-first then followers, one step each. Attack-on-adjacency is
- * intentionally not emitted here: it depends on the combat system (TakeDamage),
- * which is a later increment.
+ * Units act leader-first then followers, one step each, and then each wolf
+ * attacks an adjacent non-wolf unit if it can (specs/06-enemy-ai.md: "attacks
+ * any adjacent non-wolf unit at the end of its move"). Dissolved followers keep
+ * their attack-on-adjacency.
  */
 export class PackBehavior extends Behavior {
   protected memory: PackMemory;
@@ -82,9 +83,44 @@ export class PackBehavior extends Behavior {
       } else {
         this.wander(unit, entry.position, ctx);
       }
+
+      // After moving, the wolf bites anything non-wolf next to it.
+      this.tryAttack(unit);
     }
 
     this.store.dispatch({ type: PlayerActionType.EndTurn });
+  }
+
+  /**
+   * Attack an adjacent non-wolf unit, if this wolf can deal damage and still has
+   * an attack charge. The wolf's position is re-read from the store because a
+   * Move dispatched moments ago has already updated it. Reads the full roster
+   * (`allUnits`) so the enemy Hero — hidden from the wolf player's filtered
+   * `units` — is visible as a target. See specs/06-enemy-ai.md.
+   */
+  protected tryAttack(unit: UnitPosition["unit"]) {
+    if (!isDamaging(unit) || !unit.canAttack()) return;
+
+    const state = this.store.getState();
+    const all = state.allUnits ?? state.units;
+
+    const me = all.find((u) => u.unit === unit);
+    if (!me) return;
+
+    const target = all.find(
+      (u) =>
+        !isWolf(u.unit) &&
+        isDamageable(u.unit) &&
+        u.unit.isAlive() &&
+        hexDistance(me.position, u.position) === 1
+    );
+    if (!target) return;
+
+    this.store.dispatch({
+      type: PlayerActionType.Attack,
+      unit,
+      position: target.position,
+    });
   }
 
   /** Step toward the leader; stay put when already adjacent or boxed in. */

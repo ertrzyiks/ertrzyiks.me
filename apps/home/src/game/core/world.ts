@@ -18,6 +18,10 @@ export interface State {
   rows: number;
   tiles: Array<GameTileHex>;
   units: Array<UnitPosition>;
+  // The full roster of units, regardless of owner. The base store leaves this
+  // undefined (use `units`); the per-player proxy populates it so AI behaviors
+  // and combat can see enemy units that `units` filters out. See player_store.
+  allUnits?: Array<UnitPosition>;
   revealedTiles: Record<string, Record<string, true>>;
 }
 

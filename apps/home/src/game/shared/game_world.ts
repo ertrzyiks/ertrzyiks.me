@@ -122,6 +122,24 @@ export class GameWorld extends Container {
         break;
       }
 
+      case GameEventType.TakeDamage: {
+        // The reducer removes a unit that died from this hit. If its sprite is
+        // no longer backed by a live unit, tear it down so it doesn't linger.
+        const stillAlive = state.units.some(
+          (u) => u.unit.id === action.target.id
+        );
+        if (!stillAlive) {
+          const sprite = this.unitSprites.get(action.target.id);
+          if (sprite) {
+            this.unitContainer.removeChild(sprite);
+            sprite.destroy();
+            this.unitSprites.delete(action.target.id);
+          }
+        }
+        done();
+        break;
+      }
+
       default:
         done();
         break;

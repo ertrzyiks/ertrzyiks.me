@@ -18,10 +18,14 @@ export interface MoveContext {
 }
 
 export function createMoveContext(
-  state: Pick<State, "tiles" | "units">
+  state: Pick<State, "tiles" | "units"> & Partial<Pick<State, "allUnits">>
 ): MoveContext {
   const inBounds = new Set(state.tiles.map((t) => cubeKey(t.cube())));
-  const occupied = new Set(state.units.map((u) => cubeKey(u.position)));
+  // Occupancy must consider every unit, not just the current player's — a wolf
+  // should not be able to step onto the (enemy) Hero's tile. `allUnits` is set
+  // on the per-player proxy; fall back to `units` when it is absent (raw state).
+  const occupants = state.allUnits ?? state.units;
+  const occupied = new Set(occupants.map((u) => cubeKey(u.position)));
   return {
     isInBounds: (cube) => inBounds.has(cubeKey(cube)),
     isOccupied: (cube) => occupied.has(cubeKey(cube)),

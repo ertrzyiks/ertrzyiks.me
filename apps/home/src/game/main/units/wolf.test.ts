@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { PackLeader, PackFollower } from "./wolf";
-import { isWolf, isPackLeader, isPackFollower } from "../../core/units";
+import { isWolf, isPackLeader, isPackFollower, isDamaging } from "../../core/units";
 
 describe("PackFollower unit", () => {
   test("has sightRange of 1", () => {
@@ -55,6 +55,17 @@ describe("PackFollower unit", () => {
   test("each instance has a unique id", () => {
     expect(new PackFollower().id).not.toBe(new PackFollower().id);
   });
+
+  test("bites for 5 and can attack once per turn after replenish", () => {
+    const wolf = new PackFollower();
+    expect(isDamaging(wolf)).toBe(true);
+    expect(wolf.damage).toBe(5);
+    expect(wolf.canAttack()).toBe(false); // not until replenish
+    wolf.replenish();
+    expect(wolf.canAttack()).toBe(true);
+    wolf.useAttack();
+    expect(wolf.canAttack()).toBe(false);
+  });
 });
 
 describe("PackLeader unit", () => {
@@ -85,5 +96,11 @@ describe("PackLeader unit", () => {
     expect(leader.canMove()).toBe(true);
     leader.step(1);
     expect(leader.canMove()).toBe(false);
+  });
+
+  test("bites harder than a follower (7 damage)", () => {
+    const leader = new PackLeader();
+    expect(isDamaging(leader)).toBe(true);
+    expect(leader.damage).toBe(7);
   });
 });

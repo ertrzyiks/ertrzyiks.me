@@ -17,14 +17,19 @@ Prioritized list of items yet to be implemented or fixed. Check specs/* for beha
 - [x] **Movement AI helpers** — `core/player/movement.ts`: `createMoveContext` (bounds from actual tiles, occupancy from units), `validDirections`, `directionToward`, `directionAway`, `randomValidDirection` (injectable rng, no-backtrack). Reusable by all enemy behaviors.
 - [x] **Pack movement AI + dissolution** — `core/player/pack_behavior.ts` `PackBehavior`: leader wanders (random valid dir, avoids backtracking across turns via `PackMemory`), followers step toward the living leader (stay if adjacent), and when no living leader is present the pack dissolves to wandering. Leader-first action order. Wired into `main/scenario.ts`. **Attack-on-adjacency is intentionally NOT emitted** — it depends on the combat system (TakeDamage), a later increment; see Stage 2 list.
 - [x] **Fix `State.players` type** — was `Array<{id;name}>`, causing pre-existing `tsc`/`astro check` type errors in `player_store.test.ts` and `reducers/index.test.ts` (currentPlayer is `Player`, needs `color`). Now `Array<Player>`. Build + typecheck clean.
-- [x] **Unit tests** — 106 tests. Added: `core/units/pack.test.ts`, `core/player/movement.test.ts`, `core/player/pack_behavior.test.ts`, expanded `main/units/wolf.test.ts` (PackLeader + PackFollower).
+- [x] **Combat system core (spec 04)** — `Damaging(Base, damage, attacksPerTurn=1)` mixin in `core/units/damaging.ts` (replaces the old unused `IDamaging` interface) gives a fixed `damage`, attack-charge budget (`canAttack`/`useAttack`), and `replenish()` chaining. `isDamaging`/`isDamageable` guards. Reducer handles `GameEventType.TakeDamage`: spends the attacker's charge, applies `takeDamage`, and removes the resolved target if `!isAlive()` (only the target — bystanders reading 0 HP pre-replenish are left alone). `player_store` translates `PlayerAction.Attack` → `TakeDamage` (resolves target by hex from the full roster, rejects friendly-fire / non-adjacent / no-charge). Tests passing.
+- [x] **Proxy exposes `allUnits`** — `createPlayerStore.proxyState` now adds `allUnits` (full roster) while keeping `units` filtered to the owner. `State.allUnits?` is optional (base store leaves it undefined). `createMoveContext` uses `allUnits ?? units` for occupancy so a wolf will not step onto the (enemy) Hero. Unblocks Seeker/Flee AI. Single source of truth, no adapter.
+- [x] **Pack attack-on-adjacency (spec 06)** — `PackBehavior.tryAttack` makes each wolf bite an adjacent non-wolf living unit after moving (re-reads position post-move; reads `allUnits` to see the Hero). Dissolved followers keep their bite.
+- [x] **Hero + wolf combat stats** — Hero is now `Damageable(30) + Damaging(10)`; PackLeader `Damaging(7)`, PackFollower `Damaging(5)`. HP/damage are not fixed by specs — chosen so wolves < bandits(8). Renderer (`shared/game_world.ts`) tears down a unit sprite on `TakeDamage` when its unit left `state.units`.
+- [x] **Unit tests** — 128 tests. Added `core/units/damaging.test.ts`; expanded reducer (`TakeDamage`), `player_store` (`Attack` + `allUnits`), `pack_behavior` (attack), `wolf` (damage) tests.
 
 ---
 
-## Architectural notes for future work (READ BEFORE seeker/flee AI)
+## Architectural notes for future work
 
-- **Player-store proxy filters units to the current player.** `createPlayerStore` (`proxyState`) returns only the owning player's units (asserted by `player_store.test.ts`). This is fine for the wolf pack (followers track the leader — same player) but **Seeker (bandit) and Flee (Wanderer) behaviors need ENEMY positions**, which the proxy hides. Before implementing those, expose all units to behaviors — e.g. add an `allUnits` field on the proxied state (keep `units` filtered for backward compat) or pass the full `World` to the behavior. Do NOT add an adapter layer; change the source of truth.
-- **Occupancy vs. unseen enemies.** `PackBehavior` only sees wolf units, so a wolf could legally step onto the Hero's tile (Hero is invisible through the proxy). True occupied-tile enforcement belongs in the reducer (reject `Move` onto an occupied hex), evaluated against ALL units — see the "Occupied-tile enforcement" item. Fixing it there fixes it for every mover at once.
+- **`allUnits` is how a behavior sees enemies.** The per-player proxy exposes `state.allUnits` (full roster) plus `state.units` (this player only). Seeker (bandit) and Flee (Wanderer) behaviors should read `allUnits` to find player units — same pattern `PackBehavior.tryAttack`/`createMoveContext` already use. Raw (unproxied) state leaves `allUnits` undefined, so always `allUnits ?? units`.
+- **Occupancy is enforced for AI movers only (so far).** `createMoveContext` keeps AI off occupied tiles (all units). The reducer still does NOT reject a `Move` onto an occupied hex — once human click-to-move exists, add that guard in the reducer against ALL units so it covers every mover (see "Occupied-tile enforcement").
+- **Combat removes units but nothing ends the game yet.** `TakeDamage` removing the Hero just leaves the human with no units (turn auto-passes, no crash). Win/lose detection + `GameEnd { outcome }` + terminal state is the next increment — now fully unblocked by combat.
 - **One step per unit per turn.** Both `Explorer` and `PackBehavior` dispatch a single Move per unit even when the unit has >1 movement point. Matches spec wording ("moves one step") but means multi-point budgets are underused. Revisit if a behavior needs to close distance faster.
 
 ## Stage 1 — The Wreck (make it playable)
@@ -33,8 +38,8 @@ Priority: highest — entry point for everything else.
 
 - [x] **Wolf Pack Leader unit** — done (see Completed). Stats `Damageable 20 / move 2 / sight 2`.
 - [x] **Wolf Pack Follower unit** — done; `Wolf` renamed to `PackFollower`.
-- [x] **Pack Leader AI** — done (wander, no-backtracking). Attack-on-adjacency deferred to combat system.
-- [x] **Pack Follower AI** — done (step toward leader, stay if adjacent, `directionToward` handles blocked shortest path). Attack deferred.
+- [x] **Pack Leader AI** — done (wander, no-backtracking, attack-on-adjacency).
+- [x] **Pack Follower AI** — done (step toward leader, stay if adjacent, `directionToward` handles blocked shortest path, attack-on-adjacency).
 - [x] **Pack dissolution on leader death** — done; `PackBehavior` treats a missing/non-alive leader as dissolved → followers wander.
 - [ ] **Add `goal` section to board1.json** — add `sectionName: "village"` to the tile at the far right grass edge. Stage 1 win requires reaching this tile.
 - [ ] **Wanderer NPC unit** — non-combat unit, cannot be attacked. `Wanderer = Sightful(Movable(Unit, 3), 2)`. No Damageable mixin.
@@ -59,13 +64,13 @@ Priority: highest — entry point for everything else.
 
 Depends on: Stage 1 playable, combat system, bandit unit.
 
-- [ ] **Bandit unit** — `Bandit = Sightful(Movable(Damageable(Unit, 25), 2), 1)` with `damage = 8`. Higher HP and damage than wolves. See `specs/10-stage-2.md`.
-- [ ] **Damaging mixin** — give units a `damage` value used when computing `TakeDamage` events. Wolves and bandits deal different amounts.
-- [ ] **Player attack action** — clicking an adjacent enemy unit during the human turn dispatches `PlayerAction.Attack`. See `specs/03-player-input.md`.
-- [ ] **`PlayerAction.Attack` → `GameEvent.TakeDamage`** — implement in `createPlayerStore`; compute damage from attacker's unit type. See `specs/04-combat-system.md`.
-- [ ] **Enemy attack → `GameEvent.TakeDamage`** — bandit (and wolf) adjacent attack emits TakeDamage against the player unit. See `specs/04-combat-system.md`.
-- [ ] **Death handling in reducer** — TakeDamage leaving unit at ≤ 0 HP removes it from `state.units`; triggers win/lose condition check. See `specs/04-combat-system.md`.
-- [ ] **Attack action charge** — each unit has one attack per turn; replenished at turn start; blocked when exhausted. See `specs/04-combat-system.md`.
+- [ ] **Bandit unit** — `Bandit = Damaging(Sightful(Movable(Damageable(Unit, 25), 2), 1), 8)`. Higher HP and damage than wolves. Use the `Damaging` mixin (now built). See `specs/10-stage-2.md`.
+- [x] **Damaging mixin** — `Damaging(Base, damage, attacksPerTurn=1)` in `core/units/damaging.ts`. Wolves/Hero already use it.
+- [ ] **Player attack action** — clicking an adjacent enemy unit during the human turn dispatches `PlayerAction.Attack { unit, position }`. Translation already exists; this is the UI/input half. See `specs/03-player-input.md`.
+- [x] **`PlayerAction.Attack` → `GameEvent.TakeDamage`** — done in `createPlayerStore` (resolves target by hex, validates friendly-fire/adjacency/charge).
+- [x] **Enemy attack → `GameEvent.TakeDamage`** — wolves emit it via `PackBehavior.tryAttack`; bandits will reuse the same `Attack` action.
+- [x] **Death handling in reducer** — `TakeDamage` removes the resolved target when `!isAlive()`. Win/lose check is a separate (now unblocked) item.
+- [x] **Attack action charge** — `Damaging` carries one attack/turn (configurable), replenished at turn start, blocked when exhausted.
 - [ ] **Seeker AI behavior** — `SeekerBehavior`: moves toward nearest player unit each turn, attacks when adjacent. Used by bandits. See `specs/06-enemy-ai.md`.
 - [ ] **Board for Stage 2** — road map (~8×6) with bandits between entrance and gate. Sections: `spawn_a`, `gate` (goal), `bandit_1`, `bandit_2`, `bandit_3`, `wanderer_spawn`. See `specs/10-stage-2.md`.
 - [ ] **Stage 2 scenario** — loads Stage 2 board; spawns Whirley + 3 Bandits + Wanderer; uses Stage 2 narrative script. See `specs/10-stage-2.md`.

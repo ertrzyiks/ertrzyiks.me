@@ -46,6 +46,6 @@ Run these after implementing to get immediate feedback:
 - `Scenario` classes wire up players, spawn units, and subscribe to world updates
 - Board layouts are JSON files in `src/game/main/boards/`; tiles have `sectionName` for named positions
 - Enemy AI: `Behavior` subclasses in `src/game/core/player/` consume a per-player `StoreProxy` and
-  dispatch `PlayerAction`s. Shared movement math lives in `core/player/movement.ts`. NOTE: the proxy
-  only exposes the current player's units — behaviors that need enemy positions are blocked until
-  that changes (tracked in IMPLEMENTATION_PLAN.md).
+  dispatch `PlayerAction`s. Shared movement math lives in `core/player/movement.ts`. The proxy state
+  exposes `units` (current player only) plus `allUnits` (full roster) — read `allUnits ?? units` to
+  see enemies.

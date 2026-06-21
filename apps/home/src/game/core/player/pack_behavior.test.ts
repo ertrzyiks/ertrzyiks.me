@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { PackBehavior, createPackMemory } from "./pack_behavior";
 import { PlayerActionType, type PlayerAction, type MoveAction } from "../player_action";
 import { PlayerColor } from "./player";
-import { Unit, Movable, Damageable, Sightful, Leader, Follower } from "../units";
+import { Unit, Movable, Damageable, Damaging, Sightful, Leader, Follower } from "../units";
 import { createGrid, positionAt, hexDistance } from "../grid";
 import { directionToward, randomValidDirection, createMoveContext } from "./movement";
 import { Terrain } from "../board";
@@ -55,6 +55,28 @@ function makeStore(units: UnitPosition[], tiles: GameTileHex[]) {
 
 const moves = (d: PlayerAction[]) =>
   d.filter((a): a is MoveAction => a.type === PlayerActionType.Move);
+
+const human = { id: "human", name: "Whirley", color: PlayerColor.BLUE };
+
+// A wolf that can bite, plus a separate `allUnits` roster so the behavior can
+// see the (enemy) Hero the way the per-player proxy would expose it.
+const ArmedLeader = Leader(Damaging(Sightful(Movable(Damageable(Unit, 20), 2), 2), 7));
+const HeroUnit = Sightful(Movable(Damageable(Unit, 30), 3), 2);
+
+function makeStoreWithRoster(
+  units: UnitPosition[],
+  allUnits: UnitPosition[],
+  tiles: GameTileHex[]
+) {
+  const dispatched: PlayerAction[] = [];
+  const state = { units, allUnits, tiles, cols: 5, rows: 5 } as unknown as State;
+  const store = {
+    getState: () => state,
+    dispatch: (a: PlayerAction) => dispatched.push(a),
+    subscribe: () => {},
+  } as unknown as StoreProxy<GameEvent, State, PlayerAction>;
+  return { store, dispatched };
+}
 
 describe("PackBehavior", () => {
   test("always ends the turn after acting", () => {
@@ -220,5 +242,60 @@ describe("PackBehavior", () => {
 
     // The wander step was recorded under the unit id for the next turn's use.
     expect(memory.lastDirection[leader.id]).toBeDefined();
+  });
+
+  test("a wolf attacks an adjacent non-wolf unit after moving", () => {
+    const tiles = makeTiles();
+    const wolf = new ArmedLeader();
+    wolf.replenish(); // can move and can attack
+    const hero = new HeroUnit();
+    hero.replenish(); // alive
+
+    const wolfPos = cubeAt(tiles, 2, 2);
+    const heroPos = positionAt(wolfPos, "ne"); // adjacent
+
+    const wolfEntry: UnitPosition = { unit: wolf, position: wolfPos, owner: wolves };
+    const heroEntry: UnitPosition = { unit: hero, position: heroPos, owner: human };
+
+    // The behavior only iterates `units` (wolves) for movement, but reads the
+    // full `allUnits` roster to spot the adjacent Hero as a bite target.
+    const { store, dispatched } = makeStoreWithRoster(
+      [wolfEntry],
+      [wolfEntry, heroEntry],
+      tiles
+    );
+
+    new PackBehavior(store, createPackMemory(), () => 0).takeActions();
+
+    const attacks = dispatched.filter((a) => a.type === PlayerActionType.Attack);
+    expect(attacks).toHaveLength(1);
+    expect((attacks[0] as any).unit).toBe(wolf);
+    expect((attacks[0] as any).position).toEqual(heroPos);
+  });
+
+  test("a disarmed wolf (no Damaging) emits no attack", () => {
+    const tiles = makeTiles();
+    const PlainLeader = Leader(Sightful(Movable(Damageable(Unit, 20), 2), 2));
+    const wolf = new PlainLeader();
+    wolf.replenish();
+    const hero = new HeroUnit();
+    hero.replenish();
+
+    const wolfPos = cubeAt(tiles, 2, 2);
+    const heroPos = positionAt(wolfPos, "ne");
+    const wolfEntry: UnitPosition = { unit: wolf, position: wolfPos, owner: wolves };
+    const heroEntry: UnitPosition = { unit: hero, position: heroPos, owner: human };
+
+    const { dispatched } = ((): { dispatched: PlayerAction[] } => {
+      const { store, dispatched } = makeStoreWithRoster(
+        [wolfEntry],
+        [wolfEntry, heroEntry],
+        tiles
+      );
+      new PackBehavior(store, createPackMemory(), () => 0).takeActions();
+      return { dispatched };
+    })();
+
+    expect(dispatched.some((a) => a.type === PlayerActionType.Attack)).toBe(false);
   });
 });
