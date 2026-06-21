@@ -10,7 +10,7 @@ export class Explorer extends Behavior {
 
   takeActions() {
     this.store.getState().units.forEach((u) => {
-      if (isMovable(u.unit)) {
+      if (isMovable(u.unit) && u.unit.canMove()) {
         this.exploreWith(u.unit);
       }
     });

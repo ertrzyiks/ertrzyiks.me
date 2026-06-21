@@ -28,3 +28,11 @@ export function positionAt(position: CubeCoordinates, direction: string) {
     s: position.s + offset.s,
   };
 }
+
+export function hexDistance(a: CubeCoordinates, b: CubeCoordinates): number {
+  return (Math.abs(a.q - b.q) + Math.abs(a.r - b.r) + Math.abs(a.s - b.s)) / 2;
+}
+
+export function cubeKey(pos: CubeCoordinates): string {
+  return `${pos.q},${pos.r},${pos.s}`;
+}

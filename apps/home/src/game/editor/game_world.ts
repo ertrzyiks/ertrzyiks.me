@@ -64,6 +64,7 @@ export class EditorWorld extends Container {
       currentPlayer: null,
       tiles: [],
       units: [],
+      revealedTiles: {},
       worldWidth: 1000,
       worldHeight: 1000,
       cols: 0,

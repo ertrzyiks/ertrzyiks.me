@@ -1,9 +1,11 @@
 import {
   Container,
   EventBoundary,
+  Graphics,
   type IDestroyOptions,
   Sprite,
   Spritesheet,
+  Texture,
   type EventSystem,
 } from "pixi.js";
 import { GameViewport } from "./viewport";
@@ -11,11 +13,30 @@ import { Tile } from "./renderable/tile";
 import TWEEN from "@tweenjs/tween.js";
 import type { Board, State, GameTileHex } from "../core";
 import { Game, GameEventType } from "../core";
+import { PlayerColor } from "../core/player/player";
 import type { CubeCoordinates } from "honeycomb-grid";
-import { cubeToCartesian } from "../core/grid/helpers";
+import { cubeToCartesian, cubeKey } from "../core/grid/helpers";
 import { TerrainTiles } from "./terrain_tiles";
 import type { ObservableSubscriptionDone } from "./observable";
 import { type GameEvent } from "../core";
+
+const FOG_HEX_SIZE = 50;
+const FOG_HEX_Y_OFFSET = 4;
+
+function buildFogGraphic(): Graphics {
+  const g = new Graphics();
+  g.beginFill(0x000000, 0.85);
+  const points: number[] = [];
+  for (let side = 0; side < 7; side++) {
+    points.push(
+      FOG_HEX_SIZE * Math.cos((side * 2 * Math.PI) / 6),
+      FOG_HEX_Y_OFFSET + FOG_HEX_SIZE * Math.sin((side * 2 * Math.PI) / 6)
+    );
+  }
+  g.drawPolygon(points);
+  g.endFill();
+  return g;
+}
 
 export class GameWorld extends Container {
   protected game: Game;
@@ -24,8 +45,10 @@ export class GameWorld extends Container {
   protected currentTween: TWEEN.Tween | null = null;
   protected tickerFunction = () => this.cull();
   protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles();
-
-  protected ship: Tile | null = null;
+  protected unitSprites: Map<number, Tile> = new Map();
+  protected fogTiles: Map<string, Graphics> = new Map();
+  protected unitContainer: Container = new Container();
+  protected fogContainer: Container = new Container();
 
   constructor(
     protected board: Board,
@@ -44,6 +67,9 @@ export class GameWorld extends Container {
     this.boundary = new EventBoundary(this.viewport);
 
     this.renderTerrain();
+    this.viewport.addChild(this.unitContainer);
+    this.viewport.addChild(this.fogContainer);
+    this.renderFog();
     this.observeWorldUpdates();
 
     this.addChild(this.viewport);
@@ -54,48 +80,76 @@ export class GameWorld extends Container {
   }
 
   protected onWorldUpdate(
-    { action }: { state: State; action: GameEvent },
+    { state, action }: { state: State; action: GameEvent },
     done: ObservableSubscriptionDone
   ) {
     switch (action.type) {
-      case GameEventType.Spawn:
+      case GameEventType.Spawn: {
         const tile = this.getTerrainAt(action.position);
-
         if (tile) {
-          this.ship = new Tile(this.sheet.textures["ship"], action.position);
-          this.ship.scale.x = -1;
-          this.ship.x = tile.x;
-          this.ship.y = tile.y;
-
-          this.viewport.addChild(this.ship);
+          const shipTexture = Texture.from("ship");
+          const sprite = new Tile(shipTexture, action.position);
+          sprite.scale.x = -1;
+          sprite.x = tile.x;
+          sprite.y = tile.y;
+          if (action.owner.color === PlayerColor.RED) {
+            sprite.tint = 0xff5555;
+          }
+          this.unitSprites.set(action.unit.id, sprite);
+          this.unitContainer.addChild(sprite);
         }
-
+        this.updateFog(state);
         done();
         break;
+      }
 
-      case GameEventType.Move:
-        const tile1 = this.getTerrainAt(action.position);
-
-        if (tile1) {
-          this.currentTween = new TWEEN.Tween(this.ship)
-            .to({ x: tile1.x, y: tile1.y }, 1000)
-            .delay(300)
+      case GameEventType.Move: {
+        const unitSprite = this.unitSprites.get(action.unit.id);
+        const moveTile = this.getTerrainAt(action.position);
+        this.updateFog(state);
+        if (unitSprite && moveTile) {
+          this.currentTween = new TWEEN.Tween(unitSprite)
+            .to({ x: moveTile.x, y: moveTile.y }, 500)
+            .delay(100)
             .onComplete(() => {
-              if (this.ship) {
-                this.ship.coordinates = action.position;
-              }
+              unitSprite.coordinates = action.position;
               done();
             });
-
           this.currentTween.start();
+        } else {
+          done();
         }
-
         break;
+      }
 
       default:
         done();
         break;
     }
+  }
+
+  protected updateFog(state: State) {
+    const observedPlayerId = state.players[0]?.id;
+    if (!observedPlayerId) return;
+
+    const revealed = state.revealedTiles[observedPlayerId] || {};
+    this.fogTiles.forEach((fog, key) => {
+      fog.visible = !(key in revealed);
+    });
+  }
+
+  protected renderFog() {
+    this.game.world.getState().tiles.forEach((hex: GameTileHex) => {
+      const terrainTile = this.terrainTiles.get(hex.coordinates());
+      if (!terrainTile) return;
+
+      const fog = buildFogGraphic();
+      fog.position.set(terrainTile.x, terrainTile.y);
+
+      const key = cubeKey(hex.cube());
+      this.fogTiles.set(key, fog);
+      this.fogContainer.addChild(fog);
+    });
   }
 
   protected createWorldTile(hex: GameTileHex) {
@@ -107,7 +161,6 @@ export class GameWorld extends Container {
 
     sprite.position.set(x, y);
     sprite.eventMode = "dynamic";
-    // sprite.buttonMode = false;
 
     return sprite;
   }
@@ -155,7 +208,6 @@ export class GameWorld extends Container {
       this.currentTween.stop();
     }
 
-    // this.ticker.remove(this.tickerFunction);
     this.game.finish();
     super.destroy(options);
   }

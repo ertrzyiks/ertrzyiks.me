@@ -18,6 +18,7 @@ export interface State {
   rows: number;
   tiles: Array<GameTileHex>;
   units: Array<UnitPosition>;
+  revealedTiles: Record<string, Record<string, true>>;
 }
 
 export class World {
@@ -40,6 +41,7 @@ export class World {
       currentPlayer: null,
       tiles,
       units: [],
+      revealedTiles: {},
       worldWidth,
       worldHeight,
       cols,
@@ -59,12 +61,11 @@ export class World {
     this.store.subscribe(fn);
   }
 
-  tileBySection(_: string) {
-    return this.getState().tiles[0];
+  tileBySection(name: string) {
+    return this.getState().tiles.find((t) => t.sectionName === name) ?? this.getState().tiles[0];
   }
 
-  // TODO: fix it
-  unitsOf(_: Player) {
-    return this.getState().units;
+  unitsOf(player: Player) {
+    return this.getState().units.filter((u) => u.owner.id === player.id);
   }
 }

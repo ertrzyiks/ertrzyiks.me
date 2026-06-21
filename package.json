@@ -13,5 +13,8 @@
   "bugs": {
     "url": "https://github.com/ertrzyiks/ertrzyiks.me/issues"
   },
-  "homepage": "https://github.com/ertrzyiks/ertrzyiks.me#readme"
+  "homepage": "https://github.com/ertrzyiks/ertrzyiks.me#readme",
+  "dependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "^4.62.2"
+  }
 }

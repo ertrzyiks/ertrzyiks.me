@@ -1,6 +1,10 @@
 import type { GameEvent } from "../game_event";
 import { GameEventType } from "../game_event";
 import type { State } from "../world";
+import { isMovable, isSightful } from "../units";
+import type { CubeCoordinates } from "honeycomb-grid";
+import { hexDistance, cubeKey } from "../grid";
+import type { Player } from "../player";
 
 const rotate = (value: number, edgeValue: number) => {
   if (value >= edgeValue) {
@@ -9,6 +13,24 @@ const rotate = (value: number, edgeValue: number) => {
 
   return value;
 };
+
+function revealAround(
+  state: State,
+  owner: Player,
+  position: CubeCoordinates,
+  range: number
+): Record<string, Record<string, true>> {
+  const existing = state.revealedTiles[owner.id] || {};
+  const updated: Record<string, true> = { ...existing };
+
+  state.tiles.forEach((tile) => {
+    if (hexDistance(position, tile.cube()) <= range) {
+      updated[cubeKey(tile.cube())] = true;
+    }
+  });
+
+  return { ...state.revealedTiles, [owner.id]: updated };
+}
 
 export function gameReducer(state: State, action: GameEvent) {
   switch (action.type) {
@@ -26,31 +48,49 @@ export function gameReducer(state: State, action: GameEvent) {
         state.currentPlayer === null || state.currentPlayerIndex === null
           ? 0
           : rotate(state.currentPlayerIndex + 1, state.players.length);
+      const currentPlayer = state.players[currentPlayerIndex];
+      state.units
+        .filter((u) => u.owner.id === currentPlayer.id)
+        .forEach((u) => u.unit.replenish());
       return {
         ...state,
         currentPlayerIndex,
-        currentPlayer: state.players[currentPlayerIndex],
+        currentPlayer,
       };
 
-    case GameEventType.Move:
+    case GameEventType.Move: {
+      if (isMovable(action.unit)) action.unit.step(1);
+      const movingUnit = state.units.find((u) => u.unit === action.unit);
+      const moveRange = isSightful(action.unit) ? action.unit.sightRange : 0;
+      const revealedAfterMove =
+        movingUnit && moveRange > 0
+          ? revealAround(state, movingUnit.owner, action.position, moveRange)
+          : state.revealedTiles;
       return {
         ...state,
+        revealedTiles: revealedAfterMove,
         units: state.units.map((u) => {
-          if (u.unit != action.unit) {
-            return u;
-          }
-          return { unit: action.unit, position: action.position };
+          if (u.unit !== action.unit) return u;
+          return { ...u, position: action.position };
         }),
       };
+    }
 
-    case GameEventType.Spawn:
+    case GameEventType.Spawn: {
+      const spawnRange = isSightful(action.unit) ? action.unit.sightRange : 0;
+      const revealedAfterSpawn =
+        spawnRange > 0
+          ? revealAround(state, action.owner, action.position, spawnRange)
+          : state.revealedTiles;
       return {
         ...state,
+        revealedTiles: revealedAfterSpawn,
         units: [
           ...state.units,
-          { unit: action.unit, position: action.position },
+          { unit: action.unit, position: action.position, owner: action.owner },
         ],
       };
+    }
   }
 
   return state;

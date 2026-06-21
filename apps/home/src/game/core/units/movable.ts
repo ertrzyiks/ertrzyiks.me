@@ -20,7 +20,9 @@ export function Movable<TBase extends Constructor<Unit>>(
       return this.movementPoints > 0;
     }
 
-    step(_: number) {}
+    step(cost: number) {
+      this.movementPoints -= cost;
+    }
 
     replenish() {
       super.replenish();
