@@ -38,8 +38,8 @@ importers:
         specifier: 0.9.6
         version: 0.9.6(typescript@5.9.3)
       '@tweenjs/tween.js':
-        specifier: 17.6.0
-        version: 17.6.0
+        specifier: 25.0.0
+        version: 25.0.0
       '@types/dat.gui':
         specifier: 0.7.13
         version: 0.7.13
@@ -1731,8 +1731,8 @@ packages:
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
     dev: true
 
-  /@tweenjs/tween.js@17.6.0:
-    resolution: {integrity: sha512-utSXj0WHi4qr/iyfFHGMJBaL+ixQ2N7BAmx1R5g8jBqykJfjBUQ0hKWwXf767hbALC3zOoOIofKYSDWu5n04JQ==}
+  /@tweenjs/tween.js@25.0.0:
+    resolution: {integrity: sha512-XKLA6syeBUaPzx4j3qwMqzzq+V4uo72BnlbOjmuljLrRqdsd3qnzvZZoxvMHZ23ndsRS4aufU6JOZYpCbU6T1A==}
     dev: false
 
   /@types/acorn@4.0.6:
