@@ -19,7 +19,7 @@
     "@types/tween.js": "16.9.0",
     "astro": "^4.5.0",
     "dat.gui": "0.7.9",
-    "debounce": "1.2.1",
+    "debounce": "3.0.0",
     "honeycomb-grid": "1.4.4",
     "pixi-viewport": "5.0.3",
     "pixi.js": "7.4.3",
