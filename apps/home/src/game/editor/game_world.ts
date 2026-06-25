@@ -3,7 +3,7 @@ import debounce from "debounce";
 import {
   Container,
   Assets,
-  DisplayObject,
+  type ContainerChild,
   EventBoundary,
   type EventSystem,
 } from "pixi.js";
@@ -131,7 +131,7 @@ export class EditorWorld extends Container {
     }
   }
 
-  protected onClick(el: DisplayObject) {
+  protected onClick(el: ContainerChild) {
     if (el instanceof Tile) {
       const point = cubeToCartesian(el.coordinates);
       this.setupTileFolder(point);

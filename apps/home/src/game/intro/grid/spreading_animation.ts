@@ -1,4 +1,4 @@
-import type { DisplayObject } from "pixi.js";
+import type { ContainerChild } from "pixi.js";
 import RecursiveTween from "../../lib/recursive_tween";
 import { Tween, Easing } from "@tweenjs/tween.js";
 import { getNextSpreadingWave } from "./get_spreading_wave";
@@ -35,8 +35,8 @@ export class GridSpreadAnimation {
   }
 
   private state: any;
-  private subject: Array<DisplayObject> = [];
-  private waveCache: { [wave: number]: Array<DisplayObject> } = {};
+  private subject: Array<ContainerChild> = [];
+  private waveCache: { [wave: number]: Array<ContainerChild> } = {};
   private tween: RecursiveTween;
   private onCompleteCallback?: CompleteCallback | null = null;
 
@@ -92,7 +92,7 @@ export class GridSpreadAnimation {
     }
   }
 
-  protected applyUpdate(element: DisplayObject, values: { alpha: number }) {
+  protected applyUpdate(element: ContainerChild, values: { alpha: number }) {
     element.alpha = values.alpha;
   }
 

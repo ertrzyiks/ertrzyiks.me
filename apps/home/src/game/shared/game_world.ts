@@ -1,7 +1,7 @@
 import {
   Container,
   EventBoundary,
-  type IDestroyOptions,
+  type DestroyOptions,
   Sprite,
   Spritesheet,
   type EventSystem,
@@ -150,7 +150,7 @@ export class GameWorld extends Container {
     }
   }
 
-  destroy(options?: IDestroyOptions | boolean) {
+  destroy(options?: DestroyOptions | boolean) {
     if (this.currentTween) {
       this.currentTween.stop();
     }

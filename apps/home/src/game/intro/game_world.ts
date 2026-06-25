@@ -1,14 +1,14 @@
 import { GameWorld } from "../shared/game_world";
 import { Tileable } from "../shared/renderable/tileable";
 import TWEEN from "@tweenjs/tween.js";
-import { Point, utils, type EventSystem, Spritesheet } from "pixi.js";
+import { Point, EventEmitter, type EventSystem, Spritesheet } from "pixi.js";
 import { GridSpreadAnimation } from "./grid/spreading_animation";
 import type { CubeCoordinates } from "honeycomb-grid";
 import type { GameTileHex, Board } from "../core";
 import { Scenario } from "./scenario";
 
 export class IntroWorld extends GameWorld {
-  public emitter: utils.EventEmitter;
+  public emitter: EventEmitter;
 
   protected scenario: Scenario;
   protected currentAnimation: GridSpreadAnimation | null = null;
@@ -19,7 +19,7 @@ export class IntroWorld extends GameWorld {
     protected sheet: Spritesheet
   ) {
     super(board, events, sheet);
-    this.emitter = new utils.EventEmitter();
+    this.emitter = new EventEmitter();
     this.scenario = new Scenario(this.game);
   }
 
