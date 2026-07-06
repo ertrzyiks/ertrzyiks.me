@@ -6,6 +6,7 @@ import { directionBetween } from "../core/grid/helpers";
 import { PlayerActionType } from "../core/player_action";
 import type { Tileable } from "../shared/renderable/tileable";
 import type { GameTileHex } from "../core";
+import type { UnitPosition } from "../core/world";
 
 export class MainWorld extends GameWorld {
   protected player: Player | null = null;
@@ -13,14 +14,18 @@ export class MainWorld extends GameWorld {
   protected scenario: Scenario;
 
   protected isPlayerTurn = false;
+  protected playerUnits: UnitPosition[] = [];
+  protected selectedUnit: UnitPosition | null = null;
 
   constructor(protected board: Board, protected events: EventSystem, protected sheet: Spritesheet) {
     super(board, events, sheet);
 
     this.scenario = new Scenario(this.game);
 
-    this.scenario.emitter.on("playerTurn", () => {
+    this.scenario.emitter.on("playerTurn", (data: { units: UnitPosition[] }) => {
       this.isPlayerTurn = true;
+      this.playerUnits = data.units;
+      this.selectedUnit = data.units[0] || null;
     });
 
     this.scenario.start();
@@ -46,15 +51,34 @@ export class MainWorld extends GameWorld {
       return;
     }
 
-    // Find the player's unit
-    const playerUnit = state.units.find(u => u.owner.id === "human");
-    if (!playerUnit) return;
+    // Check if clicking on a unit tile to select it
+    const unitOnTile = state.units.find(u =>
+      u.owner.id === "human" &&
+      u.position.q === tile.coordinates.q &&
+      u.position.r === tile.coordinates.r &&
+      u.position.s === tile.coordinates.s
+    );
 
-    const direction = directionBetween(playerUnit.position, tile.coordinates);
+    if (unitOnTile) {
+      this.selectedUnit = unitOnTile;
+      return;
+    }
+
+    // Move the selected unit
+    if (!this.selectedUnit) {
+      return;
+    }
+
+    const direction = directionBetween(this.selectedUnit.position, tile.coordinates);
     if (!direction) {
       return;
     }
 
-    this.scenario.moveUnit(playerUnit.unit, direction);
+    this.scenario.moveUnit(this.selectedUnit.unit, direction);
+
+    // After moving, select the next unit that needs to move
+    const unitsToMove = this.scenario.getUnitsToMove();
+    const nextUnit = this.playerUnits.find(u => unitsToMove.has(u.unit.id));
+    this.selectedUnit = nextUnit || null;
   }
 }

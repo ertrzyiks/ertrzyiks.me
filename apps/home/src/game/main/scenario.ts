@@ -29,6 +29,7 @@ export class Scenario {
 
   public emitter = new utils.EventEmitter();
   protected playerStore: StoreProxy<GameEvent, State, PlayerAction> | null = null;
+  protected unitsToMove: Set<number> = new Set();
 
   constructor(protected game: Game) {
     game.worldObservable.subscribe(this.onWorldUpdate.bind(this));
@@ -46,8 +47,16 @@ export class Scenario {
 
         this.onTurnStart(
           state.currentPlayer,
+          state,
           createPlayerStore(this.game.world.store, state.currentPlayer)
         );
+        break;
+      case GameEventType.Move:
+        done();
+        // Remove the unit that just moved from the units to move
+        if (action.unit) {
+          this.unitsToMove.delete(action.unit.id);
+        }
         break;
       default:
         done();
@@ -60,6 +69,7 @@ export class Scenario {
     this.game.add(this.wolfPlayer);
 
     this.game.spawnInSection(this.player, new Hero(), "spawn_a");
+    this.game.spawnInSection(this.player, new Hero(), "spawn_b");
     this.game.spawnInSection(this.wolfPlayer, new PackLeader(), "wolf_1");
     this.game.spawnInSection(this.wolfPlayer, new PackFollower(), "wolf_2");
     this.game.spawnInSection(this.wolfPlayer, new PackFollower(), "wolf_3");
@@ -69,13 +79,18 @@ export class Scenario {
 
   protected onTurnStart(
     player: Player,
+    state: State,
     store: StoreProxy<GameEvent, State, PlayerAction>
   ) {
+    // Get all units belonging to this player
+    const playerUnits = state.units.filter(u => u.owner.id === player.id);
+    this.unitsToMove = new Set(playerUnits.map(u => u.unit.id));
+
     if (player.id === this.wolfPlayer.id) {
       new PackBehavior(store, this.packMemory).takeActions();
     } else {
       this.playerStore = store;
-      this.emitter.emit("playerTurn");
+      this.emitter.emit("playerTurn", { units: playerUnits });
     }
   }
 
@@ -93,6 +108,11 @@ export class Scenario {
     if (this.playerStore) {
       this.playerStore.dispatch({ type: PlayerActionType.EndTurn });
       this.playerStore = null;
+      this.unitsToMove.clear();
     }
+  }
+
+  public getUnitsToMove(): Set<number> {
+    return this.unitsToMove;
   }
 }
