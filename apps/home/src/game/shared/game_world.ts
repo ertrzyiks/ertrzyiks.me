@@ -88,18 +88,33 @@ export class GameWorld extends Container {
         const tile = this.getTerrainAt(action.position);
         if (tile) {
           const shipTexture = Texture.from("ship");
+
+          // Create a container to hold both background and ship
+          const unitGroup = new Container();
+          unitGroup.position.set(tile.x, tile.y);
+
+          // Create colored background circle
+          const background = new Graphics();
+          const bgColor = action.owner.color === PlayerColor.RED ? 0xff5555 : 0x5599ff;
+          background.beginFill(bgColor, 0.8);
+          background.drawCircle(0, 0, 35);
+          background.endFill();
+
+          // Add border
+          background.lineStyle(2, bgColor, 1);
+          background.drawCircle(0, 0, 35);
+
+          // Create ship sprite
           const sprite = new Tile(shipTexture, action.position);
           sprite.scale.x = -1;
-          sprite.x = tile.x;
-          sprite.y = tile.y;
-          // Color units by player: blue for human, red for computer
-          if (action.owner.color === PlayerColor.RED) {
-            sprite.tint = 0xff5555;
-          } else if (action.owner.color === PlayerColor.BLUE) {
-            sprite.tint = 0x5599ff;
-          }
+          sprite.position.set(0, 0);
+          sprite.tint = 0xffffff;
+
+          unitGroup.addChild(background);
+          unitGroup.addChild(sprite);
+
           this.unitSprites.set(action.unit.id, sprite);
-          this.unitContainer.addChild(sprite);
+          this.unitContainer.addChild(unitGroup);
         }
         this.updateFog(state);
         done();
