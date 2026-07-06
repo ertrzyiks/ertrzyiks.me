@@ -92,8 +92,11 @@ export class GameWorld extends Container {
           sprite.scale.x = -1;
           sprite.x = tile.x;
           sprite.y = tile.y;
+          // Color units by player: blue for human, red for computer
           if (action.owner.color === PlayerColor.RED) {
             sprite.tint = 0xff5555;
+          } else if (action.owner.color === PlayerColor.BLUE) {
+            sprite.tint = 0x5599ff;
           }
           this.unitSprites.set(action.unit.id, sprite);
           this.unitContainer.addChild(sprite);
