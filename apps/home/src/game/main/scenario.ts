@@ -94,6 +94,7 @@ export class Scenario {
     this.unitsToMove = new Set(playerUnits.map(u => u.unit.id));
 
     if (player.id === this.wolfPlayer.id) {
+      this.emitter.emit("wolfTurn");
       new PackBehavior(store, this.packMemory).takeActions();
     } else {
       this.playerStore = store;
