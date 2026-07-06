@@ -56,6 +56,13 @@ export class Scenario {
         // Remove the unit that just moved from the units to move
         if (action.unit) {
           this.unitsToMove.delete(action.unit.id);
+
+          // If all player units have moved, automatically end their turn
+          if (this.unitsToMove.size === 0 && state.currentPlayer?.id === "human") {
+            setTimeout(() => {
+              this.endPlayerTurn();
+            }, 500);
+          }
         }
         break;
       default:
