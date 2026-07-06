@@ -36,3 +36,15 @@ export function hexDistance(a: CubeCoordinates, b: CubeCoordinates): number {
 export function cubeKey(pos: CubeCoordinates): string {
   return `${pos.q},${pos.r},${pos.s}`;
 }
+
+export function directionBetween(from: CubeCoordinates, to: CubeCoordinates): string | null {
+  const diff = { q: to.q - from.q, r: to.r - from.r, s: to.s - from.s };
+
+  for (const [direction, offset] of Object.entries(directionalOffset)) {
+    if (diff.q === offset.q && diff.r === offset.r && diff.s === offset.s) {
+      return direction;
+    }
+  }
+
+  return null;
+}

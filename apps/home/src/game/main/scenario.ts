@@ -8,6 +8,7 @@ import { createPlayerStore } from "../core/player_store";
 import { StoreProxy } from "../core/store";
 import { type PlayerAction, PlayerActionType } from "../core/player_action";
 import { PackBehavior, createPackMemory } from "../core/player/pack_behavior";
+import { utils } from "pixi.js";
 
 export class Scenario {
   protected player: Player = {
@@ -25,6 +26,9 @@ export class Scenario {
   // Persists the pack's "no backtracking" memory across CPU turns; a fresh
   // PackBehavior is created each turn but shares this.
   protected packMemory = createPackMemory();
+
+  public emitter = new utils.EventEmitter();
+  protected playerStore: StoreProxy<GameEvent, State, PlayerAction> | null = null;
 
   constructor(protected game: Game) {
     game.worldObservable.subscribe(this.onWorldUpdate.bind(this));
@@ -70,8 +74,25 @@ export class Scenario {
     if (player.id === this.wolfPlayer.id) {
       new PackBehavior(store, this.packMemory).takeActions();
     } else {
-      // Human player — end turn automatically until player input is implemented
-      store.dispatch({ type: PlayerActionType.EndTurn });
+      this.playerStore = store;
+      this.emitter.emit("playerTurn");
+    }
+  }
+
+  public moveUnit(unit: any, direction: string) {
+    if (this.playerStore) {
+      this.playerStore.dispatch({
+        type: PlayerActionType.Move,
+        unit,
+        direction,
+      });
+    }
+  }
+
+  public endPlayerTurn() {
+    if (this.playerStore) {
+      this.playerStore.dispatch({ type: PlayerActionType.EndTurn });
+      this.playerStore = null;
     }
   }
 }

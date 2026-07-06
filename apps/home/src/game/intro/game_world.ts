@@ -24,10 +24,23 @@ export class IntroWorld extends GameWorld {
   }
 
   setup(point: Point) {
-    const tile = this.boundary.hitTest(point.x, point.y);
+    // Convert screen coordinates to viewport-relative coordinates
+    const localPoint = this.viewport.toLocal(new Point(point.x, point.y));
 
-    if (tile instanceof Tileable) {
-      const coords = tile.coordinates;
+    // Find the tile that contains this point
+    let clickedTile: Tileable | null = null;
+    for (const tile of this.viewport.children) {
+      if (tile instanceof Tileable) {
+        const bounds = tile.getBounds();
+        if (bounds.contains(localPoint.x, localPoint.y)) {
+          clickedTile = tile;
+          break;
+        }
+      }
+    }
+
+    if (clickedTile instanceof Tileable) {
+      const coords = clickedTile.coordinates;
 
       this.currentAnimation = this.animateFrom(coords)
         .start()
@@ -35,7 +48,7 @@ export class IntroWorld extends GameWorld {
           this.scenario.start(coords);
 
           setTimeout(() => {
-            // this.emitter.emit("finish");
+            this.emitter.emit("finish");
           }, 1000);
         });
 
