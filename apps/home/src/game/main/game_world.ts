@@ -2,6 +2,8 @@ import { GameWorld } from "../shared/game_world";
 import type { Board, Player } from "../core";
 import { Scenario } from "./scenario";
 import type { EventSystem, Spritesheet } from "pixi.js";
+import { Text, Container } from "pixi.js";
+import TWEEN from "@tweenjs/tween.js";
 import { directionBetween } from "../core/grid/helpers";
 import { PlayerActionType } from "../core/player_action";
 import type { Tileable } from "../shared/renderable/tileable";
@@ -17,6 +19,9 @@ export class MainWorld extends GameWorld {
   protected playerUnits: UnitPosition[] = [];
   protected selectedUnit: UnitPosition | null = null;
 
+  protected turnIndicatorContainer: Container | null = null;
+  protected turnIndicatorTween: TWEEN.Tween | null = null;
+
   constructor(protected board: Board, protected events: EventSystem, protected sheet: Spritesheet) {
     super(board, events, sheet);
 
@@ -26,58 +31,72 @@ export class MainWorld extends GameWorld {
       this.isPlayerTurn = true;
       this.playerUnits = data.units;
       this.selectedUnit = data.units[0] || null;
-      this.showTurnIndicator("Your Turn - Move Your Units");
+      this.showTurnIndicator("Your Turn - Move Your Units", 0x4aadd6);
     });
 
     this.scenario.emitter.on("wolfTurn", () => {
       this.isPlayerTurn = false;
-      this.showTurnIndicator("Wolves' Turn");
+      this.showTurnIndicator("Wolves' Turn", 0xff5555);
     });
 
     this.scenario.start();
   }
 
-  protected showTurnIndicator(text: string) {
-    console.log("Turn:", text);
+  protected showTurnIndicator(text: string, color: number) {
     // Remove old indicator if exists
-    const oldIndicator = document.getElementById("turn-indicator");
-    if (oldIndicator) {
-      oldIndicator.remove();
+    if (this.turnIndicatorContainer) {
+      if (this.turnIndicatorTween) {
+        this.turnIndicatorTween.stop();
+      }
+      this.removeChild(this.turnIndicatorContainer);
+      this.turnIndicatorContainer.destroy();
     }
 
-    // Create indicator
-    const indicator = document.createElement("div");
-    indicator.id = "turn-indicator";
-    indicator.textContent = text;
+    // Create new container for indicator
+    this.turnIndicatorContainer = new Container();
+    this.turnIndicatorContainer.position.set(window.innerWidth / 2, 40);
 
-    const bgColor = text.includes("Your") ? "rgba(74, 173, 214, 0.2)" : "rgba(255, 85, 85, 0.2)";
-    const textColor = text.includes("Your") ? "#4aadd6" : "#ff5555";
-    const borderColor = text.includes("Your") ? "#4aadd6" : "#ff5555";
+    // Create text
+    const indicator = new Text(text, {
+      fontSize: 24,
+      fontWeight: "bold",
+      fill: color,
+      fontFamily: "Arial",
+      align: "center",
+    });
+    indicator.anchor.set(0.5, 0.5);
 
-    indicator.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: ${bgColor};
-      color: ${textColor};
-      padding: 15px 30px;
-      border-radius: 8px;
-      font-size: 20px;
-      font-weight: bold;
-      z-index: 1000;
-      font-family: Arial, sans-serif;
-      border: 2px solid ${borderColor};
-      box-shadow: 0 0 10px ${borderColor}40;
-    `;
-    document.body.appendChild(indicator);
+    this.turnIndicatorContainer.addChild(indicator);
+    this.addChild(this.turnIndicatorContainer);
 
-    // Remove after 3 seconds
-    setTimeout(() => {
-      if (indicator.parentNode) {
-        indicator.remove();
-      }
-    }, 3000);
+    // Fade in and out animation
+    let state = { alpha: 0 };
+    this.turnIndicatorContainer.alpha = 0;
+
+    // Fade in
+    this.turnIndicatorTween = new TWEEN.Tween(state)
+      .to({ alpha: 1 }, 300)
+      .onUpdate(() => {
+        this.turnIndicatorContainer!.alpha = state.alpha;
+      })
+      .onComplete(() => {
+        // Stay visible for 2.4 seconds, then fade out
+        this.turnIndicatorTween = new TWEEN.Tween(state)
+          .to({ alpha: 0 }, 300)
+          .delay(2400)
+          .onUpdate(() => {
+            this.turnIndicatorContainer!.alpha = state.alpha;
+          })
+          .onComplete(() => {
+            if (this.turnIndicatorContainer && this.turnIndicatorContainer.parent) {
+              this.removeChild(this.turnIndicatorContainer);
+              this.turnIndicatorContainer.destroy();
+              this.turnIndicatorContainer = null;
+            }
+          })
+          .start();
+      })
+      .start();
   }
 
   protected createWorldTile(hex: GameTileHex) {
