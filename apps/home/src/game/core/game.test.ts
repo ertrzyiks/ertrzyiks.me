@@ -38,6 +38,7 @@ describe("Game end conditions", () => {
     const game = makeGame();
     game.spawnInSection(human, new Hero(), "start");
     const hero = game.world.getState().units[0].unit;
+    hero.replenish(); // grant a movement budget, as turn start would
     const village = game.world.tileBySection("village").cube();
 
     game.world.dispatch({ type: GameEventType.Move, unit: hero, position: village });
@@ -65,6 +66,7 @@ describe("Game end conditions", () => {
     const game = makeGame();
     game.spawnInSection(human, new Hero(), "start");
     const hero = game.world.getState().units[0].unit;
+    hero.replenish(); // grant a movement budget, as turn start would
     const village = game.world.tileBySection("village").cube();
     const start = game.world.tileBySection("start").cube();
 
@@ -82,6 +84,7 @@ describe("Game end conditions", () => {
     const game = new Game(makeBoard());
     game.spawnInSection(human, new Hero(), "start");
     const hero = game.world.getState().units[0].unit;
+    hero.replenish(); // grant a movement budget, as turn start would
     const village = game.world.tileBySection("village").cube();
 
     game.world.dispatch({ type: GameEventType.Move, unit: hero, position: village });

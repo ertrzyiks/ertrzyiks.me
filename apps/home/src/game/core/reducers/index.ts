@@ -73,8 +73,30 @@ export function gameReducer(state: State, action: GameEvent) {
       };
 
     case GameEventType.Move: {
-      if (isMovable(action.unit)) action.unit.step(1);
       const movingUnit = state.units.find((u) => u.unit === action.unit);
+
+      // Movement validity that only the reducer can enforce globally — it is the
+      // single source of truth so every mover (human click-to-move and every AI
+      // behavior) obeys the same rules. Reject BEFORE mutating the unit so a
+      // rejected move never spends a movement point. See specs/02-movement-system.md.
+      //
+      // Zero-budget: a movable unit with no remaining budget cannot move.
+      if (isMovable(action.unit) && !action.unit.canMove()) {
+        return state;
+      }
+      // Occupied-tile: a hex already held by ANOTHER unit is an invalid
+      // destination. (Bounds and adjacency are enforced by the callers, which
+      // have the tile/click context the reducer lacks — the reducer enforces
+      // what it can see across the whole roster: occupancy.)
+      const destinationKey = cubeKey(action.position);
+      const destinationOccupied = state.units.some(
+        (u) => u.unit !== action.unit && cubeKey(u.position) === destinationKey
+      );
+      if (destinationOccupied) {
+        return state;
+      }
+
+      if (isMovable(action.unit)) action.unit.step(1);
       const moveRange = isSightful(action.unit) ? action.unit.sightRange : 0;
       const revealedAfterMove =
         movingUnit && moveRange > 0

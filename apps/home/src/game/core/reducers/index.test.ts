@@ -237,6 +237,50 @@ describe("Move", () => {
 
     expect(state.revealedTiles).toEqual({});
   });
+
+  test("rejects a move onto a hex occupied by another unit (spec 02)", () => {
+    const mover = new PlainUnit();
+    mover.replenish();
+    const blocker = new PlainUnit();
+    const start = { q: 0, r: 0, s: 0 };
+    const occupied = { q: 1, r: -1, s: 0 };
+
+    let state = makeState({
+      units: [
+        { unit: mover, position: start, owner: human },
+        { unit: blocker, position: occupied, owner: wolf },
+      ],
+    });
+    const next = gameReducer(state, {
+      type: GameEventType.Move,
+      unit: mover,
+      position: occupied,
+    });
+
+    // Move had no effect: the mover stayed put and did not spend a movement point.
+    expect(next.units.find((u) => u.unit === mover)!.position).toEqual(start);
+    expect(mover.canMove()).toBe(true);
+    expect(next).toBe(state);
+  });
+
+  test("rejects a move by a unit with zero movement budget (spec 02)", () => {
+    // Budget 1, replenished then spent — a second move must be rejected.
+    const unit = new (Movable(Unit, 1))();
+    unit.replenish();
+    const start = { q: 0, r: 0, s: 0 };
+    const first = { q: 1, r: -1, s: 0 };
+    const second = { q: 2, r: -2, s: 0 };
+
+    let state = makeState({ units: [{ unit, position: start, owner: human }] });
+    state = gameReducer(state, { type: GameEventType.Move, unit, position: first });
+    expect(unit.canMove()).toBe(false);
+    expect(state.units[0].position).toEqual(first);
+
+    // Second move: no budget → rejected, position unchanged.
+    const blocked = gameReducer(state, { type: GameEventType.Move, unit, position: second });
+    expect(blocked.units[0].position).toEqual(first);
+    expect(blocked).toBe(state);
+  });
 });
 
 describe("TakeDamage", () => {
