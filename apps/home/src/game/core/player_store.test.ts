@@ -20,6 +20,7 @@ function makeStore() {
     tiles: [],
     units: [],
     revealedTiles: {},
+    outcome: null,
     worldWidth: 500,
     worldHeight: 500,
     cols: 10,

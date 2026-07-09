@@ -33,7 +33,21 @@ function revealAround(
 }
 
 export function gameReducer(state: State, action: GameEvent) {
+  // Terminal state: once a stage has ended, no gameplay actions are accepted.
+  // Only GameEnd (idempotent) and Reset (stage reload, clears it) pass through.
+  // See specs/05-win-lose-conditions.md "Game End State".
+  if (
+    state.outcome !== null &&
+    action.type !== GameEventType.GameEnd &&
+    action.type !== GameEventType.Reset
+  ) {
+    return state;
+  }
+
   switch (action.type) {
+    case GameEventType.GameEnd:
+      return { ...state, outcome: action.outcome };
+
     case GameEventType.PlayerJoin:
       return {
         ...state,

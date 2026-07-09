@@ -1,5 +1,5 @@
 import type { Grid } from "honeycomb-grid";
-import type { GameEvent } from "./game_event";
+import type { GameEvent, GameOutcome } from "./game_event";
 import { getGridBoundingBox, getGridSize } from "./grid";
 import type { Player } from "./player";
 import { createStore, Store } from "./store";
@@ -23,6 +23,10 @@ export interface State {
   // and combat can see enemy units that `units` filters out. See player_store.
   allUnits?: Array<UnitPosition>;
   revealedTiles: Record<string, Record<string, true>>;
+  // Terminal marker: null while the stage is in play, set to the outcome once a
+  // win/lose condition fires. The reducer rejects gameplay actions while set,
+  // enforcing the terminal state from specs/05-win-lose-conditions.md.
+  outcome: GameOutcome | null;
 }
 
 export class World {
@@ -46,6 +50,7 @@ export class World {
       tiles,
       units: [],
       revealedTiles: {},
+      outcome: null,
       worldWidth,
       worldHeight,
       cols,

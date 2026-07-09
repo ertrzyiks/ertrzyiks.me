@@ -14,6 +14,10 @@ export enum GameEventType {
   Reset,
 }
 
+// The two ways a stage can terminate. Carried on GameEnd so the renderer and
+// stage system can react (win → next stage, lose → reload). See specs/05.
+export type GameOutcome = "win" | "lose";
+
 export interface AbstractEvent {
   type: GameEventType;
 }
@@ -24,6 +28,7 @@ export interface GameStartEvent extends AbstractEvent {
 
 export interface GameEndEvent extends AbstractEvent {
   type: GameEventType.GameEnd;
+  outcome: GameOutcome;
 }
 
 export interface SpawnEvent extends AbstractEvent {

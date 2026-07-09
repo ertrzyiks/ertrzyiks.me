@@ -1,4 +1,5 @@
 export * from './board'
+export * from './conditions'
 export * from './game'
 export * from './game_event'
 export * from './grid'

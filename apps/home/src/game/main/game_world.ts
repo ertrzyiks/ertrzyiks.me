@@ -8,7 +8,7 @@ import { directionBetween } from "../core/grid/helpers";
 import { PlayerActionType } from "../core/player_action";
 import type { Tileable } from "../shared/renderable/tileable";
 import type { GameTileHex } from "../core";
-import type { UnitPosition } from "../core/world";
+import type { UnitPosition } from "../core/board";
 
 export class MainWorld extends GameWorld {
   protected player: Player | null = null;
@@ -37,6 +37,18 @@ export class MainWorld extends GameWorld {
     this.scenario.emitter.on("wolfTurn", () => {
       this.isPlayerTurn = false;
       this.showTurnIndicator("Wolves' Turn", 0xff5555);
+    });
+
+    this.scenario.emitter.on("gameEnd", (data: { outcome: "win" | "lose" }) => {
+      // Terminal state: block all board input and announce the result. The store
+      // already rejects gameplay actions; this just stops the click handler.
+      this.isPlayerTurn = false;
+      this.selectedUnit = null;
+      if (data.outcome === "win") {
+        this.showTurnIndicator("Victory! You reached the village", 0x4ad66a);
+      } else {
+        this.showTurnIndicator("Defeated...", 0xff5555);
+      }
     });
 
     this.scenario.start();

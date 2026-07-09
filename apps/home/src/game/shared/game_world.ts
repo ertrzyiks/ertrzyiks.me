@@ -7,6 +7,7 @@ import {
   Spritesheet,
   Texture,
   type EventSystem,
+  ColorMatrixFilter,
 } from "pixi.js";
 import { GameViewport } from "./viewport";
 import { Tile } from "./renderable/tile";
@@ -45,7 +46,7 @@ export class GameWorld extends Container {
   protected currentTween: TWEEN.Tween | null = null;
   protected tickerFunction = () => this.cull();
   protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles();
-  protected unitSprites: Map<number, Tile> = new Map();
+  protected unitSprites: Map<number, Container> = new Map();
   protected fogTiles: Map<string, Graphics> = new Map();
   protected unitContainer: Container = new Container();
   protected fogContainer: Container = new Container();
@@ -87,22 +88,28 @@ export class GameWorld extends Container {
       case GameEventType.Spawn: {
         const tile = this.getTerrainAt(action.position);
         if (tile) {
+          // Create a container for the multi-layer unit
+          const unitContainer = new Container();
+          unitContainer.x = tile.x;
+          unitContainer.y = tile.y;
+
+          // Layer 1: Colored hexagon background
+          const bgHex = new Graphics();
+          const hexColor = action.owner.color === PlayerColor.RED ? 0xff3333 : 0x3366ff;
+          bgHex.beginFill(hexColor);
+          bgHex.drawPolygon(this.createHexPoints(50));
+          bgHex.endFill();
+          bgHex.alpha = 0.6;
+          unitContainer.addChild(bgHex);
+
+          // Layer 2: Ship icon on top
           const shipTexture = Texture.from("ship");
-          const sprite = new Tile(shipTexture, action.position);
-          sprite.scale.x = -1;
-          sprite.x = tile.x;
-          sprite.y = tile.y;
+          const shipSprite = new Tile(shipTexture, action.position);
+          shipSprite.scale.x = -1;
+          unitContainer.addChild(shipSprite);
 
-          // Color units by player: blue for human, red for computer
-          // Using lighter tint colors for visibility
-          if (action.owner.color === PlayerColor.RED) {
-            sprite.tint = 0xff6666;
-          } else if (action.owner.color === PlayerColor.BLUE) {
-            sprite.tint = 0x6699ff;
-          }
-
-          this.unitSprites.set(action.unit.id, sprite);
-          this.unitContainer.addChild(sprite);
+          this.unitSprites.set(action.unit.id, unitContainer);
+          this.unitContainer.addChild(unitContainer);
         }
         this.updateFog(state);
         done();
@@ -118,7 +125,8 @@ export class GameWorld extends Container {
             .to({ x: moveTile.x, y: moveTile.y }, 500)
             .delay(100)
             .onComplete(() => {
-              unitSprite.coordinates = action.position;
+              // The unit sprite is now a multi-layer Container positioned via
+              // x/y (tweened above); it has no Tile `coordinates` to update.
               done();
             });
           this.currentTween.start();
@@ -225,6 +233,18 @@ export class GameWorld extends Container {
         child.x + child.width <= right &&
         child.y + child.height <= bottom;
     }
+  }
+
+  protected createHexPoints(size: number): number[] {
+    const points: number[] = [];
+    const yOffset = 4;
+    for (let side = 0; side < 6; side++) {
+      points.push(
+        size * Math.cos((side * 2 * Math.PI) / 6),
+        yOffset + size * Math.sin((side * 2 * Math.PI) / 6)
+      );
+    }
+    return points;
   }
 
   destroy(options?: IDestroyOptions | boolean) {

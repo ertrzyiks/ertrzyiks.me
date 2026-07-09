@@ -65,6 +65,7 @@ export class EditorWorld extends Container {
       tiles: [],
       units: [],
       revealedTiles: {},
+      outcome: null,
       worldWidth: 1000,
       worldHeight: 1000,
       cols: 0,

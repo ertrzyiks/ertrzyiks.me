@@ -22,6 +22,12 @@ Prioritized list of items yet to be implemented or fixed. Check specs/* for beha
 - [x] **Pack attack-on-adjacency (spec 06)** — `PackBehavior.tryAttack` makes each wolf bite an adjacent non-wolf living unit after moving (re-reads position post-move; reads `allUnits` to see the Hero). Dissolved followers keep their bite.
 - [x] **Hero + wolf combat stats** — Hero is now `Damageable(30) + Damaging(10)`; PackLeader `Damaging(7)`, PackFollower `Damaging(5)`. HP/damage are not fixed by specs — chosen so wolves < bandits(8). Renderer (`shared/game_world.ts`) tears down a unit sprite on `TakeDamage` when its unit left `state.units`.
 - [x] **Unit tests** — 128 tests. Added `core/units/damaging.test.ts`; expanded reducer (`TakeDamage`), `player_store` (`Attack` + `allUnits`), `pack_behavior` (attack), `wolf` (damage) tests.
+- [x] **Win/lose conditions + GameEnd + terminal state (spec 05)** — `core/conditions/index.ts`: pure predicates `destinationReached(playerId, goalSections)` / `lastUnitDefeated(playerId)` + `evaluateEndConditions(state, {win, lose})` (lose-before-win precedence, OR within a kind). `GameEndEvent` now carries `outcome: GameOutcome ("win"|"lose")`. `State.outcome: GameOutcome | null` (required field — all State literals updated). Reducer: handles `GameEnd` (sets outcome) and **enforces terminal state** — rejects every gameplay action once `outcome !== null` (only `GameEnd`/`Reset` pass through). `Game.setEndConditions()` + `Game.onWorldUpdate` evaluates after each `Move`/`TakeDamage` and dispatches `GameEnd` (synchronously, before the observable drains). `main/scenario.ts` wires Stage 1 conditions (win: reach `village`; lose: last human unit dies) and emits `"gameEnd"`; `MainWorld` shows a victory/defeat indicator and stops accepting clicks. **board1.json**: tile (7,0) is now `sectionName: "village"` (far-right grass goal). Tests: `core/conditions/index.test.ts` (9), `core/game.test.ts` (5, full Game flow), reducer `GameEnd`/terminal tests. **147 tests, tsc clean, astro build clean.**
+
+### Discovered while implementing (plan was stale)
+- **Click-to-move + unit selection ARE already implemented** in `main/game_world.ts` `handleTileClick` (select friendly unit on click, then click a hex to move the selected unit via `Scenario.moveUnit`). The Stage 1 "Player input — click-to-move" / "Unit selection" items below are largely done; what remains is highlight-valid-moves, an explicit end-turn button, and click-to-attack.
+- **Pre-existing broken WIP in `shared/game_world.ts`** (uncommitted `M` at session start): re-introduced the multi-layer "colored hex background + ship" unit rendering that commit 3405e97 had simplified away via sprite tint. It did not typecheck (`unitSprites: Map<number,Tile>` storing a `Container`; `.coordinates` assigned on a `Container`). Made the **minimal intent-preserving fix** to unblock the build: `Map<number, Container>` and dropped the invalid `.coordinates` assignment (position is driven by the tweened container x/y). **This maintainer WIP should be reviewed** — it conflicts with the latest committed rendering approach.
+- **Pre-existing wrong import** `main/game_world.ts` imported `UnitPosition` from `../core/world` (not exported there) — fixed to `../core/board`.
 
 ---
 
@@ -29,7 +35,7 @@ Prioritized list of items yet to be implemented or fixed. Check specs/* for beha
 
 - **`allUnits` is how a behavior sees enemies.** The per-player proxy exposes `state.allUnits` (full roster) plus `state.units` (this player only). Seeker (bandit) and Flee (Wanderer) behaviors should read `allUnits` to find player units — same pattern `PackBehavior.tryAttack`/`createMoveContext` already use. Raw (unproxied) state leaves `allUnits` undefined, so always `allUnits ?? units`.
 - **Occupancy is enforced for AI movers only (so far).** `createMoveContext` keeps AI off occupied tiles (all units). The reducer still does NOT reject a `Move` onto an occupied hex — once human click-to-move exists, add that guard in the reducer against ALL units so it covers every mover (see "Occupied-tile enforcement").
-- **Combat removes units but nothing ends the game yet.** `TakeDamage` removing the Hero just leaves the human with no units (turn auto-passes, no crash). Win/lose detection + `GameEnd { outcome }` + terminal state is the next increment — now fully unblocked by combat.
+- **Win/lose is evaluated in `Game`, not the reducer.** The reducer is pure and knows neither goal sections nor which player is human, so end conditions live in `core/conditions/` as pure predicates and `Game.onWorldUpdate` evaluates them after each `Move`/`TakeDamage`, dispatching `GameEnd`. `GameEnd` sets `state.outcome`, which the reducer then uses to reject all further gameplay (terminal state). Stage progression (win → load next stage, lose → reload) is the next increment — it hooks the `"gameEnd"` emitter event / `state.outcome`.
 - **One step per unit per turn.** Both `Explorer` and `PackBehavior` dispatch a single Move per unit even when the unit has >1 movement point. Matches spec wording ("moves one step") but means multi-point budgets are underused. Revisit if a behavior needs to close distance faster.
 
 ## Stage 1 — The Wreck (make it playable)
@@ -41,16 +47,16 @@ Priority: highest — entry point for everything else.
 - [x] **Pack Leader AI** — done (wander, no-backtracking, attack-on-adjacency).
 - [x] **Pack Follower AI** — done (step toward leader, stay if adjacent, `directionToward` handles blocked shortest path, attack-on-adjacency).
 - [x] **Pack dissolution on leader death** — done; `PackBehavior` treats a missing/non-alive leader as dissolved → followers wander.
-- [ ] **Add `goal` section to board1.json** — add `sectionName: "village"` to the tile at the far right grass edge. Stage 1 win requires reaching this tile.
+- [x] **Add `goal` section to board1.json** — done; tile (7,0) is `sectionName: "village"`.
 - [ ] **Wanderer NPC unit** — non-combat unit, cannot be attacked. `Wanderer = Sightful(Movable(Unit, 3), 2)`. No Damageable mixin.
 - [ ] **Flee AI behavior** — `FleeBehavior` using `directionAway` (already implemented in `movement.ts`): each turn moves to maximize distance from nearest player unit; stays if no move increases distance. **BLOCKED on the proxy exposing enemy units** — see Architectural notes above. See `specs/06-enemy-ai.md`.
 - [ ] **Finish Stage 1 scenario** — add Wanderer spawn (needs `wanderer_spawn` section) and a dedicated neutral player for it. Pack already wired. Board section renaming (`wolf_leader`) optional — current `wolf_1/2/3` work fine.
-- [ ] **Win condition check after Move** — after every Move, check if moved unit's tile sectionName matches stage's goal section; emit `GameEvent.GameEnd { outcome: "win" }`. See `specs/05-win-lose-conditions.md`.
-- [ ] **Lose condition check after damage** — after TakeDamage leaves player's unit at ≤ 0 HP, emit `GameEvent.GameEnd { outcome: "lose" }`. See `specs/05-win-lose-conditions.md`.
-- [ ] **`GameEvent.GameEnd` with outcome field** — extend `GameEndEvent` to carry `outcome: "win" | "lose"`.
-- [ ] **Terminal state enforcement** — after GameEnd, block all further player and AI actions.
-- [ ] **Player input — click-to-move** — clicking a hex dispatches `PlayerAction.Move` for the selected human unit. Guard against clicks during animations and enemy turn. See `specs/03-player-input.md`.
-- [ ] **Unit selection** — clicking a friendly unit selects it; subsequent hex clicks operate on selected unit. See `specs/03-player-input.md`.
+- [x] **Win condition check after Move** — done via `Game.onWorldUpdate` + `destinationReached`.
+- [x] **Lose condition check after damage** — done via `Game.onWorldUpdate` + `lastUnitDefeated`.
+- [x] **`GameEvent.GameEnd` with outcome field** — done; `GameEndEvent.outcome: GameOutcome`.
+- [x] **Terminal state enforcement** — done; reducer rejects gameplay actions once `state.outcome` is set.
+- [x] **Player input — click-to-move** — already implemented in `main/game_world.ts` `handleTileClick` (guarded by `isPlayerTurn`). Remaining: guard mid-animation.
+- [x] **Unit selection** — already implemented; clicking a friendly unit sets `selectedUnit`.
 - [ ] **Highlight valid moves** — after selection, highlight adjacent hexes that are in-bounds, unoccupied, and within movement budget. See `specs/03-player-input.md`.
 - [ ] **End-turn button** — UI button dispatches `PlayerAction.EndTurn` for the human player. Human currently auto-passes; must become explicit. See `specs/03-player-input.md`.
 - [ ] **Stage 1 narrative events** — trigger dialog at: Turn 1 start, Whirley within sight range of Wanderer, Whirley reaches village, Whirley defeated. See `specs/09-stage-1.md`.

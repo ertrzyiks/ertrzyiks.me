@@ -3,6 +3,7 @@ import { type Player, PlayerColor } from "../core/player/player";
 import { Hero, PackLeader, PackFollower } from "./units";
 import type { ObservableSubscriptionDone } from "../shared/observable";
 import { type GameEvent, GameEventType } from "../core/game_event";
+import { destinationReached, lastUnitDefeated } from "../core/conditions";
 import type { State } from "../core/world";
 import { createPlayerStore } from "../core/player_store";
 import { StoreProxy } from "../core/store";
@@ -40,6 +41,14 @@ export class Scenario {
     done: ObservableSubscriptionDone
   ) {
     switch (action.type) {
+      case GameEventType.GameEnd:
+        done();
+        // Terminal state: stop driving turns and let the renderer show the
+        // outcome. The store already rejects further gameplay. See specs/05.
+        this.playerStore = null;
+        this.unitsToMove.clear();
+        this.emitter.emit("gameEnd", { outcome: action.outcome });
+        break;
       case GameEventType.StartTurn:
         done();
 
@@ -72,6 +81,13 @@ export class Scenario {
   }
 
   public start() {
+    // Stage 1 ends when Whirley reaches the village (win) or the human loses
+    // every unit (lose). See specs/05-win-lose-conditions.md and specs/09-stage-1.md.
+    this.game.setEndConditions({
+      win: [destinationReached(this.player.id, ["village"])],
+      lose: [lastUnitDefeated(this.player.id)],
+    });
+
     this.game.add(this.player);
     this.game.add(this.wolfPlayer);
 

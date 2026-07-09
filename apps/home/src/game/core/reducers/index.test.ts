@@ -20,6 +20,7 @@ function makeState(overrides: Partial<State> = {}): State {
     tiles: [],
     units: [],
     revealedTiles: {},
+    outcome: null,
     worldWidth: 300,
     worldHeight: 200,
     cols: 5,
@@ -386,5 +387,79 @@ describe("StartTurn", () => {
     // StartTurn activates human (players[0])
     gameReducer(state, { type: GameEventType.StartTurn });
     expect(wolfUnit.canMove()).toBe(false);
+  });
+});
+
+describe("GameEnd", () => {
+  test("records the outcome on the state", () => {
+    const state = gameReducer(makeState(), {
+      type: GameEventType.GameEnd,
+      outcome: "win",
+    });
+    expect(state.outcome).toBe("win");
+  });
+
+  test("records a lose outcome", () => {
+    const state = gameReducer(makeState(), {
+      type: GameEventType.GameEnd,
+      outcome: "lose",
+    });
+    expect(state.outcome).toBe("lose");
+  });
+});
+
+describe("terminal state", () => {
+  test("rejects a Move once the game has ended", () => {
+    const unit = new PlainUnit();
+    const ended = makeState({
+      outcome: "win",
+      players: [human],
+      units: [{ unit, position: { q: 0, r: 0, s: 0 }, owner: human }],
+    });
+    const next = gameReducer(ended, {
+      type: GameEventType.Move,
+      unit,
+      position: { q: 1, r: 0, s: -1 },
+    });
+    // Position unchanged: the action was ignored.
+    expect(next.units[0].position).toEqual({ q: 0, r: 0, s: 0 });
+    expect(next).toBe(ended);
+  });
+
+  test("rejects StartTurn once the game has ended", () => {
+    const ended = makeState({ outcome: "lose", players: [human, wolf] });
+    const next = gameReducer(ended, { type: GameEventType.StartTurn });
+    expect(next).toBe(ended);
+    expect(next.currentPlayer).toBe(null);
+  });
+
+  test("rejects TakeDamage once the game has ended", () => {
+    const target = new (Damageable(Unit, 10))();
+    target.replenish(); // full HP so aliveness reflects the (blocked) damage only
+    const inflictor = new (Damaging(Unit, 5))();
+    const ended = makeState({
+      outcome: "win",
+      units: [{ unit: target, position: { q: 0, r: 0, s: 0 }, owner: human }],
+    });
+    const next = gameReducer(ended, {
+      type: GameEventType.TakeDamage,
+      target,
+      inflictor,
+      damage: 999,
+    });
+    // Terminal state short-circuits before any damage is applied: the target
+    // keeps full HP and stays on the board.
+    expect(target.isAlive()).toBe(true);
+    expect(next.units).toHaveLength(1);
+    expect(next).toBe(ended);
+  });
+
+  test("still records a GameEnd (idempotent) after the game has ended", () => {
+    const ended = makeState({ outcome: "win" });
+    const next = gameReducer(ended, {
+      type: GameEventType.GameEnd,
+      outcome: "lose",
+    });
+    expect(next.outcome).toBe("lose");
   });
 });
