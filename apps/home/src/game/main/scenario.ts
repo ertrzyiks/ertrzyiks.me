@@ -1,6 +1,6 @@
 import { Game } from "../core/game";
 import { type Player, PlayerColor } from "../core/player/player";
-import { Hero, PackLeader, PackFollower } from "./units";
+import { Hero, PackLeader, PackFollower, Wanderer } from "./units";
 import type { ObservableSubscriptionDone } from "../shared/observable";
 import { type GameEvent, GameEventType } from "../core/game_event";
 import { destinationReached, lastUnitDefeated } from "../core/conditions";
@@ -9,6 +9,7 @@ import { createPlayerStore } from "../core/player_store";
 import { StoreProxy } from "../core/store";
 import { type PlayerAction, PlayerActionType } from "../core/player_action";
 import { PackBehavior, createPackMemory } from "../core/player/pack_behavior";
+import { FleeBehavior } from "../core/player/flee_behavior";
 import { utils } from "pixi.js";
 
 export class Scenario {
@@ -22,6 +23,15 @@ export class Scenario {
     id: "wolves",
     name: "Pack",
     color: PlayerColor.RED,
+  };
+
+  // Neutral NPC owner for the Wanderer. Registered last so it takes its turn
+  // after the wolves — spec 06 requires the Wanderer to act last in the CPU
+  // turn. It never attacks and cannot be attacked. See specs/09-stage-1.md.
+  protected wandererPlayer: Player = {
+    id: "wanderer",
+    name: "Wanderer",
+    color: PlayerColor.GREEN,
   };
 
   // Persists the pack's "no backtracking" memory across CPU turns; a fresh
@@ -90,12 +100,14 @@ export class Scenario {
 
     this.game.add(this.player);
     this.game.add(this.wolfPlayer);
+    this.game.add(this.wandererPlayer);
 
     this.game.spawnInSection(this.player, new Hero(), "spawn_a");
     this.game.spawnInSection(this.player, new Hero(), "spawn_b");
     this.game.spawnInSection(this.wolfPlayer, new PackLeader(), "wolf_1");
     this.game.spawnInSection(this.wolfPlayer, new PackFollower(), "wolf_2");
     this.game.spawnInSection(this.wolfPlayer, new PackFollower(), "wolf_3");
+    this.game.spawnInSection(this.wandererPlayer, new Wanderer(), "wanderer_spawn");
 
     this.game.nextTurn();
   }
@@ -112,6 +124,9 @@ export class Scenario {
     if (player.id === this.wolfPlayer.id) {
       this.emitter.emit("wolfTurn");
       new PackBehavior(store, this.packMemory).takeActions();
+    } else if (player.id === this.wandererPlayer.id) {
+      this.emitter.emit("wandererTurn");
+      new FleeBehavior(store, { fleeFrom: [this.player.id] }).takeActions();
     } else {
       this.playerStore = store;
       this.emitter.emit("playerTurn", { units: playerUnits });

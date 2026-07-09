@@ -180,6 +180,22 @@ describe("createPlayerStore — Attack translation", () => {
     expect(attacker.canAttack()).toBe(true);
   });
 
+  test("ignores an attack on a non-damageable NPC (the Wanderer)", () => {
+    const { store, attacker, attackerPos } = spawnAttackerAndTarget(8);
+    // A non-combat NPC has no Damageable mixin, so it cannot be targeted.
+    const NpcUnit = Movable(Unit, 3);
+    const npc = new NpcUnit();
+    npc.replenish();
+    const npcPos = positionAt(attackerPos, "se"); // adjacent, different hex from the default target
+    store.dispatch({ type: GameEventType.Spawn, unit: npc, position: npcPos, owner: wolf });
+
+    const humanStore = createPlayerStore(store, human);
+    humanStore.dispatch({ type: PlayerActionType.Attack, unit: attacker, position: npcPos });
+
+    expect(store.getState().units.some((u) => u.unit === npc)).toBe(true);
+    expect(attacker.canAttack()).toBe(true); // no charge wasted on an un-targetable unit
+  });
+
   test("ignores an attack when the attacker has no charge left", () => {
     const { store, attacker, target, targetPos } = spawnAttackerAndTarget(8);
     attacker.useAttack(); // exhaust the single charge

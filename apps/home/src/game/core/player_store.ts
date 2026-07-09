@@ -3,7 +3,7 @@ import { type GameEvent, GameEventType } from "./game_event";
 import { proxyStore, Store } from "./store";
 import { positionAt, cubeKey, hexDistance } from "./grid";
 import { type PlayerAction, PlayerActionType } from "./player_action";
-import { Unit, isDamaging } from "./units";
+import { Unit, isDamaging, isDamageable } from "./units";
 import type { Player } from "./player";
 import type { UnitPosition } from "./board";
 
@@ -43,6 +43,10 @@ export function createPlayerStore(store: Store<GameEvent, State>, player: Player
           );
           if (!targetEntry) break;
           if (targetEntry.owner.id === player.id) break; // no friendly fire
+          // Non-combat NPCs (the Wanderer) have no Damageable mixin and cannot
+          // be targeted — reject before spending the attacker's charge.
+          // See specs/06-enemy-ai.md.
+          if (!isDamageable(targetEntry.unit)) break;
 
           const attacker = action.unit;
           if (!isDamaging(attacker) || !attacker.canAttack()) break;

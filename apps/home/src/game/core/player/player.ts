@@ -1,6 +1,7 @@
 export enum PlayerColor {
   BLUE,
-  RED
+  RED,
+  GREEN
 }
 
 export interface Player {

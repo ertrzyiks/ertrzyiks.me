@@ -8,3 +8,4 @@ import { PackLeader as PackLeaderUnit, PackFollower as PackFollowerUnit } from '
 export const Hero = Sightful(Renderable(Movable(Damaging(Damageable(Unit, 30), 10), 3)), 2)
 export const PackLeader = PackLeaderUnit
 export const PackFollower = PackFollowerUnit
+export { Wanderer } from './wanderer'

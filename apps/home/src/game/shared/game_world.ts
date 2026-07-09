@@ -95,7 +95,12 @@ export class GameWorld extends Container {
 
           // Layer 1: Colored hexagon background
           const bgHex = new Graphics();
-          const hexColor = action.owner.color === PlayerColor.RED ? 0xff3333 : 0x3366ff;
+          const hexColor =
+            action.owner.color === PlayerColor.RED
+              ? 0xff3333
+              : action.owner.color === PlayerColor.GREEN
+                ? 0x33cc55
+                : 0x3366ff;
           bgHex.beginFill(hexColor);
           bgHex.drawPolygon(this.createHexPoints(50));
           bgHex.endFill();
