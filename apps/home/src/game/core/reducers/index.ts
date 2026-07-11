@@ -70,6 +70,11 @@ export function gameReducer(state: State, action: GameEvent) {
         ...state,
         currentPlayerIndex,
         currentPlayer,
+        // A turn has begun — advance the counter (spec 01). Narrative turn-N
+        // triggers read this, so it must reflect "turn 1" on the very first
+        // StartTurn. The terminal-state guard above prevents it advancing once
+        // the stage has ended.
+        turn: state.turn + 1,
       };
 
     case GameEventType.Move: {

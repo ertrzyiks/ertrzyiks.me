@@ -17,6 +17,7 @@ function makeState(overrides: Partial<State> = {}): State {
     players: [],
     currentPlayerIndex: null,
     currentPlayer: null,
+    turn: 0,
     tiles: [],
     units: [],
     revealedTiles: {},
@@ -431,6 +432,40 @@ describe("StartTurn", () => {
     // StartTurn activates human (players[0])
     gameReducer(state, { type: GameEventType.StartTurn });
     expect(wolfUnit.canMove()).toBe(false);
+  });
+
+  test("sets turn to 1 on the very first StartTurn", () => {
+    let state = makeState({ players: [human, wolf] });
+    expect(state.turn).toBe(0);
+    state = gameReducer(state, { type: GameEventType.StartTurn });
+    expect(state.turn).toBe(1);
+  });
+
+  test("increments the turn counter on every StartTurn", () => {
+    let state = makeState({ players: [human, wolf] });
+    state = gameReducer(state, { type: GameEventType.StartTurn });
+    state = gameReducer(state, { type: GameEventType.EndTurn });
+    state = gameReducer(state, { type: GameEventType.StartTurn });
+    expect(state.turn).toBe(2);
+    state = gameReducer(state, { type: GameEventType.EndTurn });
+    state = gameReducer(state, { type: GameEventType.StartTurn });
+    expect(state.turn).toBe(3);
+  });
+
+  test("EndTurn does not advance the turn counter", () => {
+    let state = makeState({ players: [human, wolf] });
+    state = gameReducer(state, { type: GameEventType.StartTurn });
+    expect(state.turn).toBe(1);
+    state = gameReducer(state, { type: GameEventType.EndTurn });
+    expect(state.turn).toBe(1);
+  });
+
+  test("does not advance the turn counter once the game has ended", () => {
+    const ended = makeState({ players: [human, wolf], turn: 5, outcome: "win" });
+    const next = gameReducer(ended, { type: GameEventType.StartTurn });
+    // Terminal-state guard short-circuits StartTurn, so the counter is frozen.
+    expect(next.turn).toBe(5);
+    expect(next).toBe(ended);
   });
 });
 

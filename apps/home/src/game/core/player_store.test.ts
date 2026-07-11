@@ -17,6 +17,7 @@ function makeStore() {
     players: [human, wolf],
     currentPlayerIndex: null,
     currentPlayer: null,
+    turn: 0,
     tiles: [],
     units: [],
     revealedTiles: {},

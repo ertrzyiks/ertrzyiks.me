@@ -48,6 +48,7 @@ function makeState(tiles: GameTileHex[], units: UnitPosition[]): State {
     players: [human, wolf],
     currentPlayerIndex: 0,
     currentPlayer: human,
+    turn: 0,
     tiles,
     units,
     revealedTiles: {},

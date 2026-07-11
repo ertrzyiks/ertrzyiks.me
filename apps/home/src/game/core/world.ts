@@ -12,6 +12,11 @@ export interface State {
   players: Array<Player>;
   currentPlayerIndex: number | null;
   currentPlayer: Player | null;
+  // Monotonic count of turns that have started (spec 01). 0 before the first
+  // StartTurn, then incremented by one on every StartTurn. This is the primitive
+  // the narrative system's "Turn N reached" trigger reads (spec 07): the trigger
+  // fires when `turn === N` at the start of that turn, before the player acts.
+  turn: number;
   worldWidth: number;
   worldHeight: number;
   cols: number;
@@ -47,6 +52,7 @@ export class World {
       players: [],
       currentPlayerIndex: null,
       currentPlayer: null,
+      turn: 0,
       tiles,
       units: [],
       revealedTiles: {},
