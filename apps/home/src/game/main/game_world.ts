@@ -5,10 +5,15 @@ import type { EventSystem, Spritesheet } from "pixi.js";
 import { Text, Container } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
 import { directionBetween } from "../core/grid/helpers";
-import { PlayerActionType } from "../core/player_action";
 import type { Tileable } from "../shared/renderable/tileable";
 import type { GameTileHex } from "../core";
 import type { UnitPosition } from "../core/board";
+import type { GameEvent } from "../core/game_event";
+import type { State } from "../core/world";
+import type { ObservableSubscriptionDone } from "../shared/observable";
+import { NarrativeEngine, type NarrativeEvent } from "../core/narrative";
+import { createStage1Narrative } from "./narrative/stage1";
+import { DialogBox } from "../shared/dialog_box";
 
 export class MainWorld extends GameWorld {
   protected player: Player | null = null;
@@ -21,6 +26,18 @@ export class MainWorld extends GameWorld {
 
   protected turnIndicatorContainer: Container | null = null;
   protected turnIndicatorTween: TWEEN.Tween | null = null;
+
+  // Narrative: the engine (pure) decides which beats fire; MainWorld presents
+  // them as modal dialogs. While a dialog is open the whole world observable is
+  // held (see setupNarrative) so no queued action — including a pending win/lose
+  // GameEnd — resolves until the player has read the beat. See specs/07.
+  protected narrative = new NarrativeEngine(
+    createStage1Narrative("human", "wanderer")
+  );
+  protected dialogQueue: NarrativeEvent[] = [];
+  protected currentDialog: DialogBox | null = null;
+  protected pendingNarrativeDone: ObservableSubscriptionDone | null = null;
+  protected dialogActive = false;
 
   constructor(protected board: Board, protected events: EventSystem, protected sheet: Spritesheet) {
     super(board, events, sheet);
@@ -51,7 +68,61 @@ export class MainWorld extends GameWorld {
       }
     });
 
+    // Subscribe the narrative controller before start() so it observes the very
+    // first StartTurn (the "Turn 1" beat). It is a peer world-observable
+    // subscriber: by not calling done() until the dialog is dismissed it pauses
+    // the serial observable pipeline, which is exactly spec 07's "game is fully
+    // paused while dialog is active" and "the game ends after the dialog is
+    // dismissed" (the GameEnd the Game queues behind a winning Move waits here).
+    this.game.worldObservable.subscribe(this.onNarrativeUpdate.bind(this));
+
     this.scenario.start();
+  }
+
+  protected onNarrativeUpdate(
+    { state, action }: { state: State; action: GameEvent },
+    done: ObservableSubscriptionDone
+  ) {
+    const events = this.narrative.evaluate(state, action);
+    if (events.length === 0) {
+      done();
+      return;
+    }
+
+    // Hold the pipeline open until every queued beat for this action is read.
+    this.dialogQueue.push(...events);
+    this.pendingNarrativeDone = done;
+    this.dialogActive = true;
+    this.selectedUnit = null;
+
+    if (!this.currentDialog) {
+      this.showNextDialog();
+    }
+  }
+
+  protected showNextDialog() {
+    const event = this.dialogQueue.shift();
+
+    if (!event) {
+      // All beats read: resume the game from where it paused.
+      this.dialogActive = false;
+      const done = this.pendingNarrativeDone;
+      this.pendingNarrativeDone = null;
+      if (done) {
+        done();
+      }
+      return;
+    }
+
+    this.currentDialog = new DialogBox(event.lines, () => {
+      if (this.currentDialog) {
+        this.removeChild(this.currentDialog);
+        this.currentDialog.destroy({ children: true });
+        this.currentDialog = null;
+      }
+      this.showNextDialog();
+    });
+    this.addChild(this.currentDialog);
   }
 
   protected showTurnIndicator(text: string, color: number) {
@@ -115,7 +186,10 @@ export class MainWorld extends GameWorld {
     const sprite = super.createWorldTile(hex);
 
     sprite.on("pointertap", () => {
-      if (this.isPlayerTurn) {
+      // Ignore board clicks during a dialog (spec 03/07: input is locked while a
+      // narrative dialog is active). The DialogBox backdrop also swallows taps,
+      // so this is a second line of defence.
+      if (this.isPlayerTurn && !this.dialogActive) {
         this.handleTileClick(sprite as Tileable);
       }
     });
@@ -124,6 +198,10 @@ export class MainWorld extends GameWorld {
   }
 
   protected handleTileClick(tile: Tileable) {
+    if (this.dialogActive) {
+      return;
+    }
+
     const state = this.game.world.getState();
     const player = state.currentPlayer;
 
