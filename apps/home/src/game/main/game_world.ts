@@ -87,7 +87,14 @@ export class MainWorld extends GameWorld {
       if (data.outcome === "win") {
         this.showTurnIndicator("Victory! You reached the village", 0x4ad66a);
       } else {
-        this.showTurnIndicator("Defeated...", 0xff5555);
+        // Stage reload (spec 08 "Stage Sequence": "After a lose event, the
+        // current stage reloads from its initial state") — timed off the
+        // indicator's own fade-out completion rather than a second,
+        // independently-tuned delay, so the player has read "Defeated..."
+        // before the board resets underneath it.
+        this.showTurnIndicator("Defeated...", 0xff5555, () =>
+          this.reloadCurrentStage()
+        );
       }
     });
 
@@ -159,7 +166,40 @@ export class MainWorld extends GameWorld {
     this.addChild(this.currentDialog);
   }
 
-  protected showTurnIndicator(text: string, color: number) {
+  /**
+   * Reloads Stage 1 from scratch after a defeat (spec 08 "Stage Sequence":
+   * "the current stage reloads from its initial state"). `Scenario.reload()`
+   * only resets game/world state; the narrative controller is owned
+   * separately by MainWorld, so its fired-beat history must be cleared here
+   * too — otherwise the Turn 1 opener (and every other once-only beat)
+   * couldn't replay on the fresh playthrough.
+   *
+   * Hardcoded to Stage 1 because MainWorld has no notion of "which stage is
+   * currently active" yet — it only ever constructs Stage 1. That tracking
+   * (plus swapping to a different board/definition) is "Stage progression"'s
+   * job; this method's name will need to generalize alongside it.
+   */
+  protected reloadCurrentStage() {
+    this.narrative.reset();
+    this.scenario.reload(createStage1Definition());
+  }
+
+  // `onComplete` fires once, after this indicator's fade-out finishes —
+  // currently only the "Defeated..." call in the gameEnd listener uses it, to
+  // trigger reloadCurrentStage(). IMPORTANT: TWEEN.js's `.stop()` below does
+  // NOT invoke `onComplete`, so a second showTurnIndicator() call before the
+  // first one's fade-out completes silently drops the pending callback — no
+  // error, it just never fires. This is safe today only because nothing else
+  // calls showTurnIndicator() once the game has reached a terminal outcome
+  // (the reducer rejects every action that could trigger one). If a future
+  // change adds another indicator call reachable from the terminal state,
+  // this coupling breaks silently — reconsider whether onComplete should
+  // survive an interruption before relying on it again.
+  protected showTurnIndicator(
+    text: string,
+    color: number,
+    onComplete?: () => void
+  ) {
     // Remove old indicator if exists
     if (this.turnIndicatorContainer) {
       if (this.turnIndicatorTween) {
@@ -210,6 +250,7 @@ export class MainWorld extends GameWorld {
               this.turnIndicatorContainer.destroy();
               this.turnIndicatorContainer = null;
             }
+            onComplete?.();
           })
           .start();
       })
