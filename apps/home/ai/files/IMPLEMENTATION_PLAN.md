@@ -62,10 +62,9 @@ Priority: highest — entry point for everything else.
 - [x] **Lose condition check after damage** — done via `Game.onWorldUpdate` + `lastUnitDefeated`.
 - [x] **`GameEvent.GameEnd` with outcome field** — done; `GameEndEvent.outcome: GameOutcome`.
 - [x] **Terminal state enforcement** — done; reducer rejects gameplay actions once `state.outcome` is set.
-- [x] **Player input — click-to-move** — already implemented in `main/game_world.ts` `handleTileClick` (guarded by `isPlayerTurn`). Remaining: guard mid-animation.
+- [x] **Player input — click-to-move** — already implemented in `main/game_world.ts` `handleTileClick` (guarded by `isPlayerTurn`). Remaining: guard mid-animation (see note below).
 - [x] **Unit selection** — already implemented; clicking a friendly unit sets `selectedUnit`.
-- [ ] **Highlight valid moves** — after selection, highlight adjacent hexes that are in-bounds, unoccupied, and within movement budget. See `specs/03-player-input.md`.
-- [ ] **End-turn button** — UI button dispatches `PlayerAction.EndTurn` for the human player. Human currently auto-passes; must become explicit. See `specs/03-player-input.md`.
+- [x] **Highlight valid moves (spec 03) + End-turn button (spec 03) + Player attack action (spec 03/04, Stage 2 item below)** — `core/player/movement.ts` `validMoveDestinations`/`validAttackTargets` are the single pure source of truth (Movable+budget / Damaging+charge+adjacency+Damageable-target), reused by both the renderer's highlight and `game_world.ts`'s click decision so they can't drift. `MainWorld` adds a `highlightContainer` (green hex markers, world-space so they pan/zoom with the viewport) redrawn on every selection/turn/dialog change, and a screen-space End Turn button wired to `Scenario.endPlayerTurn()` — the human turn no longer auto-ends when units run out of moves (`scenario.ts`'s old `setTimeout` auto-end on `unitsToMove.size === 0` was removed). `handleTileClick` now branches on what's under the click: friendly unit → select, enemy/NPC unit → `Scenario.attackUnit()` if it's a legal target per `validAttackTargets` else no-op, empty hex → move. **204 tests, tsc clean.** **Known gap (not yet fixed):** no guard against clicks landing mid-move-tween (~600ms animation) — spec 03 "Clicks during... an animation... are ignored" is unimplemented; state is already correct when this happens (the reducer is synchronous, only the sprite hasn't visually caught up) so it's a minor UX/exploit surface, not a game-state bug.
 - [x] **Stage 1 narrative events** — done; `main/narrative/stage1.ts` script wires all four spec-09 beats (Turn 1 start, within sight of Wanderer, reaches village, Whirley defeated) verbatim. See Completed.
 - [x] **Dialog component** — done; `shared/dialog_box.ts` modal overlay (speaker + wrapped text, click-to-advance one line, full-screen backdrop that swallows board clicks). See Completed. See `specs/07-narrative-events.md`.
 - [x] **Turn counter** — done; `State.turn: number` (required), init `0`, incremented by one in the `StartTurn` reducer case (turn `1` on the very first StartTurn). See Completed.
@@ -77,9 +76,9 @@ Priority: highest — entry point for everything else.
 
 Depends on: Stage 1 playable, combat system, bandit unit.
 
-- [ ] **Bandit unit** — `Bandit = Damaging(Sightful(Movable(Damageable(Unit, 25), 2), 1), 8)`. Higher HP and damage than wolves. Use the `Damaging` mixin (now built). See `specs/10-stage-2.md`.
+- [x] **Bandit unit** — `main/units/bandit.ts`: `Bandit = Sightful(Movable(Damaging(Damageable(Unit, 25), 8), 2), 1)` — 25 HP / 8 damage / move 2 / sight 1, measurably higher HP and damage than the wolf pack leader (20 HP / 7 damage), matching spec 10's "Bandits have higher HP and deal more damage per attack than wolves." Exported from `main/units/index.ts`. Not yet spawned anywhere (waits on Stage 2 board + scenario). Tests: `main/units/bandit.test.ts` (10). **204 tests, tsc clean.**
 - [x] **Damaging mixin** — `Damaging(Base, damage, attacksPerTurn=1)` in `core/units/damaging.ts`. Wolves/Hero already use it.
-- [ ] **Player attack action** — clicking an adjacent enemy unit during the human turn dispatches `PlayerAction.Attack { unit, position }`. Translation already exists; this is the UI/input half. See `specs/03-player-input.md`.
+- [x] **Player attack action** — done; see the spec 03 entry above (Stage 1 section) — `game_world.ts` `handleTileClick` dispatches `Scenario.attackUnit()` when an adjacent, legal enemy is clicked.
 - [x] **`PlayerAction.Attack` → `GameEvent.TakeDamage`** — done in `createPlayerStore` (resolves target by hex, validates friendly-fire/adjacency/charge).
 - [x] **Enemy attack → `GameEvent.TakeDamage`** — wolves emit it via `PackBehavior.tryAttack`; bandits will reuse the same `Attack` action.
 - [x] **Death handling in reducer** — `TakeDamage` removes the resolved target when `!isAlive()`. Win/lose check is a separate (now unblocked) item.
