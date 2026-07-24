@@ -1,7 +1,6 @@
 import type { CubeCoordinates } from "honeycomb-grid";
 import { Game } from "../core/game";
-import { type Player, PlayerColor } from "../core/player/player";
-import { Hero, PackLeader, PackFollower, Wanderer } from "./units";
+import type { Player } from "../core/player/player";
 import type { ObservableSubscriptionDone } from "../shared/observable";
 import { type GameEvent, GameEventType } from "../core/game_event";
 import { destinationReached, lastUnitDefeated } from "../core/conditions";
@@ -9,41 +8,22 @@ import type { State } from "../core/world";
 import { createPlayerStore } from "../core/player_store";
 import { StoreProxy } from "../core/store";
 import { type PlayerAction, PlayerActionType } from "../core/player_action";
-import { PackBehavior, createPackMemory } from "../core/player/pack_behavior";
-import { FleeBehavior } from "../core/player/flee_behavior";
 import { utils } from "pixi.js";
+import type { StageDefinition } from "./stages/stage";
 
+/**
+ * Drives a single stage: spawns everyone `definition` describes, ends the
+ * game on win/lose, and cycles CPU factions through their behaviors on their
+ * turn while the human's turn waits for explicit input (spec 03). Stage
+ * content itself (who spawns where, how CPU factions act, the win section)
+ * lives entirely in `definition` — Scenario does not hard-code it (specs/08).
+ */
 export class Scenario {
-  protected player: Player = {
-    id: "human",
-    name: "Adventurer",
-    color: PlayerColor.BLUE,
-  };
-
-  protected wolfPlayer: Player = {
-    id: "wolves",
-    name: "Pack",
-    color: PlayerColor.RED,
-  };
-
-  // Neutral NPC owner for the Wanderer. Registered last so it takes its turn
-  // after the wolves — spec 06 requires the Wanderer to act last in the CPU
-  // turn. It never attacks and cannot be attacked. See specs/09-stage-1.md.
-  protected wandererPlayer: Player = {
-    id: "wanderer",
-    name: "Wanderer",
-    color: PlayerColor.GREEN,
-  };
-
-  // Persists the pack's "no backtracking" memory across CPU turns; a fresh
-  // PackBehavior is created each turn but shares this.
-  protected packMemory = createPackMemory();
-
   public emitter = new utils.EventEmitter();
   protected playerStore: StoreProxy<GameEvent, State, PlayerAction> | null = null;
   protected unitsToMove: Set<number> = new Set();
 
-  constructor(protected game: Game) {
+  constructor(protected game: Game, protected definition: StageDefinition) {
     game.worldObservable.subscribe(this.onWorldUpdate.bind(this));
   }
 
@@ -88,23 +68,28 @@ export class Scenario {
   }
 
   public start() {
-    // Stage 1 ends when Whirley reaches the village (win) or the human loses
-    // every unit (lose). See specs/05-win-lose-conditions.md and specs/09-stage-1.md.
+    const { definition } = this;
+
+    // A stage ends when the human reaches its win section or loses every
+    // unit. See specs/05-win-lose-conditions.md.
     this.game.setEndConditions({
-      win: [destinationReached(this.player.id, ["village"])],
-      lose: [lastUnitDefeated(this.player.id)],
+      win: [destinationReached(definition.player.id, [definition.winSection])],
+      lose: [lastUnitDefeated(definition.player.id)],
     });
 
-    this.game.add(this.player);
-    this.game.add(this.wolfPlayer);
-    this.game.add(this.wandererPlayer);
+    this.game.add(definition.player);
+    for (const enemy of definition.enemies) {
+      this.game.add(enemy.player);
+    }
 
-    this.game.spawnInSection(this.player, new Hero(), "spawn_a");
-    this.game.spawnInSection(this.player, new Hero(), "spawn_b");
-    this.game.spawnInSection(this.wolfPlayer, new PackLeader(), "wolf_1");
-    this.game.spawnInSection(this.wolfPlayer, new PackFollower(), "wolf_2");
-    this.game.spawnInSection(this.wolfPlayer, new PackFollower(), "wolf_3");
-    this.game.spawnInSection(this.wandererPlayer, new Wanderer(), "wanderer_spawn");
+    for (const spawn of definition.playerSpawns) {
+      this.game.spawnInSection(definition.player, spawn.createUnit(), spawn.section);
+    }
+    for (const enemy of definition.enemies) {
+      for (const spawn of enemy.spawns) {
+        this.game.spawnInSection(enemy.player, spawn.createUnit(), spawn.section);
+      }
+    }
 
     this.game.nextTurn();
   }
@@ -118,12 +103,10 @@ export class Scenario {
     const playerUnits = state.units.filter(u => u.owner.id === player.id);
     this.unitsToMove = new Set(playerUnits.map(u => u.unit.id));
 
-    if (player.id === this.wolfPlayer.id) {
-      this.emitter.emit("wolfTurn");
-      new PackBehavior(store, this.packMemory).takeActions();
-    } else if (player.id === this.wandererPlayer.id) {
-      this.emitter.emit("wandererTurn");
-      new FleeBehavior(store, { fleeFrom: [this.player.id] }).takeActions();
+    const enemy = this.definition.enemies.find(e => e.player.id === player.id);
+    if (enemy) {
+      this.emitter.emit(enemy.turnEventName);
+      enemy.createBehavior(store).takeActions();
     } else {
       this.playerStore = store;
       this.emitter.emit("playerTurn", { units: playerUnits });
