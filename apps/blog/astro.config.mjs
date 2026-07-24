@@ -7,6 +7,9 @@ import sitemap from "@astrojs/sitemap";
 // https://astro.build/config
 export default defineConfig({
   site: "https://blog.ertrzyiks.me",
+  server: {
+    host: "0.0.0.0",
+  },
   markdown: {
     remarkPlugins: [
       [
