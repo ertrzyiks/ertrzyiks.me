@@ -44,6 +44,10 @@ export class GameWorld extends Container {
   protected viewport: GameViewport;
   protected boundary: EventBoundary;
   protected currentTween: TWEEN.Tween | null = null;
+  // True for the ~600ms a unit's move tween is in flight (see the Move case
+  // in onWorldUpdate below). Subclasses read this to gate input — spec 03
+  // "Clicks during... an animation... are ignored".
+  protected isUnitMoving = false;
   protected tickerFunction = () => this.cull();
   protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles();
   protected unitSprites: Map<number, Container> = new Map();
@@ -126,12 +130,14 @@ export class GameWorld extends Container {
         const moveTile = this.getTerrainAt(action.position);
         this.updateFog(state);
         if (unitSprite && moveTile) {
+          this.isUnitMoving = true;
           this.currentTween = new TWEEN.Tween(unitSprite)
             .to({ x: moveTile.x, y: moveTile.y }, 500)
             .delay(100)
             .onComplete(() => {
               // The unit sprite is now a multi-layer Container positioned via
               // x/y (tweened above); it has no Tile `coordinates` to update.
+              this.isUnitMoving = false;
               done();
             });
           this.currentTween.start();
@@ -169,6 +175,9 @@ export class GameWorld extends Container {
           this.currentTween.stop();
           this.currentTween = null;
         }
+        // .stop() above does not fire the Move tween's onComplete, so
+        // isUnitMoving would otherwise stay stuck true forever.
+        this.isUnitMoving = false;
         this.unitSprites.forEach((sprite) => {
           this.unitContainer.removeChild(sprite);
           sprite.destroy();

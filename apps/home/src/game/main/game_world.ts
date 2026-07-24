@@ -257,14 +257,22 @@ export class MainWorld extends GameWorld {
       .start();
   }
 
+  /**
+   * Whether the human may currently act on the board or the End Turn control
+   * (spec 03 "Active Turn Requirement": "Clicks during an enemy turn, an
+   * animation, or a dialog are ignored"). Single source of truth for every
+   * input entry point below, so a future one can't forget a check the way
+   * this one omitted the animation guard until it was added here.
+   */
+  protected canAcceptInput(): boolean {
+    return this.isPlayerTurn && !this.dialogActive && !this.isUnitMoving;
+  }
+
   protected createWorldTile(hex: GameTileHex) {
     const sprite = super.createWorldTile(hex);
 
     sprite.on("pointertap", () => {
-      // Ignore board clicks during a dialog (spec 03/07: input is locked while a
-      // narrative dialog is active). The DialogBox backdrop also swallows taps,
-      // so this is a second line of defence.
-      if (this.isPlayerTurn && !this.dialogActive) {
+      if (this.canAcceptInput()) {
         this.handleTileClick(sprite as Tileable);
       }
     });
@@ -273,7 +281,9 @@ export class MainWorld extends GameWorld {
   }
 
   protected handleTileClick(tile: Tileable) {
-    if (this.dialogActive) {
+    // The DialogBox backdrop also swallows taps, so the dialogActive part of
+    // canAcceptInput() is a second line of defence here, not the only one.
+    if (!this.canAcceptInput()) {
       return;
     }
 
@@ -417,9 +427,8 @@ export class MainWorld extends GameWorld {
   }
 
   protected onEndTurnClicked() {
-    // End turn is only available on the human's turn and never while a dialog is
-    // up (spec 03). After ending, input is locked until the next human turn.
-    if (!this.isPlayerTurn || this.dialogActive) {
+    // After ending, input is locked until the next human turn.
+    if (!this.canAcceptInput()) {
       return;
     }
     this.isPlayerTurn = false;
