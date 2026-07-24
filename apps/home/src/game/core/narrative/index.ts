@@ -53,6 +53,28 @@ export interface NarrativeEvent {
 
 export type NarrativeScript = NarrativeEvent[];
 
+/**
+ * Raw StartTurn count (the primitive `{kind: "turn"}` matches against — every
+ * player's StartTurn increments it, not just one player's) for the `n`th time
+ * the player at `playerIndex` (0-based, by registration order) starts a turn
+ * in a `playerCount`-player rotation. E.g. the human (registered first, index
+ * 0) in a 3-player rotation has their 3rd turn on the 7th StartTurn overall:
+ * `turnForPlayer(0, 3, 3) === 7`.
+ *
+ * Stage scripts are written in player-facing terms ("Turn 3" meaning the
+ * human's 3rd turn), but the "turn" trigger only understands the raw count —
+ * this is the one place that translation happens, so a roster change only
+ * needs fixing here instead of a hand-computed literal silently going stale
+ * in a stage script.
+ */
+export function turnForPlayer(
+  playerIndex: number,
+  playerCount: number,
+  n: number
+): number {
+  return (n - 1) * playerCount + (playerIndex + 1);
+}
+
 // Pure predicate: does `trigger` match the state produced by `action`? Each kind
 // is gated to the action type that can cause it, mirroring how the Game only
 // evaluates end conditions after Move/TakeDamage. This gating is what stops a

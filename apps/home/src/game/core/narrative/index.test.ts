@@ -9,6 +9,7 @@ import { GameEventType, type GameEvent } from "../game_event";
 import {
   NarrativeEngine,
   triggerMatches,
+  turnForPlayer,
   type NarrativeScript,
 } from "./index";
 
@@ -79,6 +80,29 @@ const takeDamage = (): GameEvent => ({
   target: new Mortal(),
   inflictor: new Mortal(),
   damage: 5,
+});
+
+describe("turnForPlayer", () => {
+  test("the first player's first turn is the first StartTurn", () => {
+    expect(turnForPlayer(0, 3, 1)).toBe(1);
+  });
+
+  test("each player's first turn is offset by registration order", () => {
+    expect(turnForPlayer(0, 3, 1)).toBe(1); // 1st player (human)
+    expect(turnForPlayer(1, 3, 1)).toBe(2); // 2nd player (e.g. bandits)
+    expect(turnForPlayer(2, 3, 1)).toBe(3); // 3rd player (e.g. wanderer)
+  });
+
+  test("the first player's 3rd turn in a 3-player rotation is the 7th StartTurn", () => {
+    // human, bandits, wanderer, human, bandits, wanderer, human <- 7th
+    expect(turnForPlayer(0, 3, 3)).toBe(7);
+  });
+
+  test("a 2-player rotation advances one turn per round", () => {
+    expect(turnForPlayer(0, 2, 1)).toBe(1);
+    expect(turnForPlayer(0, 2, 2)).toBe(3);
+    expect(turnForPlayer(1, 2, 2)).toBe(4);
+  });
 });
 
 describe("triggerMatches — turn", () => {
