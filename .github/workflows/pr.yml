@@ -13,9 +13,9 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.3.1
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3.9.1
         with:
           node-version-file: .nvmrc
 
@@ -29,7 +29,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v3.5.0
         name: Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
@@ -51,9 +51,9 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.3.1
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3.9.1
         with:
           node-version-file: .nvmrc
 
@@ -67,7 +67,7 @@ jobs:
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - uses: actions/cache@v3
+      - uses: actions/cache@v3.5.0
         name: Setup pnpm cache
         with:
           path: ${{ env.STORE_PATH }}
