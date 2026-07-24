@@ -58,3 +58,7 @@ node_modules
 home/.cache
 home/.git-deploy
 home/dist
+.pnpm-store/
+/.idea/
+/.claude/
+**/.claude/settings.local.json
