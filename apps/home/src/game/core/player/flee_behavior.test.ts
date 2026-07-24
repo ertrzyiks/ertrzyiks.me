@@ -7,9 +7,9 @@ import {
 } from "../player_action";
 import { PlayerColor } from "./player";
 import { Unit, Movable, Damageable, Sightful } from "../units";
-import { createGrid, positionAt, hexDistance } from "../grid";
+import { positionAt, hexDistance } from "../grid";
+import { makeTiles, cubeAt } from "../grid/test_helpers";
 import { directions } from "../direction";
-import { Terrain } from "../board";
 import type { GameTileHex, UnitPosition } from "../board";
 import type { StoreProxy } from "../store";
 import type { GameEvent } from "../game_event";
@@ -21,32 +21,6 @@ const wandererOwner = { id: "wanderer", name: "Wanderer", color: PlayerColor.GRE
 
 const WandererUnit = Sightful(Movable(Unit, 3), 2);
 const HeroUnit = Sightful(Movable(Damageable(Unit, 30), 3), 2);
-
-function makeTiles(cols = 5, rows = 5): GameTileHex[] {
-  const grid = createGrid({
-    rows,
-    cols,
-    tiles: Array.from({ length: cols }, (_, x) =>
-      Array.from({ length: rows }, (_, y) => ({
-        x,
-        y,
-        type: Terrain.WATER,
-        textureName: "grass",
-        sectionName: "none",
-      }))
-    ).flat(),
-  });
-  const tiles: GameTileHex[] = [];
-  grid.forEach((hex) => tiles.push(hex as unknown as GameTileHex));
-  return tiles;
-}
-
-function cubeAt(tiles: GameTileHex[], x: number, y: number) {
-  return tiles.find((t) => {
-    const c = t.coordinates();
-    return c.x === x && c.y === y;
-  })!.cube();
-}
 
 // `units` is the Wanderer player's own roster (proxy-filtered); `allUnits` is the
 // full board the way the per-player proxy exposes it, so the behavior can see the

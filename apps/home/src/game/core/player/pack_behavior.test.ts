@@ -3,9 +3,9 @@ import { PackBehavior, createPackMemory } from "./pack_behavior";
 import { PlayerActionType, type PlayerAction, type MoveAction } from "../player_action";
 import { PlayerColor } from "./player";
 import { Unit, Movable, Damageable, Damaging, Sightful, Leader, Follower } from "../units";
-import { createGrid, positionAt, hexDistance } from "../grid";
+import { positionAt, hexDistance } from "../grid";
+import { makeTiles, cubeAt } from "../grid/test_helpers";
 import { directionToward, randomValidDirection, createMoveContext } from "./movement";
-import { Terrain } from "../board";
 import type { GameTileHex, UnitPosition } from "../board";
 import type { StoreProxy } from "../store";
 import type { GameEvent } from "../game_event";
@@ -15,32 +15,6 @@ const wolves = { id: "wolves", name: "Pack", color: PlayerColor.RED };
 
 const PackLeaderUnit = Leader(Sightful(Movable(Damageable(Unit, 20), 2), 2));
 const PackFollowerUnit = Follower(Sightful(Movable(Damageable(Unit, 15), 2), 1));
-
-function makeTiles(cols = 5, rows = 5): GameTileHex[] {
-  const grid = createGrid({
-    rows,
-    cols,
-    tiles: Array.from({ length: cols }, (_, x) =>
-      Array.from({ length: rows }, (_, y) => ({
-        x,
-        y,
-        type: Terrain.WATER,
-        textureName: "grass",
-        sectionName: "none",
-      }))
-    ).flat(),
-  });
-  const tiles: GameTileHex[] = [];
-  grid.forEach((hex) => tiles.push(hex as unknown as GameTileHex));
-  return tiles;
-}
-
-function cubeAt(tiles: GameTileHex[], x: number, y: number) {
-  return tiles.find((t) => {
-    const c = t.coordinates();
-    return c.x === x && c.y === y;
-  })!.cube();
-}
 
 function makeStore(units: UnitPosition[], tiles: GameTileHex[]) {
   const dispatched: PlayerAction[] = [];
