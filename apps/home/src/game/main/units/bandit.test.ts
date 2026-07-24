@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { Bandit } from "./bandit";
+import { Bandit, BanditCaptain } from "./bandit";
 import { isDamaging, isDamageable, isMovable, isSightful } from "../../core/units";
 
 describe("Bandit unit", () => {
@@ -68,5 +68,67 @@ describe("Bandit unit", () => {
 
   test("each instance has a unique id", () => {
     expect(new Bandit().id).not.toBe(new Bandit().id);
+  });
+});
+
+describe("BanditCaptain unit", () => {
+  test("has sightRange of 2 (wider than a standard bandit's 1)", () => {
+    expect(new BanditCaptain().sightRange).toBe(2);
+  });
+
+  test("is Movable, Damageable, Damaging, and Sightful", () => {
+    const captain = new BanditCaptain();
+    expect(isMovable(captain)).toBe(true);
+    expect(isDamageable(captain)).toBe(true);
+    expect(isDamaging(captain)).toBe(true);
+    expect(isSightful(captain)).toBe(true);
+  });
+
+  test("cannot move or attack before replenish", () => {
+    const captain = new BanditCaptain();
+    expect(captain.canMove()).toBe(false);
+    expect(captain.canAttack()).toBe(false);
+  });
+
+  test("is not alive before replenish", () => {
+    expect(new BanditCaptain().isAlive()).toBe(false);
+  });
+
+  test("has 2 movement points per turn (exhausted after 2 steps)", () => {
+    const captain = new BanditCaptain();
+    captain.replenish();
+    captain.step(1);
+    expect(captain.canMove()).toBe(true);
+    captain.step(1);
+    expect(captain.canMove()).toBe(false);
+  });
+
+  // Spec 11 "Unit Specifications": "Hit points: higher than a standard
+  // bandit." Bandit tops out at 25 HP (see bandit.test.ts above).
+  test("has higher HP than a standard Bandit (40 vs 25 HP)", () => {
+    const captain = new BanditCaptain();
+    captain.replenish();
+    captain.takeDamage(25);
+    expect(captain.isAlive()).toBe(true); // a standard Bandit would be dead here
+    captain.takeDamage(15);
+    expect(captain.isAlive()).toBe(false);
+  });
+
+  // Spec 11: "Damage per attack: higher than a standard bandit." Bandit deals 8.
+  test("deals more damage than a standard Bandit (12 vs 8)", () => {
+    const captain = new BanditCaptain();
+    expect(captain.damage).toBe(12);
+  });
+
+  test("attacks once per turn after replenish", () => {
+    const captain = new BanditCaptain();
+    captain.replenish();
+    expect(captain.canAttack()).toBe(true);
+    captain.useAttack();
+    expect(captain.canAttack()).toBe(false);
+  });
+
+  test("each instance has a unique id", () => {
+    expect(new BanditCaptain().id).not.toBe(new BanditCaptain().id);
   });
 });

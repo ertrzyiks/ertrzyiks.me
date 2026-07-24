@@ -9,4 +9,4 @@ export const Hero = Sightful(Renderable(Movable(Damaging(Damageable(Unit, 30), 1
 export const PackLeader = PackLeaderUnit
 export const PackFollower = PackFollowerUnit
 export { Wanderer } from './wanderer'
-export { Bandit } from './bandit'
+export { Bandit, BanditCaptain } from './bandit'
