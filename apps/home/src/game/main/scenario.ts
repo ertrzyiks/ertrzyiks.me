@@ -36,8 +36,7 @@ export class Scenario {
         done();
         // Terminal state: stop driving turns and let the renderer show the
         // outcome. The store already rejects further gameplay. See specs/05.
-        this.playerStore = null;
-        this.unitsToMove.clear();
+        this.stopDrivingTurns();
         this.emitter.emit("gameEnd", { outcome: action.outcome });
         break;
       case GameEventType.StartTurn:
@@ -136,12 +135,39 @@ export class Scenario {
   public endPlayerTurn() {
     if (this.playerStore) {
       this.playerStore.dispatch({ type: PlayerActionType.EndTurn });
-      this.playerStore = null;
-      this.unitsToMove.clear();
+      this.stopDrivingTurns();
     }
   }
 
   public getUnitsToMove(): Set<number> {
     return this.unitsToMove;
+  }
+
+  /** Drops the human's dispatch handle and the in-progress-turn tracking. */
+  protected stopDrivingTurns() {
+    this.playerStore = null;
+    this.unitsToMove.clear();
+  }
+
+  /**
+   * Reloads the stage — either the same one (spec 08 "stage reset on lose":
+   * "the current stage reloads from its initial state") or a different one
+   * ("stage progression": the next stage's definition) — by clearing all
+   * runtime state via a Reset dispatch and then spawning `definition` fresh,
+   * exactly as `start()` does for a first load. Reuses this Scenario instance
+   * rather than constructing a new one: `shared/observable.ts`'s Observable
+   * has no unsubscribe, so a second Scenario would double-drive every future
+   * turn instead of replacing this one.
+   *
+   * Board-preserving only: the underlying Game/World keeps its existing tiles
+   * (the Reset reducer case does not touch them). Swapping to a stage with a
+   * genuinely different board layout is a separate, not-yet-built concern —
+   * it needs a new Game/World and a rebuilt renderer around it.
+   */
+  public reload(definition: StageDefinition) {
+    this.definition = definition;
+    this.stopDrivingTurns();
+    this.game.world.dispatch({ type: GameEventType.Reset });
+    this.start();
   }
 }

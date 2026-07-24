@@ -469,6 +469,77 @@ describe("StartTurn", () => {
   });
 });
 
+describe("Reset", () => {
+  function playedState(): State {
+    const heroUnit = new PlainUnit();
+    let state = makeState({
+      players: [human, wolf],
+      units: [{ unit: heroUnit, position: { q: 0, r: 0, s: 0 }, owner: human }],
+      revealedTiles: { human: { "0,0,0": true } },
+    });
+    state = gameReducer(state, { type: GameEventType.StartTurn });
+    return state;
+  }
+
+  test("clears players, units, turn, currentPlayer, revealedTiles, and outcome", () => {
+    const played = { ...playedState(), outcome: "win" as const };
+    const next = gameReducer(played, { type: GameEventType.Reset });
+
+    expect(next.players).toEqual([]);
+    expect(next.units).toEqual([]);
+    expect(next.turn).toBe(0);
+    expect(next.currentPlayer).toBe(null);
+    expect(next.currentPlayerIndex).toBe(null);
+    expect(next.revealedTiles).toEqual({});
+    expect(next.outcome).toBe(null);
+  });
+
+  test("keeps the board (tiles/dimensions) untouched — a reload, not a new stage", () => {
+    const tiles = makeTiles();
+    const played = makeState({ tiles, worldWidth: 999, worldHeight: 888, cols: 3, rows: 3 });
+    const next = gameReducer(played, { type: GameEventType.Reset });
+
+    expect(next.tiles).toBe(tiles);
+    expect(next.worldWidth).toBe(999);
+    expect(next.worldHeight).toBe(888);
+  });
+
+  test("clearing players (not just units) prevents duplicate roster entries on re-registration", () => {
+    // Re-adding the same-id players after a Reset that only cleared `units`
+    // would silently double `state.players.length`, corrupting StartTurn's
+    // rotation math (rotate() divides by players.length). This is the
+    // regression this test guards against.
+    const played = playedState();
+    const reset = gameReducer(played, { type: GameEventType.Reset });
+    const rejoined = gameReducer(reset, {
+      type: GameEventType.PlayerJoin,
+      player: human,
+    });
+    expect(rejoined.players).toEqual([human]);
+  });
+
+  test("works even after the game has ended (terminal state does not block Reset)", () => {
+    const ended = makeState({ players: [human], outcome: "lose" });
+    const next = gameReducer(ended, { type: GameEventType.Reset });
+    expect(next.outcome).toBe(null);
+    expect(next.players).toEqual([]);
+  });
+
+  test("a fresh StartTurn after Reset behaves like a brand-new game", () => {
+    const played = playedState(); // turn 1, human active
+    const reset = gameReducer(played, { type: GameEventType.Reset });
+    const rejoined = gameReducer(reset, {
+      type: GameEventType.PlayerJoin,
+      player: human,
+    });
+    const restarted = gameReducer(rejoined, { type: GameEventType.StartTurn });
+
+    expect(restarted.turn).toBe(1);
+    expect(restarted.currentPlayer).toEqual(human);
+    expect(restarted.currentPlayerIndex).toBe(0);
+  });
+});
+
 describe("GameEnd", () => {
   test("records the outcome on the state", () => {
     const state = gameReducer(makeState(), {

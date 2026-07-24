@@ -5,6 +5,7 @@ import type { Player } from "./player";
 import { createStore, Store } from "./store";
 import type { GameTileHex, UnitPosition } from "./board";
 import { gameReducer } from "./reducers";
+import { EMPTY_PLAYTHROUGH_STATE } from "./world_defaults";
 
 export type WorldUpdateCallback = (state: State, action: GameEvent) => void;
 
@@ -49,14 +50,8 @@ export class World {
 
     // @ts-ignore
     this.store = createStore(gameReducer, {
-      players: [],
-      currentPlayerIndex: null,
-      currentPlayer: null,
-      turn: 0,
+      ...EMPTY_PLAYTHROUGH_STATE,
       tiles,
-      units: [],
-      revealedTiles: {},
-      outcome: null,
       worldWidth,
       worldHeight,
       cols,

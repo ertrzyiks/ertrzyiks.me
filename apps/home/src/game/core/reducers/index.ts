@@ -1,6 +1,7 @@
 import type { GameEvent } from "../game_event";
 import { GameEventType } from "../game_event";
 import type { State } from "../world";
+import { EMPTY_PLAYTHROUGH_STATE } from "../world_defaults";
 import { isMovable, isSightful, isDamageable, isDamaging } from "../units";
 import type { CubeCoordinates } from "honeycomb-grid";
 import { hexDistance, cubeKey } from "../grid";
@@ -152,6 +153,21 @@ export function gameReducer(state: State, action: GameEvent) {
         ],
       };
     }
+
+    case GameEventType.Reset:
+      // Stage reload (specs/08-stage-system.md "Stage Load"): clears every
+      // per-playthrough field back to the same defaults a fresh World starts
+      // with (EMPTY_PLAYTHROUGH_STATE, shared so the two can't drift), but
+      // keeps the board (tiles/worldWidth/worldHeight/cols/rows) — the caller
+      // re-adds players and respawns units via a fresh StageDefinition
+      // afterward (see Scenario.reload). `players` must be cleared too, not
+      // just `units`: PlayerJoin appends unconditionally with no dedup-by-id,
+      // so re-adding the same-id players onto a stale roster would silently
+      // double turn rotation's player count.
+      return {
+        ...state,
+        ...EMPTY_PLAYTHROUGH_STATE,
+      };
   }
 
   return state;

@@ -159,6 +159,26 @@ export class GameWorld extends Container {
         break;
       }
 
+      case GameEventType.Reset: {
+        // Stage reload (specs/08-stage-system.md "Stage Load"): the reducer
+        // clears every unit from state, but nothing else tells the renderer
+        // to tear down their sprites — without this they'd linger as ghosts.
+        // Stop any in-flight move tween first so it doesn't keep animating a
+        // sprite that's about to be destroyed.
+        if (this.currentTween) {
+          this.currentTween.stop();
+          this.currentTween = null;
+        }
+        this.unitSprites.forEach((sprite) => {
+          this.unitContainer.removeChild(sprite);
+          sprite.destroy();
+        });
+        this.unitSprites.clear();
+        this.updateFog(state);
+        done();
+        break;
+      }
+
       default:
         done();
         break;

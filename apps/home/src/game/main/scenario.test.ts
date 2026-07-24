@@ -106,6 +106,70 @@ describe("Scenario (Stage 1 definition)", () => {
   });
 });
 
+describe("Scenario.reload", () => {
+  test("clears runtime state and respawns the given definition fresh", async () => {
+    const game = new Game(makeBoard());
+    const scenario = new Scenario(game, createStage1Definition());
+    scenario.start();
+    await flush();
+
+    scenario.reload(createStage1Definition());
+    await flush();
+
+    const state = game.world.getState();
+    const units = state.units;
+    const byOwner = (id: string) => units.filter((u) => u.owner.id === id);
+    expect(byOwner("human")).toHaveLength(2);
+    expect(byOwner("wolves")).toHaveLength(3);
+    expect(byOwner("wanderer")).toHaveLength(1);
+    expect(state.turn).toBe(1);
+    expect(state.outcome).toBe(null);
+  });
+
+  test("clears a terminal outcome so the reloaded stage is playable again (spec 08 'stage reset on lose')", async () => {
+    const game = new Game(makeBoard());
+    const scenario = new Scenario(game, createStage1Definition());
+    scenario.start();
+
+    const hero = game.world.getState().units.find((u) => u.owner.id === "human")!;
+    hero.unit.replenish();
+    const village = game.world.tileBySection("village").cube();
+    game.world.dispatch({ type: GameEventType.Move, unit: hero.unit, position: village });
+    expect(game.world.getState().outcome).toBe("win");
+
+    scenario.reload(createStage1Definition());
+    await flush();
+
+    expect(game.world.getState().outcome).toBe(null);
+  });
+
+  test("can switch to a different stage's definition (spec 08 'stage progression')", async () => {
+    const game = new Game(makeBoard());
+    const scenario = new Scenario(game, createStage1Definition());
+    scenario.start();
+    await flush();
+
+    scenario.reload(createStage2Definition());
+    await flush();
+
+    const units = game.world.getState().units;
+    const byOwner = (id: string) => units.filter((u) => u.owner.id === id);
+    // Stage 2 spawns one Hero (not Stage 1's two) and bandits, not wolves.
+    expect(byOwner("human")).toHaveLength(1);
+    expect(byOwner("bandits")).toHaveLength(3);
+    expect(byOwner("wolves")).toHaveLength(0);
+
+    // Win condition now matches Stage 2 (gate), not Stage 1 (village) — this
+    // shared test board happens to have both sections, so this would silently
+    // pass for the wrong reason if reload() hadn't actually swapped it.
+    const hero = units.find((u) => u.owner.id === "human")!;
+    hero.unit.replenish();
+    const village = game.world.tileBySection("village").cube();
+    game.world.dispatch({ type: GameEventType.Move, unit: hero.unit, position: village });
+    expect(game.world.getState().outcome).toBe(null);
+  });
+});
+
 describe("Scenario (Stage 2 definition)", () => {
   test("spawns one hero, three bandits, and the Wanderer at their sections", () => {
     const game = new Game(makeBoard());
