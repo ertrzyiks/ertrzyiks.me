@@ -2,6 +2,9 @@ import type { CubeCoordinates } from "honeycomb-grid";
 import { Direction, directions, opposite } from "../direction";
 import { positionAt, cubeKey, hexDistance } from "../grid";
 import type { State } from "../world";
+import { isMovable } from "../units/movable";
+import { isDamaging } from "../units/damaging";
+import { isDamageable } from "../units/damageable";
 
 /**
  * Spatial queries an AI behavior needs to pick a legal step: is a hex on the
@@ -17,19 +20,76 @@ export interface MoveContext {
   isOccupied(cube: CubeCoordinates): boolean;
 }
 
+// Every unit on the board, not just the current player's. `allUnits` is set on
+// the per-player proxy; fall back to `units` when it is absent (raw state).
+function allOccupants(
+  state: Pick<State, "units"> & Partial<Pick<State, "allUnits">>
+) {
+  return state.allUnits ?? state.units;
+}
+
 export function createMoveContext(
   state: Pick<State, "tiles" | "units"> & Partial<Pick<State, "allUnits">>
 ): MoveContext {
   const inBounds = new Set(state.tiles.map((t) => cubeKey(t.cube())));
   // Occupancy must consider every unit, not just the current player's — a wolf
-  // should not be able to step onto the (enemy) Hero's tile. `allUnits` is set
-  // on the per-player proxy; fall back to `units` when it is absent (raw state).
-  const occupants = state.allUnits ?? state.units;
-  const occupied = new Set(occupants.map((u) => cubeKey(u.position)));
+  // should not be able to step onto the (enemy) Hero's tile.
+  const occupied = new Set(allOccupants(state).map((u) => cubeKey(u.position)));
   return {
     isInBounds: (cube) => inBounds.has(cubeKey(cube)),
     isOccupied: (cube) => occupied.has(cubeKey(cube)),
   };
+}
+
+/**
+ * Cube coordinates of the hexes a unit may legally move to *right now*: the
+ * in-bounds, unoccupied neighbours of `position` — but only when the unit is
+ * Movable and still has movement budget. Returns [] otherwise.
+ *
+ * Why here: this is the single source of truth the selection highlight in the
+ * renderer draws (spec 03 "when a unit is selected, valid move destinations are
+ * visually highlighted"; "when the player cannot act — no budget — highlight is
+ * absent"). Keeping it a pure function of state makes the highlight rule
+ * unit-testable and keeps it in step with the same in-bounds + occupancy +
+ * budget checks the caller (game_world's click handler) uses before dispatching
+ * a Move. See specs/03-player-input.md.
+ */
+export function validMoveDestinations(
+  unit: unknown,
+  position: CubeCoordinates,
+  state: Pick<State, "tiles" | "units"> & Partial<Pick<State, "allUnits">>
+): CubeCoordinates[] {
+  if (!isMovable(unit) || !unit.canMove()) return [];
+  const ctx = createMoveContext(state);
+  return validDirections(position, ctx).map((d) => positionAt(position, d));
+}
+
+/**
+ * Cube coordinates of the adjacent enemy units a unit may legally attack
+ * *right now*: Damageable units, owned by someone other than `ownerId`, one
+ * hex away — but only when the attacker is Damaging and still has an attack
+ * charge. Returns [] otherwise.
+ *
+ * Mirrors the player_store's own Attack validation (adjacency, Damageable
+ * target, attacker charge) so a click handler can decide up front whether a
+ * clicked enemy hex is a legal target. See specs/03-player-input.md and
+ * specs/04-combat-system.md.
+ */
+export function validAttackTargets(
+  unit: unknown,
+  position: CubeCoordinates,
+  ownerId: string,
+  state: Pick<State, "units"> & Partial<Pick<State, "allUnits">>
+): CubeCoordinates[] {
+  if (!isDamaging(unit) || !unit.canAttack()) return [];
+  return allOccupants(state)
+    .filter(
+      (u) =>
+        u.owner.id !== ownerId &&
+        isDamageable(u.unit) &&
+        hexDistance(position, u.position) === 1
+    )
+    .map((u) => u.position);
 }
 
 /** Directions whose neighbouring hex is on the board and unoccupied. */

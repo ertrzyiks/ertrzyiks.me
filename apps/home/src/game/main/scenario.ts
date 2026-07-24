@@ -1,3 +1,4 @@
+import type { CubeCoordinates } from "honeycomb-grid";
 import { Game } from "../core/game";
 import { type Player, PlayerColor } from "../core/player/player";
 import { Hero, PackLeader, PackFollower, Wanderer } from "./units";
@@ -72,16 +73,12 @@ export class Scenario {
         break;
       case GameEventType.Move:
         done();
-        // Remove the unit that just moved from the units to move
+        // Track which units still have an unspent turn so the UI can auto-advance
+        // selection. The human turn does NOT end here — the player ends it
+        // explicitly via the End Turn control (spec 03). Enemy behaviors dispatch
+        // their own EndTurn when their pass completes.
         if (action.unit) {
           this.unitsToMove.delete(action.unit.id);
-
-          // If all player units have moved, automatically end their turn
-          if (this.unitsToMove.size === 0 && state.currentPlayer?.id === "human") {
-            setTimeout(() => {
-              this.endPlayerTurn();
-            }, 500);
-          }
         }
         break;
       default:
@@ -139,6 +136,16 @@ export class Scenario {
         type: PlayerActionType.Move,
         unit,
         direction,
+      });
+    }
+  }
+
+  public attackUnit(unit: any, position: CubeCoordinates) {
+    if (this.playerStore) {
+      this.playerStore.dispatch({
+        type: PlayerActionType.Attack,
+        unit,
+        position,
       });
     }
   }

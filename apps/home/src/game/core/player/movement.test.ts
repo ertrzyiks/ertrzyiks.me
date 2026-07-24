@@ -1,17 +1,25 @@
 import { describe, expect, test } from "vitest";
 import { createGrid } from "../grid";
-import { positionAt, hexDistance } from "../grid";
+import { positionAt, hexDistance, cubeKey } from "../grid";
 import { Terrain } from "../board";
 import type { GameTileHex, UnitPosition } from "../board";
 import { PlayerColor } from "./player";
 import {
   createMoveContext,
   validDirections,
+  validMoveDestinations,
+  validAttackTargets,
   directionToward,
   directionAway,
   randomValidDirection,
 } from "./movement";
 import { Direction } from "../direction";
+import { Movable } from "../units/movable";
+import { Damaging } from "../units/damaging";
+import { Damageable } from "../units/damageable";
+import { Unit } from "../units/unit";
+
+const enemy = { id: "enemy", name: "Enemy", color: PlayerColor.RED };
 
 const owner = { id: "x", name: "X", color: PlayerColor.RED };
 
@@ -128,6 +136,128 @@ describe("directionAway", () => {
       owner,
     }));
     expect(directionAway(corner, target, ctxOf(tiles, occupied))).toBeNull();
+  });
+});
+
+describe("validMoveDestinations", () => {
+  function makeMover(budget: number) {
+    const unit = new (Movable(Unit, budget))();
+    unit.replenish();
+    return unit;
+  }
+
+  test("returns the in-bounds unoccupied neighbours when the unit has budget", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const dests = validMoveDestinations(makeMover(3), center, { tiles, units: [] });
+    // A centre hex has all six neighbours open.
+    expect(dests).toHaveLength(6);
+    // Each destination is exactly one of the six directional neighbours.
+    const keys = new Set(dests.map((d) => cubeKey(d)));
+    for (const dir of validDirections(center, ctxOf(tiles))) {
+      expect(keys.has(cubeKey(positionAt(center, dir)))).toBe(true);
+    }
+  });
+
+  test("excludes occupied neighbours (matches the reducer's occupancy rule)", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const blockerPos = positionAt(center, validDirections(center, ctxOf(tiles))[0]);
+    const dests = validMoveDestinations(makeMover(3), center, {
+      tiles,
+      units: [{ unit: { id: 1 } as any, position: blockerPos, owner }],
+    });
+    expect(dests).toHaveLength(5);
+    expect(dests.map((d) => cubeKey(d))).not.toContain(cubeKey(blockerPos));
+  });
+
+  test("returns nothing when the unit has no movement budget (highlight absent)", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const spent = new (Movable(Unit, 3))(); // never replenished -> canMove() false
+    expect(validMoveDestinations(spent, center, { tiles, units: [] })).toEqual([]);
+  });
+
+  test("returns nothing for a non-movable unit", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    expect(validMoveDestinations({ id: 7 }, center, { tiles, units: [] })).toEqual([]);
+  });
+});
+
+describe("validAttackTargets", () => {
+  function makeAttacker(attacksPerTurn: number) {
+    const unit = new (Damaging(Unit, 1, attacksPerTurn))();
+    unit.replenish();
+    return unit;
+  }
+
+  function makeTarget() {
+    const unit = new (Damageable(Unit, 5))();
+    unit.replenish();
+    return unit;
+  }
+
+  test("returns adjacent enemy Damageable units when the attacker has a charge", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const targetPos = positionAt(center, validDirections(center, ctxOf(tiles))[0]);
+    const target = { unit: makeTarget(), position: targetPos, owner: enemy };
+
+    const targets = validAttackTargets(makeAttacker(1), center, "human", {
+      units: [target],
+    });
+
+    expect(targets.map((t) => cubeKey(t))).toEqual([cubeKey(targetPos)]);
+  });
+
+  test("excludes non-adjacent enemy units", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const farPos = cubeAt(tiles, 4, 4);
+    const target = { unit: makeTarget(), position: farPos, owner: enemy };
+
+    expect(
+      validAttackTargets(makeAttacker(1), center, "human", { units: [target] })
+    ).toEqual([]);
+  });
+
+  test("excludes friendly units even when adjacent", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const friendlyPos = positionAt(center, validDirections(center, ctxOf(tiles))[0]);
+    const friendly = { unit: makeTarget(), position: friendlyPos, owner: { id: "human", name: "Human", color: PlayerColor.BLUE } };
+
+    expect(
+      validAttackTargets(makeAttacker(1), center, "human", { units: [friendly] })
+    ).toEqual([]);
+  });
+
+  test("excludes adjacent enemy units that are not Damageable", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const npcPos = positionAt(center, validDirections(center, ctxOf(tiles))[0]);
+    const npc = { unit: new Unit() as any, position: npcPos, owner: enemy };
+
+    expect(
+      validAttackTargets(makeAttacker(1), center, "human", { units: [npc] })
+    ).toEqual([]);
+  });
+
+  test("returns nothing when the attacker has no attack charge left", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const targetPos = positionAt(center, validDirections(center, ctxOf(tiles))[0]);
+    const target = { unit: makeTarget(), position: targetPos, owner: enemy };
+    const spent = new (Damaging(Unit, 1, 1))(); // never replenished -> canAttack() false
+
+    expect(validAttackTargets(spent, center, "human", { units: [target] })).toEqual([]);
+  });
+
+  test("returns nothing for a non-damaging unit", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    expect(validAttackTargets({ id: 7 }, center, "human", { units: [] })).toEqual([]);
   });
 });
 

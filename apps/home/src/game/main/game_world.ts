@@ -2,9 +2,11 @@ import { GameWorld } from "../shared/game_world";
 import type { Board, Player } from "../core";
 import { Scenario } from "./scenario";
 import type { EventSystem, Spritesheet } from "pixi.js";
-import { Text, Container } from "pixi.js";
+import { Text, Container, Graphics, Rectangle } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
 import { directionBetween } from "../core/grid/helpers";
+import { cubeKey } from "../core/grid";
+import { validMoveDestinations, validAttackTargets } from "../core/player/movement";
 import type { Tileable } from "../shared/renderable/tileable";
 import type { GameTileHex } from "../core";
 import type { UnitPosition } from "../core/board";
@@ -23,6 +25,14 @@ export class MainWorld extends GameWorld {
   protected isPlayerTurn = false;
   protected playerUnits: UnitPosition[] = [];
   protected selectedUnit: UnitPosition | null = null;
+
+  // World-space layer for the selected unit's valid-move highlights (spec 03).
+  // Lives in the viewport so highlights pan/zoom with the board.
+  protected highlightContainer: Container = new Container();
+
+  // Screen-space "End Turn" control (spec 03): the human turn ends only when the
+  // player asks, never automatically. Shown only during the human's turn.
+  protected endTurnButton: Container | null = null;
 
   protected turnIndicatorContainer: Container | null = null;
   protected turnIndicatorTween: TWEEN.Tween | null = null;
@@ -44,15 +54,25 @@ export class MainWorld extends GameWorld {
 
     this.scenario = new Scenario(this.game);
 
+    // Highlights render above the board terrain/fog but move with the viewport.
+    this.viewport.addChild(this.highlightContainer);
+    this.createEndTurnButton();
+
     this.scenario.emitter.on("playerTurn", (data: { units: UnitPosition[] }) => {
       this.isPlayerTurn = true;
       this.playerUnits = data.units;
       this.selectedUnit = data.units[0] || null;
       this.showTurnIndicator("Your Turn - Move Your Units", 0x4aadd6);
+      // Only offer end-turn when no opening dialog is holding the pipeline.
+      this.setEndTurnButtonVisible(!this.dialogActive);
+      this.updateHighlights();
     });
 
     this.scenario.emitter.on("wolfTurn", () => {
       this.isPlayerTurn = false;
+      this.selectedUnit = null;
+      this.setEndTurnButtonVisible(false);
+      this.updateHighlights();
       this.showTurnIndicator("Wolves' Turn", 0xff5555);
     });
 
@@ -61,6 +81,8 @@ export class MainWorld extends GameWorld {
       // already rejects gameplay actions; this just stops the click handler.
       this.isPlayerTurn = false;
       this.selectedUnit = null;
+      this.setEndTurnButtonVisible(false);
+      this.updateHighlights();
       if (data.outcome === "win") {
         this.showTurnIndicator("Victory! You reached the village", 0x4ad66a);
       } else {
@@ -94,6 +116,9 @@ export class MainWorld extends GameWorld {
     this.pendingNarrativeDone = done;
     this.dialogActive = true;
     this.selectedUnit = null;
+    // A dialog locks all input (spec 07): drop the highlight and hide end-turn.
+    this.setEndTurnButtonVisible(false);
+    this.updateHighlights();
 
     if (!this.currentDialog) {
       this.showNextDialog();
@@ -110,6 +135,14 @@ export class MainWorld extends GameWorld {
       this.pendingNarrativeDone = null;
       if (done) {
         done();
+      }
+      // Restore the human-turn controls the dialog suspended.
+      if (this.isPlayerTurn) {
+        if (!this.selectedUnit) {
+          this.selectedUnit = this.playerUnits[0] || null;
+        }
+        this.setEndTurnButtonVisible(true);
+        this.updateHighlights();
       }
       return;
     }
@@ -209,16 +242,30 @@ export class MainWorld extends GameWorld {
       return;
     }
 
-    // Check if clicking on a unit tile to select it
+    // Check if clicking on a unit tile
     const unitOnTile = state.units.find(u =>
-      u.owner.id === "human" &&
       u.position.q === tile.coordinates.q &&
       u.position.r === tile.coordinates.r &&
       u.position.s === tile.coordinates.s
     );
 
     if (unitOnTile) {
-      this.selectedUnit = unitOnTile;
+      if (unitOnTile.owner.id === "human") {
+        this.selectedUnit = unitOnTile;
+        this.updateHighlights();
+        return;
+      }
+
+      // Enemy/NPC unit clicked: attack only if it is a legal target for the
+      // selected unit's remaining attack charge — validAttackTargets applies
+      // the same adjacency + Damageable + charge checks the reducer enforces
+      // (spec 03 "Click on an Enemy Unit").
+      if (this.selectedUnit) {
+        const targets = validAttackTargets(this.selectedUnit.unit, this.selectedUnit.position, "human", state);
+        if (targets.some(t => cubeKey(t) === cubeKey(unitOnTile.position))) {
+          this.scenario.attackUnit(this.selectedUnit.unit, unitOnTile.position);
+        }
+      }
       return;
     }
 
@@ -234,9 +281,109 @@ export class MainWorld extends GameWorld {
 
     this.scenario.moveUnit(this.selectedUnit.unit, direction);
 
-    // After moving, select the next unit that needs to move
-    const unitsToMove = this.scenario.getUnitsToMove();
-    const nextUnit = this.playerUnits.find(u => unitsToMove.has(u.unit.id));
-    this.selectedUnit = nextUnit || null;
+    // After moving, keep the same unit selected if it still has budget (so the
+    // player can spend a multi-point move step by step); otherwise fall back to
+    // the next unit that has not moved yet. The turn no longer ends on its own —
+    // the player ends it explicitly via the End Turn button (spec 03).
+    const postMoveState = this.game.world.getState();
+    const moved = postMoveState.units.find(u => u.unit.id === this.selectedUnit!.unit.id);
+    const validDests = moved
+      ? validMoveDestinations(moved.unit, moved.position, postMoveState)
+      : [];
+    if (moved && validDests.length > 0) {
+      this.selectedUnit = moved;
+    } else {
+      const unitsToMove = this.scenario.getUnitsToMove();
+      const nextUnit = this.playerUnits.find(u => unitsToMove.has(u.unit.id));
+      this.selectedUnit = nextUnit || null;
+    }
+    this.updateHighlights();
+  }
+
+  // Redraw the valid-move highlights for the currently selected unit. Highlights
+  // are absent when it is not the human's turn, a dialog is up, nothing is
+  // selected, or the unit has no remaining budget (spec 03 "Visual Feedback").
+  protected updateHighlights() {
+    this.highlightContainer.removeChildren().forEach(child => child.destroy());
+
+    if (!this.isPlayerTurn || this.dialogActive || !this.selectedUnit) {
+      return;
+    }
+
+    const state = this.game.world.getState();
+    // Re-read the live unit from state: its position/budget may have changed
+    // since selection (e.g. right after a move).
+    const live = state.units.find(u => u.unit.id === this.selectedUnit!.unit.id);
+    if (!live) {
+      return;
+    }
+
+    for (const dest of validMoveDestinations(live.unit, live.position, state)) {
+      const tile = this.getTerrainAt(dest);
+      if (!tile) continue;
+      const marker = new Graphics();
+      marker.lineStyle(3, 0x4ad66a, 0.9);
+      marker.beginFill(0x4ad66a, 0.25);
+      marker.drawPolygon(this.createHexPoints(50));
+      marker.endFill();
+      marker.position.set(tile.x, tile.y);
+      this.highlightContainer.addChild(marker);
+    }
+  }
+
+  protected createEndTurnButton() {
+    const width = 140;
+    const height = 48;
+
+    const button = new Container();
+    button.position.set(
+      window.innerWidth - width - 24,
+      window.innerHeight - height - 24
+    );
+
+    const bg = new Graphics();
+    bg.beginFill(0x1a1a2e, 0.95);
+    bg.lineStyle(2, 0x4aadd6, 1);
+    bg.drawRoundedRect(0, 0, width, height, 10);
+    bg.endFill();
+    button.addChild(bg);
+
+    const label = new Text("End Turn", {
+      fontSize: 18,
+      fontWeight: "bold",
+      fill: 0xffffff,
+      fontFamily: "Arial",
+    });
+    label.anchor.set(0.5, 0.5);
+    label.position.set(width / 2, height / 2);
+    button.addChild(label);
+
+    button.eventMode = "static";
+    button.cursor = "pointer";
+    button.hitArea = new Rectangle(0, 0, width, height);
+    button.on("pointertap", () => this.onEndTurnClicked());
+
+    button.visible = false;
+    this.endTurnButton = button;
+    this.addChild(button);
+  }
+
+  protected setEndTurnButtonVisible(visible: boolean) {
+    if (this.endTurnButton) {
+      this.endTurnButton.visible = visible;
+    }
+  }
+
+  protected onEndTurnClicked() {
+    // End turn is only available on the human's turn and never while a dialog is
+    // up (spec 03). After ending, input is locked until the next human turn.
+    if (!this.isPlayerTurn || this.dialogActive) {
+      return;
+    }
+    this.isPlayerTurn = false;
+    this.selectedUnit = null;
+    this.setEndTurnButtonVisible(false);
+    this.updateHighlights();
+    this.scenario.endPlayerTurn();
   }
 }
