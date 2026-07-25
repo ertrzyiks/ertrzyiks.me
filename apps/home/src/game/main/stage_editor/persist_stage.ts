@@ -1,4 +1,4 @@
-import { access, writeFile } from "node:fs/promises";
+import { access, readFile, writeFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Board } from "../../core/board";
@@ -82,4 +82,40 @@ export async function saveStageFiles(
       JSON.stringify(stageRoster, null, 2)
     ),
   ]);
+}
+
+export interface LoadedStage {
+  board: Board;
+  stageRoster: StageRosterData;
+}
+
+/**
+ * Reads back what `saveStageFiles` wrote (issue #170 user story 16: "reopen
+ * a previously saved stage and see its board/spawns/rosters/win section
+ * reflected in the editor"). `isValidStageName` is checked here too, not
+ * just on save — an unchecked name reaching `join()` on a read path is
+ * exactly as much a traversal risk (`../../.env`, `/etc/passwd`) as on a
+ * write path.
+ */
+export async function loadStageFiles(
+  name: string,
+  target: SaveStageTarget = DEFAULT_SAVE_TARGET
+): Promise<LoadedStage> {
+  if (!isValidStageName(name)) {
+    throw new Error(`Invalid stage name "${name}": use only letters, digits, "_", and "-"`);
+  }
+
+  const boardPath = join(target.boardsDir, `${name}.json`);
+  const rosterPath = join(target.stagesDir, `${name}.stage-roster.json`);
+
+  if (!(await fileExists(boardPath)) || !(await fileExists(rosterPath))) {
+    throw new Error(`No saved stage named "${name}"`);
+  }
+
+  const [board, stageRoster] = await Promise.all([
+    readFile(boardPath, "utf-8").then((raw) => JSON.parse(raw) as Board),
+    readFile(rosterPath, "utf-8").then((raw) => JSON.parse(raw) as StageRosterData),
+  ]);
+
+  return { board, stageRoster };
 }

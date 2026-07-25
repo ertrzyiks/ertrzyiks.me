@@ -6,6 +6,7 @@ import { resolveStageDefinition } from "./resolver";
 import { Terrain, type Board } from "../../core/board";
 import {
   createRosterEditorState,
+  loadRosterEditorState,
   refreshValidSections,
   rosterEditorReducer,
   toStageRosterData,
@@ -13,6 +14,7 @@ import {
   type RosterEditorState,
 } from "./roster_editor_reducer";
 import { RosterEditorEventType } from "./roster_editor_event";
+import type { StageRosterData } from "./stage_roster";
 
 function makeState(overrides: Partial<RosterEditorState> = {}): RosterEditorState {
   return { ...createRosterEditorState(makeBoard()), ...overrides };
@@ -44,6 +46,50 @@ describe("createRosterEditorState", () => {
     expect(state.enemies).toEqual([]);
     expect(state.winSection).toBe("");
     expect(state.error).toBe(null);
+  });
+});
+
+describe("loadRosterEditorState", () => {
+  test("seeds playerSpawns/enemies/winSection from previously-saved data, and validSections from the board", () => {
+    const data: StageRosterData = {
+      playerSpawns: [{ section: "spawn_a", unitKey: "Hero" }],
+      enemies: [
+        {
+          factionKey: "wolves",
+          behaviorKey: "Pack",
+          turnEventName: "wolfTurn",
+          spawns: [{ section: "wolf_1", unitKey: "PackLeader" }],
+        },
+      ],
+      winSection: "village",
+    };
+
+    const state = loadRosterEditorState(data, makeBoard());
+
+    expect(state.playerSpawns).toEqual(data.playerSpawns);
+    expect(state.enemies).toEqual(data.enemies);
+    expect(state.winSection).toBe("village");
+    expect(state.error).toBe(null);
+    expect(state.validSections.has("spawn_a")).toBe(true);
+    expect(state.validSections.has("village")).toBe(true);
+  });
+
+  test("further dispatches against the loaded state behave exactly like any other state (e.g. duplicate-section rejection)", () => {
+    const data: StageRosterData = {
+      playerSpawns: [{ section: "spawn_a", unitKey: "Hero" }],
+      enemies: [],
+      winSection: "",
+    };
+    const state = loadRosterEditorState(data, makeBoard());
+
+    const rejected = rosterEditorReducer(state, {
+      type: RosterEditorEventType.AddPlayerSpawn,
+      section: "spawn_a",
+      unitKey: "Hero",
+    });
+
+    expect(rejected.playerSpawns).toEqual(data.playerSpawns);
+    expect(rejected.error).toMatch(/already assigned/i);
   });
 });
 

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Terrain, type Board } from "../../core/board";
 import type { StageRosterData } from "./stage_roster";
-import { isValidStageName, saveStageFiles } from "./persist_stage";
+import { isValidStageName, loadStageFiles, saveStageFiles } from "./persist_stage";
 
 const board: Board = {
   rows: 1,
@@ -103,5 +103,47 @@ describe("saveStageFiles", () => {
       await readFile(join(stagesDir, "forest.stage-roster.json"), "utf-8")
     );
     expect(savedRoster).toEqual(updatedRoster);
+  });
+});
+
+describe("loadStageFiles", () => {
+  let dir: string;
+
+  afterEach(async () => {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  });
+
+  test("reads back exactly what saveStageFiles wrote", async () => {
+    dir = await mkdtemp(join(tmpdir(), "stage-editor-load-"));
+    const boardsDir = join(dir, "boards");
+    const stagesDir = join(dir, "stages");
+    await Promise.all([mkdir(boardsDir), mkdir(stagesDir)]);
+
+    await saveStageFiles("forest", board, stageRoster, { boardsDir, stagesDir });
+    const loaded = await loadStageFiles("forest", { boardsDir, stagesDir });
+
+    expect(loaded).toEqual({ board, stageRoster });
+  });
+
+  test("rejects an invalid stage name before touching the filesystem", async () => {
+    dir = await mkdtemp(join(tmpdir(), "stage-editor-load-"));
+    const boardsDir = join(dir, "boards");
+    const stagesDir = join(dir, "stages");
+    await Promise.all([mkdir(boardsDir), mkdir(stagesDir)]);
+
+    await expect(loadStageFiles("../escape", { boardsDir, stagesDir })).rejects.toThrow(
+      /invalid stage name/i
+    );
+  });
+
+  test("errors clearly when no saved stage exists with that name", async () => {
+    dir = await mkdtemp(join(tmpdir(), "stage-editor-load-"));
+    const boardsDir = join(dir, "boards");
+    const stagesDir = join(dir, "stages");
+    await Promise.all([mkdir(boardsDir), mkdir(stagesDir)]);
+
+    await expect(loadStageFiles("nonexistent", { boardsDir, stagesDir })).rejects.toThrow(
+      /no saved stage named "nonexistent"/i
+    );
   });
 });

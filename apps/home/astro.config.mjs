@@ -1,5 +1,5 @@
 import { defineConfig } from "astro/config";
-import { stageEditorSavePlugin } from "./src/game/main/stage_editor/save_middleware";
+import { stageEditorApiPlugin } from "./src/game/main/stage_editor/save_middleware";
 
 // https://astro.build/config
 export default defineConfig({
@@ -9,6 +9,6 @@ export default defineConfig({
   vite: {
     // Dev-only (apply: "serve" inside the plugin) — never registered in a
     // production build. See save_middleware.ts.
-    plugins: [stageEditorSavePlugin()],
+    plugins: [stageEditorApiPlugin()],
   },
 });

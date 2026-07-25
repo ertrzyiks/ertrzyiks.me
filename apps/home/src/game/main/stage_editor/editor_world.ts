@@ -20,6 +20,7 @@ import type { Board, GameTileHex } from "../../core/board";
 import { UNIT_CATALOG, BEHAVIOR_CATALOG, FACTION_CATALOG, type UnitKey, type BehaviorKey, type FactionKey } from "./catalog";
 import {
   createRosterEditorState,
+  loadRosterEditorState,
   refreshValidSections,
   rosterEditorReducer,
   toStageRosterData,
@@ -27,6 +28,7 @@ import {
   type RosterEditorState,
 } from "./roster_editor_reducer";
 import { RosterEditorEventType, type RosterEditorEvent } from "./roster_editor_event";
+import type { StageRosterData } from "./stage_roster";
 
 const DEFAULT_ROWS = 6;
 const DEFAULT_COLS = 8;
@@ -47,6 +49,7 @@ function boardFromState(state: State): Board {
 interface StageEditorGuiData {
   name: string;
   save: () => void;
+  load: () => void;
   tile: { textureName: string; sectionName: string };
 }
 
@@ -83,6 +86,7 @@ export class StageEditorWorld extends Container {
   protected data: StageEditorGuiData = {
     name: "",
     save: () => void this.save(),
+    load: () => void this.load(),
     tile: { textureName: "water", sectionName: "none" },
   };
 
@@ -169,6 +173,7 @@ export class StageEditorWorld extends Container {
     stageFolder.open();
     stageFolder.add(this.data, "name");
     stageFolder.add(this.data, "save").name("Save");
+    stageFolder.add(this.data, "load").name("Load");
 
     this.refreshRosterGui();
   }
@@ -449,8 +454,41 @@ export class StageEditorWorld extends Container {
     }
   }
 
+  /**
+   * Issue #170 user story 16: "reopen a previously saved stage and see its
+   * board/spawns/rosters/win section reflected in the editor." Sets
+   * `rosterState` from the loaded data *before* dispatching `LoadBoard`, so
+   * the board store's subscribe callback (which calls `refreshValidSections`
+   * on every `LoadBoard`) refreshes `validSections` against the same,
+   * already-correct roster data instead of racing a stale one — see that
+   * callback in the constructor.
+   */
+  protected async load() {
+    const name = this.data.name;
+
+    try {
+      const res = await fetch(`/api/stage-editor/load?name=${encodeURIComponent(name)}`);
+      if (!res.ok) {
+        this.reportError(await res.text());
+        return;
+      }
+
+      const { board, stageRoster } = (await res.json()) as {
+        board: Board;
+        stageRoster: StageRosterData;
+      };
+
+      this.rosterState = loadRosterEditorState(stageRoster, board);
+      this.store.dispatch({ type: EditorEventType.LoadBoard, data: board });
+
+      this.reportSuccess(`Loaded "${name}"`);
+    } catch (error) {
+      this.reportError(error instanceof Error ? error.message : "Load failed");
+    }
+  }
+
   protected reportError(message: string) {
-    alert(`Save failed: ${message}`);
+    alert(message);
   }
 
   protected reportSuccess(message: string) {

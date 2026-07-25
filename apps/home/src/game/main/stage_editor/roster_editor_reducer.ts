@@ -44,6 +44,25 @@ export function createRosterEditorState(board: Board): RosterEditorState {
 }
 
 /**
+ * The load-time counterpart to `createRosterEditorState`: seeds authoring
+ * state from a previously-saved `StageRosterData` instead of starting empty
+ * (issue #170 user story 16: "reopen a previously saved stage and see its
+ * board/spawns/rosters/win section reflected in the editor"). Trusts `data`
+ * as-is rather than re-running `validateAgainstBoard` — a stage that was
+ * saved is assumed valid against the board it was saved with, and `board`
+ * here is that same loaded board, not one an author has since edited.
+ */
+export function loadRosterEditorState(data: StageRosterData, board: Board): RosterEditorState {
+  return {
+    validSections: new Set(board.tiles.map((tile) => tile.sectionName)),
+    playerSpawns: data.playerSpawns,
+    enemies: data.enemies,
+    winSection: data.winSection,
+    error: null,
+  };
+}
+
+/**
  * Recomputes `validSections` from the board's current tile section names,
  * keeping everything else untouched. Not a dispatched `RosterEditorEvent`:
  * renaming a tile's section is a board-tile authoring action (the OTHER
