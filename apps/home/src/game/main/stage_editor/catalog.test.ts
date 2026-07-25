@@ -19,23 +19,7 @@ import { FleeBehavior } from "../../core/player/flee_behavior";
 import { SeekerBehavior } from "../../core/player/seeker_behavior";
 import { PlayerColor } from "../../core/player/player";
 import { Hero, PackLeader, PackFollower, Wanderer, Bandit, BanditCaptain } from "../units";
-import type { StoreProxy } from "../../core/store";
-import type { GameEvent } from "../../core/game_event";
-import type { State } from "../../core/world";
-import type { PlayerAction } from "../../core/player_action";
-
-// A minimal store double is enough here: these tests assert catalog *wiring*
-// (does the right class come out, does the right id/memory get threaded in),
-// not behavior algorithms — those already have dedicated coverage in
-// pack_behavior.test.ts / flee_behavior.test.ts / seeker_behavior.test.ts.
-function makeStore() {
-  const state = { units: [], allUnits: [], tiles: [], cols: 5, rows: 5 } as unknown as State;
-  return {
-    getState: () => state,
-    dispatch: () => {},
-    subscribe: () => {},
-  } as unknown as StoreProxy<GameEvent, State, PlayerAction>;
-}
+import { makeStoreDouble } from "../test_helpers";
 
 describe("UNIT_CATALOG", () => {
   test.each([
@@ -68,7 +52,7 @@ describe("isUnitKey", () => {
 
 describe("BEHAVIOR_CATALOG", () => {
   test("Pack produces a PackBehavior", () => {
-    const behavior = createBehaviorFromCatalog("Pack", makeStore(), {
+    const behavior = createBehaviorFromCatalog("Pack", makeStoreDouble(), {
       targetPlayerId: "human",
       packMemory: createPackMemory(),
     });
@@ -78,7 +62,7 @@ describe("BEHAVIOR_CATALOG", () => {
   test("Pack threads the given packMemory by reference, not a fresh copy", () => {
     const packMemory: PackMemory = createPackMemory();
 
-    const behavior = createBehaviorFromCatalog("Pack", makeStore(), {
+    const behavior = createBehaviorFromCatalog("Pack", makeStoreDouble(), {
       targetPlayerId: "human",
       packMemory,
     }) as unknown as { memory: PackMemory };
@@ -89,7 +73,7 @@ describe("BEHAVIOR_CATALOG", () => {
   });
 
   test("Flee produces a FleeBehavior that flees from the given targetPlayerId", () => {
-    const behavior = createBehaviorFromCatalog("Flee", makeStore(), {
+    const behavior = createBehaviorFromCatalog("Flee", makeStoreDouble(), {
       targetPlayerId: "human",
       packMemory: createPackMemory(),
     }) as unknown as { fleeFrom: Set<string> };
@@ -99,7 +83,7 @@ describe("BEHAVIOR_CATALOG", () => {
   });
 
   test("Seeker produces a SeekerBehavior that hunts the given targetPlayerId", () => {
-    const behavior = createBehaviorFromCatalog("Seeker", makeStore(), {
+    const behavior = createBehaviorFromCatalog("Seeker", makeStoreDouble(), {
       targetPlayerId: "human",
       packMemory: createPackMemory(),
     }) as unknown as { huntFor: Set<string> };
