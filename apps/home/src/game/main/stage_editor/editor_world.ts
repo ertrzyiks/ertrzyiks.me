@@ -55,9 +55,12 @@ interface StageEditorGuiData {
 
 /**
  * The dev-only Stage Editor's board-tile half (issue #170). Deliberately
- * built on the plain viewport + `Store<EditorEvent, State>` pattern the now-
- * dead `src/game/editor/game_world.ts` used — not on `shared/game_world.ts`'s
- * `GameWorld`, which wraps a live `Game`/turn-loop (spawns, moves, combat)
+ * built on a plain viewport + `Store<EditorEvent, State>` — the pattern the
+ * dead `EditorWorld`/`board_editor.ts`/`Api./levels` scaffolding used before
+ * it was deleted as fully superseded by this class (that history is why
+ * `editor_event.ts`/`reducer.ts` still live under `src/game/editor/`, reused
+ * unmodified below) — not on `shared/game_world.ts`'s `GameWorld`, which
+ * wraps a live `Game`/turn-loop (spawns, moves, combat)
  * this authoring tool has no use for (issue: "no live playtest... the editor
  * never boots a real Scenario/turn loop against in-progress edits"). Reuses
  * `editor_event.ts`/`reducer.ts` unmodified for board-tile authoring — see

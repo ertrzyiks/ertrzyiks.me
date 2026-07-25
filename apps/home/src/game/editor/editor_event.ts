@@ -1,4 +1,4 @@
-import type { ApiLevelPayload } from "./api_service";
+import type { Board } from "../core/board";
 
 export enum EditorEventType {
   SetSize,
@@ -19,7 +19,7 @@ export interface SetSizeEvent extends AbstractEvent {
 
 export interface LoadBoardEvent extends AbstractEvent {
   type: EditorEventType.LoadBoard;
-  data: ApiLevelPayload;
+  data: Board;
 }
 
 export interface SetTileTextureEvent extends AbstractEvent {
