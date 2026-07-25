@@ -61,9 +61,18 @@ export function editorReducer(state: State, action: EditorEvent): State {
     case EditorEventType.SetTileTexture:
       return {
         ...state,
+        // Mutate the field on the existing hex rather than spreading it into
+        // a plain object: `state.tiles` entries are Honeycomb hexes whose
+        // `.coordinates()`/`.cube()`/`.toPoint()` live on the per-grid Hex
+        // factory's prototype (see honeycomb-grid's extendHex), not as own
+        // properties — `{ ...tile, textureName }` silently drops that
+        // prototype, so every later caller of those methods on this tile
+        // (e.g. StageEditorWorld's Save) breaks. Only `x`/`y`/`type`/
+        // `textureName`/`sectionName` are true own properties, so this stays
+        // safe to compare/read the same way before and after the edit.
         tiles: state.tiles.map((tile) => {
           if (tile.x === action.x && tile.y === action.y) {
-            return { ...tile, textureName: action.textureName };
+            tile.textureName = action.textureName;
           }
 
           return tile;
@@ -73,9 +82,10 @@ export function editorReducer(state: State, action: EditorEvent): State {
     case EditorEventType.SetTileSectionName:
       return {
         ...state,
+        // See SetTileTexture above for why this mutates in place.
         tiles: state.tiles.map((tile) => {
           if (tile.x === action.x && tile.y === action.y) {
-            return { ...tile, sectionName: action.sectionName };
+            tile.sectionName = action.sectionName;
           }
 
           return tile;

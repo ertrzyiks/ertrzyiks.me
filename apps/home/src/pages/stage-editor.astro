@@ -1,0 +1,67 @@
+---
+// Dev-only Stage Editor (issue #170). Same import.meta.env.DEV gating as
+// interaction-harness.astro: inert in a production build, redirects home.
+if (!import.meta.env.DEV) {
+  return Astro.redirect("/");
+}
+---
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Stage Editor</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <script>
+      window.global ||= window;
+
+      import { Application } from "pixi.js";
+      import TWEEN from "@tweenjs/tween.js";
+      import { preload } from "../game/main/preload";
+      import { StageEditorWorld } from "../game/main/stage_editor/editor_world";
+
+      async function bootstrap() {
+        const app = new Application({
+          backgroundAlpha: 0,
+          resolution: window.devicePixelRatio,
+        });
+        app.ticker.add(() => {
+          TWEEN.update();
+        });
+
+        const { sheet } = await preload();
+
+        const world = new StageEditorWorld(app.renderer.events, sheet);
+        app.stage.addChild(world);
+
+        function resize() {
+          app.renderer.resize(window.innerWidth, window.innerHeight);
+        }
+        window.addEventListener("resize", resize);
+        resize();
+
+        const gameEl = document.getElementById("game");
+        gameEl?.replaceWith(app.view as HTMLCanvasElement);
+        app.start();
+
+        (window as any).__debugApp = app;
+        (window as any).__debugWorld = world;
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>
