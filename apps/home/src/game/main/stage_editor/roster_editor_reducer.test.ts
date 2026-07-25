@@ -3,10 +3,13 @@ import { Game } from "../../core/game";
 import { Scenario } from "../scenario";
 import { makeBoard } from "../test_helpers";
 import { resolveStageDefinition } from "./resolver";
+import { Terrain, type Board } from "../../core/board";
 import {
   createRosterEditorState,
+  refreshValidSections,
   rosterEditorReducer,
   toStageRosterData,
+  validateAgainstBoard,
   type RosterEditorState,
 } from "./roster_editor_reducer";
 import { RosterEditorEventType } from "./roster_editor_event";
@@ -41,6 +44,119 @@ describe("createRosterEditorState", () => {
     expect(state.enemies).toEqual([]);
     expect(state.winSection).toBe("");
     expect(state.error).toBe(null);
+  });
+});
+
+describe("refreshValidSections", () => {
+  test("picks up a newly-renamed section without touching the rest of the state", () => {
+    const withSpawn = rosterEditorReducer(makeState(), {
+      type: RosterEditorEventType.AddPlayerSpawn,
+      section: "spawn_a",
+      unitKey: "Hero",
+    });
+
+    const renamedBoard: Board = {
+      rows: 1,
+      cols: 1,
+      tiles: [
+        { x: 0, y: 0, type: Terrain.WATER, textureName: "grass", sectionName: "brand_new_section" },
+      ],
+    };
+    const refreshed = refreshValidSections(withSpawn, renamedBoard);
+
+    expect(refreshed.validSections.has("brand_new_section")).toBe(true);
+    expect(refreshed.validSections.has("spawn_a")).toBe(false);
+    // Renaming a section out from under an existing spawn doesn't retroactively
+    // invalidate that spawn — this helper only updates what's *newly* valid to
+    // pick, it doesn't re-run user story 12's validation over existing data.
+    expect(refreshed.playerSpawns).toEqual(withSpawn.playerSpawns);
+    expect(refreshed.error).toBe(withSpawn.error);
+  });
+});
+
+describe("validateAgainstBoard", () => {
+  const board = makeBoard();
+
+  test("passes when every reference still resolves on the given board", () => {
+    let state = rosterEditorReducer(makeState(), {
+      type: RosterEditorEventType.AddPlayerSpawn,
+      section: "spawn_a",
+      unitKey: "Hero",
+    });
+    state = withWolfRoster(state);
+    state = rosterEditorReducer(state, {
+      type: RosterEditorEventType.AddEnemyRosterSpawn,
+      rosterIndex: 0,
+      section: "wolf_1",
+      unitKey: "PackLeader",
+    });
+    state = rosterEditorReducer(state, {
+      type: RosterEditorEventType.SetWinSection,
+      section: "village",
+    });
+
+    expect(validateAgainstBoard(state, board)).toBe(null);
+  });
+
+  test("catches a player spawn whose section was renamed out from under it after refreshValidSections lets the rename through", () => {
+    const withSpawn = rosterEditorReducer(makeState(), {
+      type: RosterEditorEventType.AddPlayerSpawn,
+      section: "spawn_a",
+      unitKey: "Hero",
+    });
+    const renamedBoard: Board = {
+      ...board,
+      tiles: board.tiles.map((tile) =>
+        tile.sectionName === "spawn_a" ? { ...tile, sectionName: "renamed" } : tile
+      ),
+    };
+
+    // refreshValidSections (the live picker's view) doesn't itself catch this...
+    const refreshed = refreshValidSections(withSpawn, renamedBoard);
+    expect(refreshed.error).toBe(null);
+    // ...validateAgainstBoard (the save-time gate) does.
+    expect(validateAgainstBoard(refreshed, renamedBoard)).toMatch(
+      /player spawn references section "spawn_a".*no longer exists/i
+    );
+  });
+
+  test("catches a stale enemy roster spawn section", () => {
+    let state = withWolfRoster(makeState());
+    state = rosterEditorReducer(state, {
+      type: RosterEditorEventType.AddEnemyRosterSpawn,
+      rosterIndex: 0,
+      section: "wolf_1",
+      unitKey: "PackLeader",
+    });
+    const renamedBoard: Board = {
+      ...board,
+      tiles: board.tiles.map((tile) =>
+        tile.sectionName === "wolf_1" ? { ...tile, sectionName: "renamed" } : tile
+      ),
+    };
+
+    expect(validateAgainstBoard(state, renamedBoard)).toMatch(
+      /wolves.*roster spawn references section "wolf_1".*no longer exists/i
+    );
+  });
+
+  test("catches a stale win section", () => {
+    const state = rosterEditorReducer(makeState(), {
+      type: RosterEditorEventType.SetWinSection,
+      section: "village",
+    });
+    const renamedBoard: Board = {
+      ...board,
+      tiles: board.tiles.map((tile) =>
+        tile.sectionName === "village" ? { ...tile, sectionName: "renamed" } : tile
+      ),
+    };
+
+    expect(validateAgainstBoard(state, renamedBoard)).toMatch(/win section "village".*no longer exists/i);
+  });
+
+  test("an empty winSection is not itself a validation failure", () => {
+    expect(validateAgainstBoard(makeState(), board)).toBe(null);
   });
 });
 

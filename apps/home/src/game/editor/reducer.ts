@@ -20,6 +20,14 @@ function stateFromBoard(board: Board) {
     tiles,
     worldWidth,
     worldHeight,
+    // `board.rows`/`board.cols` were never round-tripped into State here —
+    // harmless while nothing read state.rows/state.cols back (the old dead
+    // EditorWorld tracked its own rows/columns separately in its GUI data),
+    // but StageEditorWorld's Save reads state.rows/state.cols directly to
+    // build the saved board file, so a save was silently writing rows:0,
+    // cols:0 regardless of the real board size until this was added.
+    rows: board.rows,
+    cols: board.cols,
   };
 }
 

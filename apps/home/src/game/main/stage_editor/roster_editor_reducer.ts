@@ -14,8 +14,10 @@ import type { EnemyRosterData, RosterSpawnData, StageRosterData } from "./stage_
  * that has nothing to do with authoring. `validSections` is this state's own
  * window onto "the current board" (issue user story 12) — populated once at
  * `createRosterEditorState` time from a `Board`, not re-derived from the
- * board-tile reducer's own state, since composing the two reducers together
- * behind one Pixi UI is a later, separate slice.
+ * board-tile reducer's own state; `StageEditorWorld` (`editor_world.ts`)
+ * composes the two reducers behind one Pixi UI and keeps this window fresh
+ * via `refreshValidSections`, below, whenever a board-tile edit could have
+ * changed section names.
  */
 export interface RosterEditorState {
   readonly validSections: ReadonlySet<string>;
@@ -39,6 +41,20 @@ export function createRosterEditorState(board: Board): RosterEditorState {
     winSection: "",
     error: null,
   };
+}
+
+/**
+ * Recomputes `validSections` from the board's current tile section names,
+ * keeping everything else untouched. Not a dispatched `RosterEditorEvent`:
+ * renaming a tile's section is a board-tile authoring action (the OTHER
+ * reducer's concern — see this module's own doc comment on why the two stay
+ * separate), so `StageEditorWorld` (the Pixi world composing both reducers,
+ * now that that "later, separate slice" mentioned above has arrived) calls
+ * this directly whenever the board changes, rather than routing board edits
+ * through this reducer's dispatch surface.
+ */
+export function refreshValidSections(state: RosterEditorState, board: Board): RosterEditorState {
+  return { ...state, validSections: new Set(board.tiles.map((tile) => tile.sectionName)) };
 }
 
 /** True if `section` is already claimed by a player or enemy spawn (user story 13: no two spawns share a section). */
@@ -180,11 +196,46 @@ export function rosterEditorReducer(
   }
 }
 
-/** The data an editor Save writes to disk (a future slice) / hands to `resolveStageDefinition`. */
+/** The data `StageEditorWorld`'s Save writes to disk / hands to `resolveStageDefinition`. */
 export function toStageRosterData(state: RosterEditorState): StageRosterData {
   return {
     playerSpawns: state.playerSpawns,
     enemies: state.enemies,
     winSection: state.winSection,
   };
+}
+
+/**
+ * Re-validates every section reference against the board's CURRENT sections
+ * (unlike `validSections`, which a rename only widens/narrows going forward
+ * — see `refreshValidSections`'s doc comment — existing spawns/winSection
+ * are never retroactively invalidated when a section is renamed out from
+ * under them). Called at Save time so a stale reference (added, then its
+ * board tile's section later renamed) can't be silently persisted — issue
+ * #170 user story 12: "save blocked ... if a spawn/roster/win-section
+ * references a section name that doesn't exist on the current board."
+ * Returns an error message, or null if everything still resolves.
+ */
+export function validateAgainstBoard(state: RosterEditorState, board: Board): string | null {
+  const currentSections = new Set(board.tiles.map((tile) => tile.sectionName));
+
+  for (const spawn of state.playerSpawns) {
+    if (!currentSections.has(spawn.section)) {
+      return `Player spawn references section "${spawn.section}", which no longer exists on the board`;
+    }
+  }
+
+  for (const roster of state.enemies) {
+    for (const spawn of roster.spawns) {
+      if (!currentSections.has(spawn.section)) {
+        return `"${roster.factionKey}" roster spawn references section "${spawn.section}", which no longer exists on the board`;
+      }
+    }
+  }
+
+  if (state.winSection && !currentSections.has(state.winSection)) {
+    return `Win section "${state.winSection}" no longer exists on the board`;
+  }
+
+  return null;
 }
