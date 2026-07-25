@@ -9,7 +9,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "generate:sprites": "bash ./scripts/generate-sprites.sh",
-    "test": "vitest"
+    "test": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",
@@ -26,6 +27,7 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "vitest": "3.2.7"
   }
 }

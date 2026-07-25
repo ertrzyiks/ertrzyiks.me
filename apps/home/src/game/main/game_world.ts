@@ -5,18 +5,18 @@ import { createStage1Definition } from "./stages/stage1";
 import type { EventSystem, Spritesheet } from "pixi.js";
 import { Text, Container, Graphics, Rectangle } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
-import { directionBetween } from "../core/grid/helpers";
+import { pointToCube, directionBetween } from "../core/grid/helpers";
 import { cubeKey } from "../core/grid";
 import { validMoveDestinations, validAttackTargets } from "../core/player/movement";
 import type { Tileable } from "../shared/renderable/tileable";
-import type { GameTileHex } from "../core";
 import type { UnitPosition } from "../core/board";
 import type { GameEvent } from "../core/game_event";
 import type { State } from "../core/world";
 import type { ObservableSubscriptionDone } from "../shared/observable";
-import { NarrativeEngine, type NarrativeEvent } from "../core/narrative";
+import { NarrativeEngine, type NarrativeEvent, type NarrativeScript } from "../core/narrative";
 import { createStage1Narrative } from "./narrative/stage1";
 import { DialogBox } from "../shared/dialog_box";
+import type { StageDefinition } from "./stages/stage";
 
 export class MainWorld extends GameWorld {
   protected player: Player | null = null;
@@ -42,22 +42,39 @@ export class MainWorld extends GameWorld {
   // them as modal dialogs. While a dialog is open the whole world observable is
   // held (see setupNarrative) so no queued action — including a pending win/lose
   // GameEnd — resolves until the player has read the beat. See specs/07.
-  protected narrative = new NarrativeEngine(
-    createStage1Narrative("human", "wanderer")
-  );
+  protected narrative: NarrativeEngine;
   protected dialogQueue: NarrativeEvent[] = [];
   protected currentDialog: DialogBox | null = null;
   protected pendingNarrativeDone: ObservableSubscriptionDone | null = null;
   protected dialogActive = false;
 
-  constructor(protected board: Board, protected events: EventSystem, protected sheet: Spritesheet) {
+  constructor(
+    protected board: Board,
+    protected events: EventSystem,
+    protected sheet: Spritesheet,
+    // Injectable so callers other than the real site (e.g. the interaction
+    // test harness, docs/adr/0001) can boot MainWorld against a minimal
+    // definition/script instead of always mounting Stage 1 in full.
+    definition: StageDefinition = createStage1Definition(),
+    narrativeScript: NarrativeScript = createStage1Narrative(definition.player.id, "wanderer")
+  ) {
     super(board, events, sheet);
 
-    this.scenario = new Scenario(this.game, createStage1Definition());
+    this.narrative = new NarrativeEngine(narrativeScript);
+    this.scenario = new Scenario(this.game, definition);
 
     // Highlights render above the board terrain/fog but move with the viewport.
     this.viewport.addChild(this.highlightContainer);
     this.createEndTurnButton();
+
+    // Board clicks are resolved here, not via per-tile pointertap listeners:
+    // pixi-viewport's drag plugin sets the viewport's own hitArea to the
+    // whole world (needed for panning), and PixiJS's hit-testing treats a
+    // container's own hitArea as an override that its children are never
+    // checked against — no tile or unit sprite can ever receive a pointer
+    // event underneath it. "clicked" is pixi-viewport's own click-vs-drag
+    // disambiguation, carrying the world-space point to resolve manually.
+    this.viewport.on("clicked", (e) => this.handleViewportClicked(e.world));
 
     this.scenario.emitter.on("playerTurn", (data: { units: UnitPosition[] }) => {
       this.isPlayerTurn = true;
@@ -268,16 +285,17 @@ export class MainWorld extends GameWorld {
     return this.isPlayerTurn && !this.dialogActive && !this.isUnitMoving;
   }
 
-  protected createWorldTile(hex: GameTileHex) {
-    const sprite = super.createWorldTile(hex);
+  protected handleViewportClicked(worldPoint: { x: number; y: number }) {
+    if (!this.canAcceptInput()) {
+      return;
+    }
 
-    sprite.on("pointertap", () => {
-      if (this.canAcceptInput()) {
-        this.handleTileClick(sprite as Tileable);
-      }
-    });
+    const tile = this.getTerrainAt(pointToCube(worldPoint));
+    if (!tile) {
+      return;
+    }
 
-    return sprite;
+    this.handleTileClick(tile);
   }
 
   protected handleTileClick(tile: Tileable) {

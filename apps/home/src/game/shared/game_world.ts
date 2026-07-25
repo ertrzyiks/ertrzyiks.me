@@ -245,6 +245,27 @@ export class GameWorld extends Container {
     return this.terrainTiles.get(point);
   }
 
+  /**
+   * Real on-screen position of a tile, accounting for the viewport's current
+   * pan/zoom. For callers outside PixiJS's own event system that need to
+   * interact with the board as a real click would (e.g. driving a mouse
+   * click at this coordinate) rather than dispatching game actions directly.
+   */
+  public getTileScreenPosition(pos: CubeCoordinates): { x: number; y: number } | null {
+    const tile = this.getTerrainAt(pos);
+    if (!tile) return null;
+    const global = tile.getGlobalPosition();
+    return { x: global.x, y: global.y };
+  }
+
+  public getTileScreenPositionBySection(sectionName: string): { x: number; y: number } | null {
+    return this.getTileScreenPosition(this.game.world.tileBySection(sectionName).cube());
+  }
+
+  public getState(): State {
+    return this.game.world.getState();
+  }
+
   cull() {
     const viewport = this.viewport;
     const corner = viewport.corner;

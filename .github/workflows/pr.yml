@@ -82,6 +82,14 @@ jobs:
         run: pnpm test
         working-directory: ./apps/home
 
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+        working-directory: ./apps/home
+
+      - name: Test (interaction)
+        run: pnpm test:e2e
+        working-directory: ./apps/home
+
       - name: Build
         run: pnpm build
         working-directory: ./apps/home

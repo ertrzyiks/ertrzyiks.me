@@ -1,0 +1,101 @@
+---
+// Dev-only harness for interaction tests (docs/adr/0001). Boots the real
+// MainWorld against a minimal 2-tile board — no Stage 1 wolves, no
+// narrative — so a real browser click can be driven through the actual
+// PixiJS pointertap -> handleTileClick path without mounting the whole game.
+// Inert in a production build: any request here redirects to the homepage.
+if (!import.meta.env.DEV) {
+  return Astro.redirect("/");
+}
+---
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Interaction harness</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <script>
+      window.global ||= window;
+
+      import { Application } from "pixi.js";
+      import TWEEN from "@tweenjs/tween.js";
+      import { preload } from "../game/main/preload";
+      import { MainWorld } from "../game/main/game_world";
+      import {
+        createHarnessBoard,
+        createHarnessDefinition,
+      } from "../game/main/harness/interaction_harness";
+      import { cubeKey } from "../game/core/grid/helpers";
+
+      async function bootstrap() {
+        const app = new Application({
+          backgroundAlpha: 0,
+          resolution: window.devicePixelRatio,
+        });
+        app.ticker.add(() => {
+          TWEEN.update();
+        });
+
+        const { sheet } = await preload();
+
+        const world = new MainWorld(
+          createHarnessBoard(),
+          app.renderer.events,
+          sheet,
+          createHarnessDefinition(),
+          [] // no narrative script: nothing should block input in the harness
+        );
+
+        app.stage.addChild(world);
+
+        function resize() {
+          app.renderer.resize(window.innerWidth, window.innerHeight);
+        }
+        window.addEventListener("resize", resize);
+        resize();
+
+        const gameEl = document.getElementById("game");
+        gameEl?.replaceWith(app.view as HTMLCanvasElement);
+        app.start();
+
+        (window as any).__debugApp = app;
+        (window as any).__debugWorld = world;
+
+        // The only test-specific surface in this whole harness (docs/adr/0001:
+        // MainWorld itself stays unaware tests exist beyond the generic
+        // constructor seam) — interaction/*.spec.ts reads through this after
+        // driving real pixel clicks on the canvas. Returns plain data only
+        // (never a GameTileHex/Unit instance) so it survives Playwright's
+        // evaluate() serialization boundary intact.
+        window.__test = {
+          getTileScreenPositionBySection: (sectionName: string) =>
+            world.getTileScreenPositionBySection(sectionName),
+          getUnitSectionByOwner: (ownerId: string): string | null => {
+            const state = world.getState();
+            const unit = state.units.find((u) => u.owner.id === ownerId);
+            if (!unit) return null;
+            const key = cubeKey(unit.position);
+            const tile = state.tiles.find((t) => cubeKey(t.cube()) === key);
+            return tile?.sectionName ?? null;
+          },
+        };
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>

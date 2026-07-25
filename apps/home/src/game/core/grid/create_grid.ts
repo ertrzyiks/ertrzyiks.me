@@ -1,25 +1,33 @@
 import { extendHex, defineGrid } from "honeycomb-grid";
 import { Terrain, type Board } from "../board";
 
-const TILE_SIZE = 50;
+// Real pixel/world hex radius (see helpers.ts's pointToCube, which needs the
+// same size to invert a screen click into a hex).
+export const TILE_SIZE = 50;
+
+const Hex = extendHex<{
+  size: number;
+  orientation: "flat";
+  type: Terrain;
+  textureName: string;
+  sectionName: string;
+}>({
+  size: TILE_SIZE,
+  orientation: "flat",
+  type: Terrain.WATER,
+  textureName: "",
+  sectionName: "",
+});
+
+// Hoisted to module scope (not per-createGrid() call) so helpers.ts's
+// pointToCube can invert a pixel point back to a hex via this exact same
+// factory. Also exported directly: pointToCube needs Hex().width()/height()
+// to correct for a toPoint()/pointToHex() coordinate-convention mismatch
+// (see helpers.ts).
+export { Hex };
+export const Grid = defineGrid(Hex);
 
 export function createGrid(board: Board) {
-  const Hex = extendHex<{
-    size: number;
-    orientation: "flat";
-    type: Terrain;
-    textureName: string;
-    sectionName: string;
-  }>({
-    size: TILE_SIZE,
-    orientation: "flat",
-    type: Terrain.WATER,
-    textureName: "",
-    sectionName: "",
-  });
-
-  const Grid = defineGrid(Hex);
-
   const grid = Grid.rectangle({
     width: board.cols,
     height: board.rows,
