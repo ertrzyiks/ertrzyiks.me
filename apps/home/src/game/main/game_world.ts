@@ -3,14 +3,14 @@ import type { Board, Player } from "../core";
 import { Scenario } from "./scenario";
 import { createStage1Definition } from "./stages/stage1";
 import type { EventSystem, Spritesheet } from "pixi.js";
-import { Text, Container, Graphics, Rectangle } from "pixi.js";
+import { Text, Container, Graphics, Rectangle, utils } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
 import { pointToCube, directionBetween } from "../core/grid/helpers";
 import { cubeKey } from "../core/grid";
 import { validMoveDestinations, validAttackTargets } from "../core/player/movement";
 import type { Tileable } from "../shared/renderable/tileable";
 import type { UnitPosition } from "../core/board";
-import type { GameEvent } from "../core/game_event";
+import type { GameEvent, GameOutcome } from "../core/game_event";
 import type { State } from "../core/world";
 import type { ObservableSubscriptionDone } from "../shared/observable";
 import { NarrativeEngine, type NarrativeEvent, type NarrativeScript } from "../core/narrative";
@@ -19,6 +19,14 @@ import { DialogBox } from "../shared/dialog_box";
 import type { StageDefinition } from "./stages/stage";
 
 export class MainWorld extends GameWorld {
+  // Public, unlike `scenario.emitter` (which MainWorld consumes internally
+  // for presentation): this is the seam StageManager listens on to know when
+  // it's safe to act on a finished stage — after the "Victory!"/"Defeated..."
+  // indicator has actually been read, not the instant GameEnd fires (specs/08
+  // requires progression to be automatic, not that it can't let the player
+  // see the outcome first — see the "stageEnded" emit below).
+  public emitter = new utils.EventEmitter();
+
   protected player: Player | null = null;
 
   protected scenario: Scenario;
@@ -94,23 +102,28 @@ export class MainWorld extends GameWorld {
       this.showTurnIndicator("Wolves' Turn", 0xff5555);
     });
 
-    this.scenario.emitter.on("gameEnd", (data: { outcome: "win" | "lose" }) => {
+    this.scenario.emitter.on("gameEnd", (data: { outcome: GameOutcome }) => {
       // Terminal state: block all board input and announce the result. The store
       // already rejects gameplay actions; this just stops the click handler.
       this.isPlayerTurn = false;
       this.selectedUnit = null;
       this.setEndTurnButtonVisible(false);
       this.updateHighlights();
+      // Both outcomes wait for the indicator's own fade-out to finish before
+      // telling StageManager the stage is over — timed off that completion
+      // rather than a second, independently-tuned delay, so the player has
+      // read "Victory!"/"Defeated..." before anything changes underneath it
+      // (spec 08 "Stage Sequence": progression/reload happens automatically,
+      // not instantly). MainWorld only presents the outcome; StageManager
+      // decides what "over" means (advance vs. reload) — see its own module
+      // comment.
       if (data.outcome === "win") {
-        this.showTurnIndicator("Victory! You reached the village", 0x4ad66a);
+        this.showTurnIndicator("Victory! You reached the village", 0x4ad66a, () =>
+          this.emitter.emit("stageEnded", { outcome: "win" })
+        );
       } else {
-        // Stage reload (spec 08 "Stage Sequence": "After a lose event, the
-        // current stage reloads from its initial state") — timed off the
-        // indicator's own fade-out completion rather than a second,
-        // independently-tuned delay, so the player has read "Defeated..."
-        // before the board resets underneath it.
         this.showTurnIndicator("Defeated...", 0xff5555, () =>
-          this.reloadCurrentStage()
+          this.emitter.emit("stageEnded", { outcome: "lose" })
         );
       }
     });
@@ -184,28 +197,32 @@ export class MainWorld extends GameWorld {
   }
 
   /**
-   * Reloads Stage 1 from scratch after a defeat (spec 08 "Stage Sequence":
-   * "the current stage reloads from its initial state"). `Scenario.reload()`
-   * only resets game/world state; the narrative controller is owned
-   * separately by MainWorld, so its fired-beat history must be cleared here
-   * too — otherwise the Turn 1 opener (and every other once-only beat)
-   * couldn't replay on the fresh playthrough.
+   * Reloads the current stage from scratch with a freshly-built `definition`
+   * (spec 08 "Stage Sequence": "the current stage reloads from its initial
+   * state"). `Scenario.reload()` only resets game/world state; the narrative
+   * controller is owned separately by MainWorld, so its fired-beat history
+   * must be cleared here too — otherwise the Turn 1 opener (and every other
+   * once-only beat) couldn't replay on the fresh playthrough.
    *
-   * Hardcoded to Stage 1 because MainWorld has no notion of "which stage is
-   * currently active" yet — it only ever constructs Stage 1. That tracking
-   * (plus swapping to a different board/definition) is "Stage progression"'s
-   * job; this method's name will need to generalize alongside it.
+   * Takes `definition` rather than rebuilding it here: MainWorld doesn't know
+   * which stage-N factory produced the definition it was constructed with
+   * (only `StageManager`, via `stages/sequence.ts`, does), and a fresh
+   * instance — not the already-consumed one from construction — is required
+   * so per-playthrough state (Player identities, pack memory) resets too.
+   * Same board only: a different board needs a whole new MainWorld, which is
+   * StageManager's job, not this method's.
    */
-  protected reloadCurrentStage() {
+  public reloadStage(definition: StageDefinition) {
     this.narrative.reset();
-    this.scenario.reload(createStage1Definition());
+    this.scenario.reload(definition);
   }
 
-  // `onComplete` fires once, after this indicator's fade-out finishes —
-  // currently only the "Defeated..." call in the gameEnd listener uses it, to
-  // trigger reloadCurrentStage(). IMPORTANT: TWEEN.js's `.stop()` below does
-  // NOT invoke `onComplete`, so a second showTurnIndicator() call before the
-  // first one's fade-out completes silently drops the pending callback — no
+  // `onComplete` fires once, after this indicator's fade-out finishes — both
+  // the "Victory!" and "Defeated..." calls in the gameEnd listener use it, to
+  // emit "stageEnded" once the player has actually read the outcome.
+  // IMPORTANT: TWEEN.js's `.stop()` below does NOT invoke `onComplete`, so a
+  // second showTurnIndicator() call before the first one's fade-out
+  // completes silently drops the pending callback — no
   // error, it just never fires. This is safe today only because nothing else
   // calls showTurnIndicator() once the game has reached a terminal outcome
   // (the reducer rejects every action that could trigger one). If a future

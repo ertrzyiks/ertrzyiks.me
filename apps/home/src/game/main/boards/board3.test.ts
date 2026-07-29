@@ -6,7 +6,7 @@ import type { Board } from "../../core/board";
 import board3Json from "./board3.json";
 
 // The JSON import infers `type: string`, not the `Terrain` enum literal (the
-// same reason main/index.ts casts board1.json before constructing MainWorld).
+// same reason main/stages/sequence.ts casts board1/2/3.json the same way).
 const board3 = board3Json as unknown as Board;
 
 // Sanity-checks the Stage 3 board data itself (specs/11-stage-3.md "Starting

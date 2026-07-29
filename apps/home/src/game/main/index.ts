@@ -1,14 +1,10 @@
 import type { Application } from "pixi.js";
 
-import board from "./boards/board1.json";
 import { preload } from "./preload";
-import { MainWorld } from "./game_world";
+import { StageManager } from "./stage_manager";
 
 export async function create(app: Application) {
   const { sheet } = await preload();
 
-  // @ts-ignore
-  const world = new MainWorld(board, app.renderer.events, sheet);
-
-  return world;
+  return new StageManager(app.renderer.events, sheet);
 }
