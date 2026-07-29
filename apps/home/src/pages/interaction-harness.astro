@@ -1,8 +1,10 @@
 ---
 // Dev-only harness for interaction tests (docs/adr/0001). Boots the real
-// MainWorld against a minimal 2-tile board — no Stage 1 wolves, no
-// narrative — so a real browser click can be driven through the actual
-// PixiJS pointertap -> handleTileClick path without mounting the whole game.
+// MainWorld against a minimal 2-tile board — no Stage 1 wolves, and no
+// narrative by default (?narrative=1 opts in a single test-only beat, see
+// createHarnessNarrativeScript) — so a real browser click can be driven
+// through the actual PixiJS pointertap -> handleTileClick path without
+// mounting the whole game.
 // Inert in a production build: any request here redirects to the homepage.
 if (!import.meta.env.DEV) {
   return Astro.redirect("/");
@@ -38,6 +40,7 @@ if (!import.meta.env.DEV) {
       import {
         createHarnessBoard,
         createHarnessDefinition,
+        createHarnessNarrativeScript,
       } from "../game/main/harness/interaction_harness";
       import { cubeKey } from "../game/core/grid/helpers";
 
@@ -53,12 +56,22 @@ if (!import.meta.env.DEV) {
 
         const { sheet } = await preload();
 
+        // Default stays no narrative script — nothing should block input in
+        // the harness (docs/adr/0001). ?narrative=1 opts a specific test into
+        // the harness's one-beat script — see createHarnessNarrativeScript's
+        // own doc comment for which regression that's for.
+        const narrativeScript = new URLSearchParams(window.location.search).has(
+          "narrative"
+        )
+          ? createHarnessNarrativeScript()
+          : [];
+
         const world = new MainWorld(
           createHarnessBoard(),
           app.renderer.events,
           sheet,
           createHarnessDefinition(),
-          [] // no narrative script: nothing should block input in the harness
+          narrativeScript
         );
 
         app.stage.addChild(world);
