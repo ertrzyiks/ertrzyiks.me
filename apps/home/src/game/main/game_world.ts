@@ -16,6 +16,7 @@ import type { ObservableSubscriptionDone } from "../shared/observable";
 import { NarrativeEngine, type NarrativeEvent, type NarrativeScript } from "../core/narrative";
 import { createStage1Narrative } from "./narrative/stage1";
 import { DialogBox } from "../shared/dialog_box";
+import { CompletionScreen } from "../shared/completion_screen";
 import type { StageDefinition } from "./stages/stage";
 
 export class MainWorld extends GameWorld {
@@ -118,7 +119,13 @@ export class MainWorld extends GameWorld {
       // decides what "over" means (advance vs. reload) — see its own module
       // comment.
       if (data.outcome === "win") {
-        this.showTurnIndicator("Victory! You reached the village", 0x4ad66a, () =>
+        // Generic on purpose: each stage's narrative script already plays a
+        // stage-specific win dialog (e.g. "Open the gate!") *before* GameEnd
+        // fires (narrative pauses the pipeline — see the constructor's
+        // worldObservable subscribe comment), so this banner only needs to
+        // acknowledge the mechanical outcome, not restate where the win
+        // happened.
+        this.showTurnIndicator("Victory!", 0x4ad66a, () =>
           this.emitter.emit("stageEnded", { outcome: "win" })
         );
       } else {
@@ -215,6 +222,22 @@ export class MainWorld extends GameWorld {
   public reloadStage(definition: StageDefinition) {
     this.narrative.reset();
     this.scenario.reload(definition);
+  }
+
+  /**
+   * Issue #159 "game completion state" (specs/08 "Stage Completed State":
+   * "the game displays an end screen and accepts no further gameplay
+   * input"). Called by `StageManager` once it knows a win was on the final
+   * stage — MainWorld itself has no notion of "final", only `StageManager`
+   * does (via `stages/sequence.ts`'s `nextStageIndex`). Input is already
+   * blocked by this point (the `gameEnd` listener above cleared
+   * `isPlayerTurn`/the End Turn button before this is ever called, and the
+   * store rejects gameplay actions in a terminal state regardless);
+   * `CompletionScreen`'s own click-swallowing backdrop is the same second
+   * line of defence `DialogBox` uses, not the only one.
+   */
+  public showCompletionScreen() {
+    this.addChild(new CompletionScreen("Whirley's journey is complete."));
   }
 
   // `onComplete` fires once, after this indicator's fade-out finishes — both

@@ -20,10 +20,8 @@ import { STAGE_SEQUENCE, nextStageIndex, type StageSequenceEntry } from "./stage
  * intro -> main handoff.
  *
  * On the final stage's win, `nextStageIndex` returns `null` and this class
- * does nothing further — same as today's pre-progression behavior (the
- * "Victory!" indicator stays up). Replacing that with a real completion
- * state is issue #159, not this one (specs/08-stage-system.md "Stage
- * Completed State").
+ * shows `MainWorld`'s completion screen instead of advancing (issue #159,
+ * specs/08-stage-system.md "Stage Completed State").
  */
 export class StageManager extends Container {
   protected currentIndex = 0;
@@ -69,6 +67,9 @@ export class StageManager extends Container {
 
     const next = nextStageIndex(this.currentIndex);
     if (next === null) {
+      // Issue #159: final stage won, no further stage loads (spec 08
+      // acceptance criteria) — show the completion state instead.
+      this.mainWorld.showCompletionScreen();
       return;
     }
 
