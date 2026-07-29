@@ -10,7 +10,7 @@ export async function preload() {
 
   const texture = await Assets.load("intro");
 
-  const sheet = new Spritesheet(texture.baseTexture, data);
+  const sheet = new Spritesheet(texture.source, data);
 
   await sheet.parse();
 

@@ -7,12 +7,12 @@ import { Spritesheet, Assets } from "pixi.js";
 export async function preload() {
   Assets.add({ alias: "board1", src: image.src });
   const boardTexture = await Assets.load("board1");
-  const sheet = new Spritesheet(boardTexture.baseTexture, data);
+  const sheet = new Spritesheet(boardTexture.source, data);
   await sheet.parse();
 
   // Load intro sheet to make unit textures (ship) available globally
   const introTexture = await Assets.load(introImage.src);
-  const introSheet = new Spritesheet(introTexture.baseTexture, introData);
+  const introSheet = new Spritesheet(introTexture.source, introData);
   await introSheet.parse();
 
   return { sheet };

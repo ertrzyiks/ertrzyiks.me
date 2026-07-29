@@ -2,7 +2,7 @@ import {
   Container,
   EventBoundary,
   Graphics,
-  type IDestroyOptions,
+  type DestroyOptions,
   Sprite,
   Spritesheet,
   Texture,
@@ -26,7 +26,6 @@ const FOG_HEX_Y_OFFSET = 4;
 
 function buildFogGraphic(): Graphics {
   const g = new Graphics();
-  g.beginFill(0x000000, 0.85);
   const points: number[] = [];
   for (let side = 0; side < 7; side++) {
     points.push(
@@ -34,8 +33,8 @@ function buildFogGraphic(): Graphics {
       FOG_HEX_Y_OFFSET + FOG_HEX_SIZE * Math.sin((side * 2 * Math.PI) / 6)
     );
   }
-  g.drawPolygon(points);
-  g.endFill();
+  g.poly(points);
+  g.fill({ color: 0x000000, alpha: 0.85 });
   return g;
 }
 
@@ -105,9 +104,8 @@ export class GameWorld extends Container {
               : action.owner.color === PlayerColor.GREEN
                 ? 0x33cc55
                 : 0x3366ff;
-          bgHex.beginFill(hexColor);
-          bgHex.drawPolygon(this.createHexPoints(50));
-          bgHex.endFill();
+          bgHex.poly(this.createHexPoints(50));
+          bgHex.fill(hexColor);
           bgHex.alpha = 0.6;
           unitContainer.addChild(bgHex);
 
@@ -302,7 +300,7 @@ export class GameWorld extends Container {
     return points;
   }
 
-  destroy(options?: IDestroyOptions | boolean) {
+  destroy(options?: DestroyOptions | boolean) {
     if (this.currentTween) {
       this.currentTween.stop();
     }

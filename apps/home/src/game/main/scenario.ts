@@ -8,7 +8,7 @@ import type { State } from "../core/world";
 import { createPlayerStore } from "../core/player_store";
 import { StoreProxy } from "../core/store";
 import { type PlayerAction, PlayerActionType } from "../core/player_action";
-import { utils } from "pixi.js";
+import { EventEmitter } from "pixi.js";
 import type { StageDefinition } from "./stages/stage";
 
 /**
@@ -19,7 +19,7 @@ import type { StageDefinition } from "./stages/stage";
  * lives entirely in `definition` — Scenario does not hard-code it (specs/08).
  */
 export class Scenario {
-  public emitter = new utils.EventEmitter();
+  public emitter = new EventEmitter();
   protected playerStore: StoreProxy<GameEvent, State, PlayerAction> | null = null;
   protected unitsToMove: Set<number> = new Set();
 

@@ -34,7 +34,8 @@ if (!import.meta.env.DEV) {
       import { StageEditorWorld } from "../game/main/stage_editor/editor_world";
 
       async function bootstrap() {
-        const app = new Application({
+        const app = new Application();
+        await app.init({
           backgroundAlpha: 0,
           resolution: window.devicePixelRatio,
         });
@@ -54,7 +55,7 @@ if (!import.meta.env.DEV) {
         resize();
 
         const gameEl = document.getElementById("game");
-        gameEl?.replaceWith(app.view as HTMLCanvasElement);
+        gameEl?.replaceWith(app.canvas as HTMLCanvasElement);
         app.start();
 
         (window as any).__debugApp = app;

@@ -2,7 +2,6 @@ import { GUI } from "dat.gui";
 import {
   Container,
   EventBoundary,
-  type DisplayObject,
   type EventSystem,
   type Spritesheet,
 } from "pixi.js";
@@ -340,7 +339,7 @@ export class StageEditorWorld extends Container {
     });
   }
 
-  protected onClick(el: DisplayObject) {
+  protected onClick(el: Container) {
     if (el instanceof Tile) {
       this.setupTileFolder(cubeToCartesian(el.coordinates));
     } else if (this.tileFolder) {

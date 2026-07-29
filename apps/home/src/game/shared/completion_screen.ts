@@ -1,4 +1,4 @@
-import { Container, Graphics, Rectangle, Text, type IDestroyOptions } from "pixi.js";
+import { Container, Graphics, Rectangle, Text, type DestroyOptions } from "pixi.js";
 
 // Why this exists: spec 08's "Stage Completed State" — "After the final
 // stage, the game displays an end screen and accepts no further gameplay
@@ -34,19 +34,21 @@ export class CompletionScreen extends Container {
     this.addChild(this.backdrop);
 
     const bg = new Graphics();
-    bg.beginFill(0x1a1a2e, 0.95);
-    bg.lineStyle(2, 0x4ad66a, 1);
-    bg.drawRoundedRect(0, 0, CompletionScreen.WIDTH, CompletionScreen.HEIGHT, 12);
-    bg.endFill();
+    bg.roundRect(0, 0, CompletionScreen.WIDTH, CompletionScreen.HEIGHT, 12);
+    bg.fill({ color: 0x1a1a2e, alpha: 0.95 });
+    bg.stroke({ width: 2, color: 0x4ad66a, alpha: 1 });
     this.panel.addChild(bg);
 
-    const bodyText = new Text(message, {
-      fontSize: 20,
-      fill: 0xffffff,
-      fontFamily: "Arial",
-      align: "center",
-      wordWrap: true,
-      wordWrapWidth: CompletionScreen.WIDTH - CompletionScreen.MARGIN * 2,
+    const bodyText = new Text({
+      text: message,
+      style: {
+        fontSize: 20,
+        fill: 0xffffff,
+        fontFamily: "Arial",
+        align: "center",
+        wordWrap: true,
+        wordWrapWidth: CompletionScreen.WIDTH - CompletionScreen.MARGIN * 2,
+      },
     });
     bodyText.anchor.set(0.5, 0.5);
     bodyText.position.set(CompletionScreen.WIDTH / 2, CompletionScreen.HEIGHT / 2);
@@ -69,9 +71,8 @@ export class CompletionScreen extends Container {
     const screenH = window.innerHeight;
 
     this.backdrop.clear();
-    this.backdrop.beginFill(0x000000, 0.6);
-    this.backdrop.drawRect(0, 0, screenW, screenH);
-    this.backdrop.endFill();
+    this.backdrop.rect(0, 0, screenW, screenH);
+    this.backdrop.fill({ color: 0x000000, alpha: 0.6 });
     this.backdrop.hitArea = new Rectangle(0, 0, screenW, screenH);
 
     this.panel.position.set(
@@ -80,7 +81,7 @@ export class CompletionScreen extends Container {
     );
   }
 
-  destroy(options?: IDestroyOptions | boolean) {
+  destroy(options?: DestroyOptions | boolean) {
     window.removeEventListener("resize", this.onResize);
     super.destroy(options);
   }

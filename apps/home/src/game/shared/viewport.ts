@@ -1,5 +1,5 @@
 import "pixi.js";
-import { EventSystem, type IDestroyOptions } from "pixi.js";
+import { EventSystem, type DestroyOptions } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 
 export class GameViewport extends Viewport {
@@ -63,7 +63,7 @@ export class GameViewport extends Viewport {
     }
   }
 
-  destroy(options?: IDestroyOptions) {
+  destroy(options?: DestroyOptions) {
     window.removeEventListener("resize", this.onResize);
     super.destroy(options);
   }

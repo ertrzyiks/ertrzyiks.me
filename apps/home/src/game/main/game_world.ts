@@ -3,7 +3,7 @@ import type { Board, Player } from "../core";
 import { Scenario } from "./scenario";
 import { createStage1Definition } from "./stages/stage1";
 import type { EventSystem, Spritesheet } from "pixi.js";
-import { Text, Container, Graphics, Rectangle, utils } from "pixi.js";
+import { Text, Container, Graphics, Rectangle, EventEmitter } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
 import { pointToCube, directionBetween } from "../core/grid/helpers";
 import { cubeKey } from "../core/grid";
@@ -26,7 +26,7 @@ export class MainWorld extends GameWorld {
   // indicator has actually been read, not the instant GameEnd fires (specs/08
   // requires progression to be automatic, not that it can't let the player
   // see the outcome first — see the "stageEnded" emit below).
-  public emitter = new utils.EventEmitter();
+  public emitter = new EventEmitter();
 
   protected player: Player | null = null;
 
@@ -271,12 +271,15 @@ export class MainWorld extends GameWorld {
     this.turnIndicatorContainer.position.set(window.innerWidth / 2, 40);
 
     // Create text
-    const indicator = new Text(text, {
-      fontSize: 24,
-      fontWeight: "bold",
-      fill: color,
-      fontFamily: "Arial",
-      align: "center",
+    const indicator = new Text({
+      text,
+      style: {
+        fontSize: 24,
+        fontWeight: "bold",
+        fill: color,
+        fontFamily: "Arial",
+        align: "center",
+      },
     });
     indicator.anchor.set(0.5, 0.5);
 
@@ -389,6 +392,11 @@ export class MainWorld extends GameWorld {
       return;
     }
 
+    // Captured before dispatch: Observable.push() (shared/observable.ts) notifies
+    // subscribers synchronously, so moveUnit() below can synchronously trigger a
+    // narrative beat whose handler (onNarrativeUpdate) sets this.selectedUnit to
+    // null before this function resumes — reading it again afterward isn't safe.
+    const movedUnitId = this.selectedUnit.unit.id;
     this.scenario.moveUnit(this.selectedUnit.unit, direction);
 
     // After moving, keep the same unit selected if it still has budget (so the
@@ -396,7 +404,7 @@ export class MainWorld extends GameWorld {
     // the next unit that has not moved yet. The turn no longer ends on its own —
     // the player ends it explicitly via the End Turn button (spec 03).
     const postMoveState = this.game.world.getState();
-    const moved = postMoveState.units.find(u => u.unit.id === this.selectedUnit!.unit.id);
+    const moved = postMoveState.units.find(u => u.unit.id === movedUnitId);
     const validDests = moved
       ? validMoveDestinations(moved.unit, moved.position, postMoveState)
       : [];
@@ -432,10 +440,9 @@ export class MainWorld extends GameWorld {
       const tile = this.getTerrainAt(dest);
       if (!tile) continue;
       const marker = new Graphics();
-      marker.lineStyle(3, 0x4ad66a, 0.9);
-      marker.beginFill(0x4ad66a, 0.25);
-      marker.drawPolygon(this.createHexPoints(50));
-      marker.endFill();
+      marker.poly(this.createHexPoints(50));
+      marker.fill({ color: 0x4ad66a, alpha: 0.25 });
+      marker.stroke({ width: 3, color: 0x4ad66a, alpha: 0.9 });
       marker.position.set(tile.x, tile.y);
       this.highlightContainer.addChild(marker);
     }
@@ -452,17 +459,19 @@ export class MainWorld extends GameWorld {
     );
 
     const bg = new Graphics();
-    bg.beginFill(0x1a1a2e, 0.95);
-    bg.lineStyle(2, 0x4aadd6, 1);
-    bg.drawRoundedRect(0, 0, width, height, 10);
-    bg.endFill();
+    bg.roundRect(0, 0, width, height, 10);
+    bg.fill({ color: 0x1a1a2e, alpha: 0.95 });
+    bg.stroke({ width: 2, color: 0x4aadd6, alpha: 1 });
     button.addChild(bg);
 
-    const label = new Text("End Turn", {
-      fontSize: 18,
-      fontWeight: "bold",
-      fill: 0xffffff,
-      fontFamily: "Arial",
+    const label = new Text({
+      text: "End Turn",
+      style: {
+        fontSize: 18,
+        fontWeight: "bold",
+        fill: 0xffffff,
+        fontFamily: "Arial",
+      },
     });
     label.anchor.set(0.5, 0.5);
     label.position.set(width / 2, height / 2);

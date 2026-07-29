@@ -33,9 +33,8 @@ export class DialogBox extends Container {
     // Full-screen backdrop: dims the board and captures every pointer tap so it
     // never reaches the tiles beneath. Advancing the dialog is a tap anywhere.
     const backdrop = new Graphics();
-    backdrop.beginFill(0x000000, 0.35);
-    backdrop.drawRect(0, 0, screenW, screenH);
-    backdrop.endFill();
+    backdrop.rect(0, 0, screenW, screenH);
+    backdrop.fill({ color: 0x000000, alpha: 0.35 });
     backdrop.eventMode = "static";
     backdrop.hitArea = new Rectangle(0, 0, screenW, screenH);
     backdrop.on("pointertap", () => this.advance());
@@ -48,35 +47,43 @@ export class DialogBox extends Container {
     panel.position.set(panelX, panelY);
 
     const bg = new Graphics();
-    bg.beginFill(0x1a1a2e, 0.95);
-    bg.lineStyle(2, 0x4aadd6, 1);
-    bg.drawRoundedRect(0, 0, DialogBox.WIDTH, DialogBox.HEIGHT, 12);
-    bg.endFill();
+    bg.roundRect(0, 0, DialogBox.WIDTH, DialogBox.HEIGHT, 12);
+    bg.fill({ color: 0x1a1a2e, alpha: 0.95 });
+    bg.stroke({ width: 2, color: 0x4aadd6, alpha: 1 });
     panel.addChild(bg);
 
-    this.speakerText = new Text("", {
-      fontSize: 20,
-      fontWeight: "bold",
-      fill: 0x4aadd6,
-      fontFamily: "Arial",
+    this.speakerText = new Text({
+      text: "",
+      style: {
+        fontSize: 20,
+        fontWeight: "bold",
+        fill: 0x4aadd6,
+        fontFamily: "Arial",
+      },
     });
     this.speakerText.position.set(DialogBox.MARGIN, 20);
     panel.addChild(this.speakerText);
 
-    this.bodyText = new Text("", {
-      fontSize: 18,
-      fill: 0xffffff,
-      fontFamily: "Arial",
-      wordWrap: true,
-      wordWrapWidth: DialogBox.WIDTH - DialogBox.MARGIN * 2,
+    this.bodyText = new Text({
+      text: "",
+      style: {
+        fontSize: 18,
+        fill: 0xffffff,
+        fontFamily: "Arial",
+        wordWrap: true,
+        wordWrapWidth: DialogBox.WIDTH - DialogBox.MARGIN * 2,
+      },
     });
     this.bodyText.position.set(DialogBox.MARGIN, 52);
     panel.addChild(this.bodyText);
 
-    this.hintText = new Text("click to continue ▶", {
-      fontSize: 13,
-      fill: 0x8888aa,
-      fontFamily: "Arial",
+    this.hintText = new Text({
+      text: "click to continue ▶",
+      style: {
+        fontSize: 13,
+        fill: 0x8888aa,
+        fontFamily: "Arial",
+      },
     });
     this.hintText.anchor.set(1, 1);
     this.hintText.position.set(
