@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import { inflateSync } from "node:zlib";
 import { crc32, encodePng } from "./png";
 
@@ -7,7 +7,7 @@ import { crc32, encodePng } from "./png";
 // correctness check for a hand-rolled CRC-32 that doesn't require decoding
 // anything.
 describe("crc32", () => {
-  it("matches the well-known CRC of an empty IEND chunk", () => {
+  test("matches the well-known CRC of an empty IEND chunk", () => {
     expect(crc32(Buffer.from("IEND", "ascii"))).toBe(0xae426082);
   });
 });
@@ -30,7 +30,7 @@ function readChunks(png: Buffer) {
 }
 
 describe("encodePng", () => {
-  it("starts with the PNG signature", () => {
+  test("starts with the PNG signature", () => {
     const png = encodePng({
       width: 1,
       height: 1,
@@ -41,7 +41,7 @@ describe("encodePng", () => {
     expect([...signature]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
   });
 
-  it("emits IHDR, IDAT, IEND in order with a correct CRC on every chunk", () => {
+  test("emits IHDR, IDAT, IEND in order with a correct CRC on every chunk", () => {
     const png = encodePng({
       width: 2,
       height: 2,
@@ -59,7 +59,7 @@ describe("encodePng", () => {
     }
   });
 
-  it("writes an IHDR describing an 8-bit RGBA image of the given size", () => {
+  test("writes an IHDR describing an 8-bit RGBA image of the given size", () => {
     const png = encodePng({
       width: 3,
       height: 5,
@@ -78,7 +78,7 @@ describe("encodePng", () => {
     expect(ihdr[12]).toBe(0); // interlace method
   });
 
-  it("round-trips arbitrary RGBA pixels through inflate", () => {
+  test("round-trips arbitrary RGBA pixels through inflate", () => {
     const width = 4;
     const height = 3;
     const pixels = new Uint8Array(width * height * 4);
@@ -107,7 +107,7 @@ describe("encodePng", () => {
     expect([...decoded]).toEqual([...pixels]);
   });
 
-  it("throws when the pixel buffer doesn't match width*height*4", () => {
+  test("throws when the pixel buffer doesn't match width*height*4", () => {
     expect(() =>
       encodePng({ width: 2, height: 2, pixels: new Uint8Array(3) }),
     ).toThrow();

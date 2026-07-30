@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import { packAtlas } from "./atlas";
-import { decodePngToRgba } from "./png-test-helpers";
+import { decodePngToRgba } from "./png_test_helpers";
 import type { RgbaImage } from "./png";
 
 function solidImage(width: number, height: number, rgba: number[]): RgbaImage {
@@ -12,11 +12,11 @@ function solidImage(width: number, height: number, rgba: number[]): RgbaImage {
 }
 
 describe("packAtlas", () => {
-  it("throws when given no sprites", () => {
+  test("throws when given no sprites", () => {
     expect(() => packAtlas([], { imageName: "atlas-0.png" })).toThrow();
   });
 
-  it("throws on duplicate sprite names", () => {
+  test("throws on duplicate sprite names", () => {
     const image = solidImage(1, 1, [255, 0, 0, 255]);
     expect(() =>
       packAtlas(
@@ -29,7 +29,7 @@ describe("packAtlas", () => {
     ).toThrow(/duplicate/i);
   });
 
-  it("reproduces the exact layout of the existing board1-0 atlas for two 100x87 sprites", () => {
+  test("reproduces the exact layout of the existing board1-0 atlas for two 100x87 sprites", () => {
     // board1-0.json (TexturePacker-generated) packs grass/water this way —
     // matching it exactly is the strongest signal our hand-rolled packer is
     // format-compatible with what preload.ts/Spritesheet already expect.
@@ -49,7 +49,7 @@ describe("packAtlas", () => {
     expect(json.meta.size).toEqual({ w: 204, h: 89 });
   });
 
-  it("places a single sprite inset by padding on all sides", () => {
+  test("places a single sprite inset by padding on all sides", () => {
     const image = solidImage(10, 6, [1, 2, 3, 255]);
     const { json } = packAtlas([{ name: "solo", image }], {
       imageName: "atlas-0.png",
@@ -60,7 +60,7 @@ describe("packAtlas", () => {
     expect(json.meta.size).toEqual({ w: 14, h: 10 });
   });
 
-  it("fills out frame metadata matching the TexturePacker manifest shape", () => {
+  test("fills out frame metadata matching the TexturePacker manifest shape", () => {
     const image = solidImage(4, 3, [1, 2, 3, 255]);
     const { json } = packAtlas([{ name: "solo", image }], {
       imageName: "atlas-0.png",
@@ -78,7 +78,7 @@ describe("packAtlas", () => {
     expect(json.meta.scale).toBe("1");
   });
 
-  it("wraps sprites onto a new row once maxWidth is exceeded", () => {
+  test("wraps sprites onto a new row once maxWidth is exceeded", () => {
     const a = solidImage(10, 5, [1, 0, 0, 255]);
     const b = solidImage(10, 5, [0, 1, 0, 255]);
 
@@ -95,7 +95,7 @@ describe("packAtlas", () => {
     expect(json.meta.size).toEqual({ w: 12, h: 14 });
   });
 
-  it("produces a PNG whose decoded pixels match each sprite at its frame position, transparent elsewhere", () => {
+  test("produces a PNG whose decoded pixels match each sprite at its frame position, transparent elsewhere", () => {
     const red = solidImage(2, 2, [255, 0, 0, 255]);
     const blue = solidImage(2, 2, [0, 0, 255, 255]);
 

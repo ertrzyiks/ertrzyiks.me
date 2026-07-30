@@ -1,4 +1,4 @@
 export * from './atlas'
-export * from './hex-mask'
-export * from './pixel-grid'
+export * from './hex_mask'
+export * from './pixel_grid'
 export * from './png'

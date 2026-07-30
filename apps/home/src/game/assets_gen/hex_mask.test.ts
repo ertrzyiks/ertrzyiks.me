@@ -1,21 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
   flatTopHexMask,
   isInsideFlatTopHex,
   upscaleNearestNeighbor,
-} from "./hex-mask";
+} from "./hex_mask";
 
 describe("isInsideFlatTopHex", () => {
   const width = 32;
   const height = 28;
 
-  it("is true at the center", () => {
+  test("is true at the center", () => {
     expect(isInsideFlatTopHex(width / 2, height / 2, width, height)).toBe(
       true,
     );
   });
 
-  it("is false at every corner of the bounding box", () => {
+  test("is false at every corner of the bounding box", () => {
     expect(isInsideFlatTopHex(0, 0, width, height)).toBe(false);
     expect(isInsideFlatTopHex(width - 1, 0, width, height)).toBe(false);
     expect(isInsideFlatTopHex(0, height - 1, width, height)).toBe(false);
@@ -24,7 +24,7 @@ describe("isInsideFlatTopHex", () => {
     );
   });
 
-  it("is true along the middle of the flat top and bottom edges", () => {
+  test("is true along the middle of the flat top and bottom edges", () => {
     expect(isInsideFlatTopHex(width / 2, 0.5, width, height)).toBe(true);
     expect(
       isInsideFlatTopHex(width / 2, height - 0.5, width, height),
@@ -33,7 +33,7 @@ describe("isInsideFlatTopHex", () => {
 });
 
 describe("flatTopHexMask", () => {
-  it("returns a height x width grid matching isInsideFlatTopHex per pixel", () => {
+  test("returns a height x width grid matching isInsideFlatTopHex per pixel", () => {
     const width = 16;
     const height = 14;
     const mask = flatTopHexMask(width, height);
@@ -50,14 +50,14 @@ describe("flatTopHexMask", () => {
     }
   });
 
-  it("is a strict subset of the bounding box (hex corners are cut off)", () => {
+  test("is a strict subset of the bounding box (hex corners are cut off)", () => {
     const mask = flatTopHexMask(16, 14);
     const insideCount = mask.flat().filter(Boolean).length;
     expect(insideCount).toBeGreaterThan(0);
     expect(insideCount).toBeLessThan(16 * 14);
   });
 
-  it("is horizontally and vertically symmetric", () => {
+  test("is horizontally and vertically symmetric", () => {
     const width = 16;
     const height = 14;
     const mask = flatTopHexMask(width, height);
@@ -72,7 +72,7 @@ describe("flatTopHexMask", () => {
 });
 
 describe("upscaleNearestNeighbor", () => {
-  it("replicates each cell into a scale x scale block", () => {
+  test("replicates each cell into a scale x scale block", () => {
     const grid = [
       ["a", "b"],
       ["c", "d"],
@@ -86,14 +86,14 @@ describe("upscaleNearestNeighbor", () => {
     ]);
   });
 
-  it("is a no-op copy at scale 1", () => {
+  test("is a no-op copy at scale 1", () => {
     const grid = [["a", "b"]];
     const scaled = upscaleNearestNeighbor(grid, 1);
     expect(scaled).toEqual(grid);
     expect(scaled).not.toBe(grid);
   });
 
-  it("throws for a non-positive or non-integer scale", () => {
+  test("throws for a non-positive or non-integer scale", () => {
     expect(() => upscaleNearestNeighbor([["a"]], 0)).toThrow();
     expect(() => upscaleNearestNeighbor([["a"]], -1)).toThrow();
     expect(() => upscaleNearestNeighbor([["a"]], 1.5)).toThrow();
