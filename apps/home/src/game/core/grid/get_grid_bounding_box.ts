@@ -1,17 +1,18 @@
-import type { Grid, Hex } from "honeycomb-grid";
+import type { Grid } from "honeycomb-grid";
+import type { GameTileHex } from "../board";
 
 interface WorldDimensions {
   worldWidth: number;
   worldHeight: number;
 }
 
-export function getGridBoundingBox(grid: Grid<Hex<any>>): WorldDimensions {
-  const lastHex = grid.get(grid.length - 1);
+export function getGridBoundingBox(grid: Grid<GameTileHex>): WorldDimensions {
+  const lastHex = grid.toArray()[grid.size - 1];
 
   if (!lastHex) throw new Error("No hex found in grid");
 
   const lastPoint = lastHex.toPoint();
-  const lastCorners = lastHex.corners();
+  const lastCorners = lastHex.corners;
   const worldWidth =
     lastPoint.x +
     Math.max.apply(
