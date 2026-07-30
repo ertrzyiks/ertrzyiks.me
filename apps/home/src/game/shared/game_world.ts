@@ -48,6 +48,15 @@ export class GameWorld extends Container {
   // in onWorldUpdate below). Subclasses read this to gate input — spec 03
   // "Clicks during... an animation... are ignored".
   protected isUnitMoving = false;
+  // Set once destroy() runs (e.g. StageManager swapping in the next stage's
+  // MainWorld — main/stage_manager.ts's onStageEnded). A subclass method
+  // suspended mid-`await` (a multi-step move, an auto-attack's highlight
+  // delay) can resume after this instance — and its Pixi Container tree —
+  // has already been torn down; every such resume point must check this
+  // before touching any Pixi object again, or risk exactly the kind of
+  // internal PixiJS crash (a destroyed Container's renderPipeId no longer
+  // resolving) issue #175 reported.
+  protected isDestroyed = false;
   protected tickerFunction = () => this.cull();
   protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles();
   protected unitSprites: Map<number, Container> = new Map();
@@ -312,6 +321,7 @@ export class GameWorld extends Container {
       this.currentTween.stop();
     }
 
+    this.isDestroyed = true;
     this.game.finish();
     super.destroy(options);
   }

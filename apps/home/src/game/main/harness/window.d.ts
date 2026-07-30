@@ -10,6 +10,7 @@ declare global {
       ) => { x: number; y: number } | null;
       getUnitSectionByOwner: (ownerId: string) => string | null;
       isSectionOccupied: (sectionName: string) => boolean;
+      destroyWorld: () => void;
     };
   }
 }

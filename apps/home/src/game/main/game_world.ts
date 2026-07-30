@@ -336,7 +336,13 @@ export class MainWorld extends GameWorld {
    * this one omitted the animation guard until it was added here.
    */
   protected canAcceptInput(): boolean {
-    return this.isPlayerTurn && !this.dialogActive && !this.isUnitMoving && !this.isAutoPathing;
+    return (
+      !this.isDestroyed &&
+      this.isPlayerTurn &&
+      !this.dialogActive &&
+      !this.isUnitMoving &&
+      !this.isAutoPathing
+    );
   }
 
   protected handleViewportClicked(worldPoint: { x: number; y: number }) {
@@ -358,7 +364,11 @@ export class MainWorld extends GameWorld {
   protected waitWhileUnitMoving(): Promise<void> {
     return new Promise((resolve) => {
       const check = () => {
-        if (!this.isUnitMoving) {
+        // destroy() (shared/game_world.ts) stops the current tween without
+        // firing its onComplete, so isUnitMoving would otherwise never clear
+        // once this instance is torn down mid-wait — resolve anyway so the
+        // caller reaches its own isDestroyed check instead of hanging.
+        if (!this.isUnitMoving || this.isDestroyed) {
           resolve();
         } else {
           setTimeout(check, 16);
@@ -447,6 +457,12 @@ export class MainWorld extends GameWorld {
       for (const direction of path) {
         this.scenario.moveUnit(unit, direction);
         await this.waitWhileUnitMoving();
+        if (this.isDestroyed) {
+          // This instance was torn down mid-wait (e.g. StageManager already
+          // swapped in the next stage's MainWorld — issue #175) — nothing
+          // below is safe to touch on a destroyed Pixi Container tree.
+          return;
+        }
         if (!this.isPlayerTurn || this.dialogActive) {
           // A narrative dialog opened (or the stage ended) partway through —
           // don't keep walking the rest of the precomputed path underneath it.
@@ -473,6 +489,13 @@ export class MainWorld extends GameWorld {
         this.selectedUnit = moved;
         this.updateHighlights(); // shows the attack-target frame before damage lands
         await this.delay(ATTACK_HIGHLIGHT_DELAY_MS);
+        if (this.isDestroyed) {
+          // Torn down while the highlight delay was in flight (issue #175) —
+          // the reducer/scenario are still safe to call (they're plain
+          // objects, not Pixi), but there's no world left to reflect the
+          // result in, and nothing later in this method is safe to run.
+          return;
+        }
         this.scenario.attackUnit(moved.unit, targets[0]);
       } else if (targets.length > 1) {
         this.selectedUnit = moved;
@@ -503,6 +526,14 @@ export class MainWorld extends GameWorld {
   // currently selected unit. Both are absent when it is not the human's
   // turn, a dialog is up, or nothing is selected (spec 03 "Visual Feedback").
   protected updateHighlights() {
+    // Guards a destroyed instance's Container tree (issue #175): an async
+    // caller (handleTileClick, suspended on a move/attack-delay await) can
+    // resume after StageManager has already destroyed this MainWorld, and
+    // highlightContainer.removeChildren() below would throw on it.
+    if (this.isDestroyed) {
+      return;
+    }
+
     this.highlightContainer.removeChildren().forEach(child => child.destroy());
 
     if (!this.isPlayerTurn || this.dialogActive || !this.selectedUnit) {

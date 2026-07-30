@@ -127,6 +127,12 @@ if (!import.meta.env.DEV) {
             const key = cubeKey(tile.cube());
             return state.units.some((u) => cubeKey(u.position) === key);
           },
+          // Stands in for StageManager destroying the current MainWorld on a
+          // stage win/loss (main/stage_manager.ts's onStageEnded) — for
+          // destroy-mid-async-action.spec.ts (issue #175).
+          destroyWorld: () => {
+            world.destroy({ children: true });
+          },
         };
       }
 
