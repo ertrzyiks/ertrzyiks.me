@@ -5,9 +5,9 @@ import { createStage1Definition } from "./stages/stage1";
 import type { EventSystem, Spritesheet } from "pixi.js";
 import { Text, Container, Graphics, Rectangle, EventEmitter } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
-import { pointToCube, directionBetween } from "../core/grid/helpers";
+import { pointToCube } from "../core/grid/helpers";
 import { cubeKey } from "../core/grid";
-import { validMoveDestinations, validAttackTargets } from "../core/player/movement";
+import { moveRange, pathTo, validAttackTargets } from "../core/player/movement";
 import type { Tileable } from "../shared/renderable/tileable";
 import type { UnitPosition } from "../core/board";
 import type { GameEvent, GameOutcome } from "../core/game_event";
@@ -18,6 +18,11 @@ import { createStage1Narrative } from "./narrative/stage1";
 import { DialogBox } from "../shared/dialog_box";
 import { CompletionScreen } from "../shared/completion_screen";
 import type { StageDefinition } from "./stages/stage";
+
+// How long the attack-target frame is visible before an auto-attack's damage
+// actually applies (ADR-0004) — long enough for the player to register which
+// enemy is about to be hit, without feeling like a wait.
+const ATTACK_HIGHLIGHT_DELAY_MS = 400;
 
 export class MainWorld extends GameWorld {
   // Public, unlike `scenario.emitter` (which MainWorld consumes internally
@@ -35,6 +40,12 @@ export class MainWorld extends GameWorld {
   protected isPlayerTurn = false;
   protected playerUnits: UnitPosition[] = [];
   protected selectedUnit: UnitPosition | null = null;
+
+  // True while a multi-step auto-path move (ADR-0003) is walking its
+  // remaining steps one at a time. isUnitMoving alone isn't enough to gate
+  // re-entrant clicks here: it clears briefly between each step's animation
+  // while handleTileClick's loop is still awaiting the next one.
+  protected isAutoPathing = false;
 
   // World-space layer for the selected unit's valid-move highlights (spec 03).
   // Lives in the viewport so highlights pan/zoom with the board.
@@ -325,7 +336,7 @@ export class MainWorld extends GameWorld {
    * this one omitted the animation guard until it was added here.
    */
   protected canAcceptInput(): boolean {
-    return this.isPlayerTurn && !this.dialogActive && !this.isUnitMoving;
+    return this.isPlayerTurn && !this.dialogActive && !this.isUnitMoving && !this.isAutoPathing;
   }
 
   protected handleViewportClicked(worldPoint: { x: number; y: number }) {
@@ -341,7 +352,31 @@ export class MainWorld extends GameWorld {
     this.handleTileClick(tile);
   }
 
-  protected handleTileClick(tile: Tileable) {
+  // Resolves once the in-flight move animation (shared/game_world.ts's Move
+  // case) has finished, so a multi-step auto-path can dispatch its steps one
+  // at a time instead of starting several tweens on the same sprite at once.
+  protected waitWhileUnitMoving(): Promise<void> {
+    return new Promise((resolve) => {
+      const check = () => {
+        if (!this.isUnitMoving) {
+          resolve();
+        } else {
+          setTimeout(check, 16);
+        }
+      };
+      check();
+    });
+  }
+
+  protected delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  protected findUnitById(state: State, unitId: number): UnitPosition | undefined {
+    return state.units.find(u => u.unit.id === unitId);
+  }
+
+  protected async handleTileClick(tile: Tileable) {
     // The DialogBox backdrop also swallows taps, so the dialogActive part of
     // canAcceptInput() is a second line of defence here, not the only one.
     if (!this.canAcceptInput()) {
@@ -377,18 +412,26 @@ export class MainWorld extends GameWorld {
         const targets = validAttackTargets(this.selectedUnit.unit, this.selectedUnit.position, "human", state);
         if (targets.some(t => cubeKey(t) === cubeKey(unitOnTile.position))) {
           this.scenario.attackUnit(this.selectedUnit.unit, unitOnTile.position);
+          // Redraw: the target may have died (its frame should disappear) or
+          // the remaining eligible targets may have changed — the highlight
+          // must reflect the post-attack state, not linger from selection
+          // time (spec 03 "Visual Feedback").
+          this.updateHighlights();
         }
       }
       return;
     }
 
-    // Move the selected unit
+    // Move the selected unit — possibly several steps in one click, to any
+    // hex within its full remaining budget, not just an adjacent one
+    // (ADR-0003, superseding spec 03's original "no multi-step pathfinding"
+    // scope note).
     if (!this.selectedUnit) {
       return;
     }
 
-    const direction = directionBetween(this.selectedUnit.position, tile.coordinates);
-    if (!direction) {
+    const path = pathTo(this.selectedUnit.unit, this.selectedUnit.position, tile.coordinates, state);
+    if (!path) {
       return;
     }
 
@@ -397,19 +440,57 @@ export class MainWorld extends GameWorld {
     // narrative beat whose handler (onNarrativeUpdate) sets this.selectedUnit to
     // null before this function resumes — reading it again afterward isn't safe.
     const movedUnitId = this.selectedUnit.unit.id;
-    this.scenario.moveUnit(this.selectedUnit.unit, direction);
+    const unit = this.selectedUnit.unit;
 
-    // After moving, keep the same unit selected if it still has budget (so the
-    // player can spend a multi-point move step by step); otherwise fall back to
-    // the next unit that has not moved yet. The turn no longer ends on its own —
-    // the player ends it explicitly via the End Turn button (spec 03).
+    this.isAutoPathing = true;
+    try {
+      for (const direction of path) {
+        this.scenario.moveUnit(unit, direction);
+        await this.waitWhileUnitMoving();
+        if (!this.isPlayerTurn || this.dialogActive) {
+          // A narrative dialog opened (or the stage ended) partway through —
+          // don't keep walking the rest of the precomputed path underneath it.
+          return;
+        }
+      }
+    } finally {
+      this.isAutoPathing = false;
+    }
+
+    // Auto-attack (ADR-0004): landing adjacent to exactly one eligible enemy
+    // always attacks it — there's no way to end a move next to an
+    // unambiguous target without attacking. With 2+ eligible enemies the
+    // choice is genuinely ambiguous, so this doesn't auto-resolve; it keeps
+    // this unit selected (regardless of remaining movement budget) and
+    // highlighted so the player's next click — on one of the highlighted
+    // enemies — resolves it via the existing manual click-to-attack path
+    // above.
     const postMoveState = this.game.world.getState();
-    const moved = postMoveState.units.find(u => u.unit.id === movedUnitId);
-    const validDests = moved
-      ? validMoveDestinations(moved.unit, moved.position, postMoveState)
-      : [];
-    if (moved && validDests.length > 0) {
-      this.selectedUnit = moved;
+    const moved = this.findUnitById(postMoveState, movedUnitId);
+    if (moved) {
+      const targets = validAttackTargets(moved.unit, moved.position, "human", postMoveState);
+      if (targets.length === 1) {
+        this.selectedUnit = moved;
+        this.updateHighlights(); // shows the attack-target frame before damage lands
+        await this.delay(ATTACK_HIGHLIGHT_DELAY_MS);
+        this.scenario.attackUnit(moved.unit, targets[0]);
+      } else if (targets.length > 1) {
+        this.selectedUnit = moved;
+        this.updateHighlights();
+        return;
+      }
+    }
+
+    // After moving (and any auto-attack), keep the same unit selected if it
+    // still has movement budget (so the player can spend further remaining
+    // budget); otherwise fall back to the next unit that has not moved yet.
+    // The turn no longer ends on its own — the player ends it explicitly via
+    // the End Turn button (spec 03).
+    const finalState = this.game.world.getState();
+    const finalUnit = this.findUnitById(finalState, movedUnitId);
+    const range = finalUnit ? moveRange(finalUnit.unit, finalUnit.position, finalState) : [];
+    if (finalUnit && range.length > 0) {
+      this.selectedUnit = finalUnit;
     } else {
       const unitsToMove = this.scenario.getUnitsToMove();
       const nextUnit = this.playerUnits.find(u => unitsToMove.has(u.unit.id));
@@ -418,9 +499,9 @@ export class MainWorld extends GameWorld {
     this.updateHighlights();
   }
 
-  // Redraw the valid-move highlights for the currently selected unit. Highlights
-  // are absent when it is not the human's turn, a dialog is up, nothing is
-  // selected, or the unit has no remaining budget (spec 03 "Visual Feedback").
+  // Redraw the valid-move highlights and attack-target highlights for the
+  // currently selected unit. Both are absent when it is not the human's
+  // turn, a dialog is up, or nothing is selected (spec 03 "Visual Feedback").
   protected updateHighlights() {
     this.highlightContainer.removeChildren().forEach(child => child.destroy());
 
@@ -431,12 +512,12 @@ export class MainWorld extends GameWorld {
     const state = this.game.world.getState();
     // Re-read the live unit from state: its position/budget may have changed
     // since selection (e.g. right after a move).
-    const live = state.units.find(u => u.unit.id === this.selectedUnit!.unit.id);
+    const live = this.findUnitById(state, this.selectedUnit!.unit.id);
     if (!live) {
       return;
     }
 
-    for (const dest of validMoveDestinations(live.unit, live.position, state)) {
+    for (const dest of moveRange(live.unit, live.position, state)) {
       const tile = this.getTerrainAt(dest);
       if (!tile) continue;
       const marker = new Graphics();
@@ -445,6 +526,19 @@ export class MainWorld extends GameWorld {
       marker.stroke({ width: 3, color: 0x4ad66a, alpha: 0.9 });
       marker.position.set(tile.x, tile.y);
       this.highlightContainer.addChild(marker);
+    }
+
+    // Attack-target highlight (ADR-0004 / spec 04): a frame around every
+    // enemy this unit could attack right now, whether the player is about to
+    // click one manually or an auto-attack is about to resolve against it.
+    for (const target of validAttackTargets(live.unit, live.position, "human", state)) {
+      const tile = this.getTerrainAt(target);
+      if (!tile) continue;
+      const frame = new Graphics();
+      frame.poly(this.createHexPoints(50));
+      frame.stroke({ width: 4, color: 0xff3333, alpha: 0.95 });
+      frame.position.set(tile.x, tile.y);
+      this.highlightContainer.addChild(frame);
     }
   }
 

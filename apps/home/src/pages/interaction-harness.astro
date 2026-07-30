@@ -40,6 +40,8 @@ if (!import.meta.env.DEV) {
       import {
         createHarnessBoard,
         createHarnessDefinition,
+        createHarnessDefinitionWithEnemy,
+        createHarnessDefinitionWithTwoEnemies,
         createHarnessNarrativeScript,
       } from "../game/main/harness/interaction_harness";
       import { cubeKey } from "../game/core/grid/helpers";
@@ -60,17 +62,26 @@ if (!import.meta.env.DEV) {
         // the harness (docs/adr/0001). ?narrative=1 opts a specific test into
         // the harness's one-beat script — see createHarnessNarrativeScript's
         // own doc comment for which regression that's for.
-        const narrativeScript = new URLSearchParams(window.location.search).has(
-          "narrative"
-        )
+        const params = new URLSearchParams(window.location.search);
+        const narrativeScript = params.has("narrative")
           ? createHarnessNarrativeScript()
           : [];
+        // ?enemy=1 opts into a single stationary Damageable target (see
+        // createHarnessDefinitionWithEnemy's own doc comment) — for
+        // interaction/auto-attack-move.spec.ts (ADR-0004). ?enemy=2 opts into
+        // two at once — for interaction/auto-attack-choice.spec.ts, the
+        // ambiguous-targets case.
+        const definition = params.get("enemy") === "2"
+          ? createHarnessDefinitionWithTwoEnemies()
+          : params.has("enemy")
+            ? createHarnessDefinitionWithEnemy()
+            : createHarnessDefinition();
 
         const world = new MainWorld(
           createHarnessBoard(),
           app.renderer.events,
           sheet,
-          createHarnessDefinition(),
+          definition,
           narrativeScript
         );
 
@@ -105,6 +116,16 @@ if (!import.meta.env.DEV) {
             const key = cubeKey(unit.position);
             const tile = state.tiles.find((t) => cubeKey(t.cube()) === key);
             return tile?.sectionName ?? null;
+          },
+          // Distinguishes two same-owner units by section (getUnitSectionByOwner
+          // can't — state.units.find() only ever returns the first match for a
+          // given owner) — for auto-attack-choice.spec.ts's 2-eligible-targets case.
+          isSectionOccupied: (sectionName: string): boolean => {
+            const state = world.getState();
+            const tile = state.tiles.find((t) => t.sectionName === sectionName);
+            if (!tile) return false;
+            const key = cubeKey(tile.cube());
+            return state.units.some((u) => cubeKey(u.position) === key);
           },
         };
       }

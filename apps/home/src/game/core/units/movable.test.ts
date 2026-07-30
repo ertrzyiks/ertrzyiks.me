@@ -62,6 +62,25 @@ describe("Movable.step", () => {
   });
 });
 
+describe("Movable.remainingBudget", () => {
+  test("reflects the full budget after replenish", () => {
+    const unit = makeUnit(3);
+    unit.replenish();
+    expect(unit.remainingBudget()).toBe(3);
+  });
+
+  test("reflects points left after a step", () => {
+    const unit = makeUnit(3);
+    unit.replenish();
+    unit.step(1);
+    expect(unit.remainingBudget()).toBe(2);
+  });
+
+  test("is 0 before the first replenish", () => {
+    expect(makeUnit(3).remainingBudget()).toBe(0);
+  });
+});
+
 describe("Movable.replenish", () => {
   test("restores full budget after exhaustion", () => {
     const unit = makeUnit(2);

@@ -17,6 +17,7 @@ import { Game, GameEventType } from "../core";
 import { PlayerColor } from "../core/player/player";
 import type { CubeCoordinates } from "honeycomb-grid";
 import { cubeToCartesian, cubeKey } from "../core/grid/helpers";
+import { moveSucceeded } from "../core/player/movement";
 import { TerrainTiles } from "./terrain_tiles";
 import type { ObservableSubscriptionDone } from "./observable";
 import { type GameEvent } from "../core";
@@ -127,7 +128,13 @@ export class GameWorld extends Container {
         const unitSprite = this.unitSprites.get(action.unit.id);
         const moveTile = this.getTerrainAt(action.position);
         this.updateFog(state);
-        if (unitSprite && moveTile) {
+        // The reducer silently no-ops an invalid move (occupied destination,
+        // zero budget, out of bounds) rather than throwing — dispatch still
+        // notifies subscribers with the attempted action either way. Without
+        // this check, a rejected move would still animate the sprite onto the
+        // (already-occupied) destination, visually desyncing it from its real
+        // logical position. See specs/02-movement-system.md.
+        if (unitSprite && moveTile && moveSucceeded(action.unit, action.position, state)) {
           this.isUnitMoving = true;
           this.currentTween = new TWEEN.Tween(unitSprite)
             .to({ x: moveTile.x, y: moveTile.y }, 500)

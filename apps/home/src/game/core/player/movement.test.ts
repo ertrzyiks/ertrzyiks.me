@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import type { CubeCoordinates } from "honeycomb-grid";
 import { createGrid } from "../grid";
 import { positionAt, hexDistance, cubeKey } from "../grid";
 import { Terrain } from "../board";
@@ -7,11 +8,13 @@ import { PlayerColor } from "./player";
 import {
   createMoveContext,
   validDirections,
-  validMoveDestinations,
+  moveRange,
+  pathTo,
   validAttackTargets,
   directionToward,
   directionAway,
   randomValidDirection,
+  moveSucceeded,
 } from "./movement";
 import { Direction } from "../direction";
 import { Movable } from "../units/movable";
@@ -139,23 +142,35 @@ describe("directionAway", () => {
   });
 });
 
-describe("validMoveDestinations", () => {
+describe("moveRange", () => {
   function makeMover(budget: number) {
     const unit = new (Movable(Unit, budget))();
     unit.replenish();
     return unit;
   }
 
-  test("returns the in-bounds unoccupied neighbours when the unit has budget", () => {
+  test("with budget 1, returns only the in-bounds unoccupied neighbours", () => {
     const tiles = makeTiles(5, 5);
     const center = cubeAt(tiles, 2, 2);
-    const dests = validMoveDestinations(makeMover(3), center, { tiles, units: [] });
-    // A centre hex has all six neighbours open.
+    const dests = moveRange(makeMover(1), center, { tiles, units: [] });
     expect(dests).toHaveLength(6);
-    // Each destination is exactly one of the six directional neighbours.
     const keys = new Set(dests.map((d) => cubeKey(d)));
     for (const dir of validDirections(center, ctxOf(tiles))) {
       expect(keys.has(cubeKey(positionAt(center, dir)))).toBe(true);
+    }
+  });
+
+  test("with budget 3, reaches hexes 2 and 3 steps away, not just the adjacent ring", () => {
+    const tiles = makeTiles(9, 9);
+    const center = cubeAt(tiles, 4, 4);
+    const dests = moveRange(makeMover(3), center, { tiles, units: [] });
+
+    expect(dests.some((d) => hexDistance(d, center) === 2)).toBe(true);
+    expect(dests.some((d) => hexDistance(d, center) === 3)).toBe(true);
+    // Never further than the budget allows, and never the starting hex itself.
+    for (const d of dests) {
+      expect(hexDistance(d, center)).toBeGreaterThanOrEqual(1);
+      expect(hexDistance(d, center)).toBeLessThanOrEqual(3);
     }
   });
 
@@ -163,25 +178,116 @@ describe("validMoveDestinations", () => {
     const tiles = makeTiles(5, 5);
     const center = cubeAt(tiles, 2, 2);
     const blockerPos = positionAt(center, validDirections(center, ctxOf(tiles))[0]);
-    const dests = validMoveDestinations(makeMover(3), center, {
+    const dests = moveRange(makeMover(3), center, {
       tiles,
       units: [{ unit: { id: 1 } as any, position: blockerPos, owner }],
     });
-    expect(dests).toHaveLength(5);
     expect(dests.map((d) => cubeKey(d))).not.toContain(cubeKey(blockerPos));
+  });
+
+  test("an occupied hex blocks the path through it, hiding hexes only reachable that way", () => {
+    // A hand-built 3-hex corridor (start -> mid -> end) with nothing else
+    // in bounds, so "end" has exactly one possible route in — through "mid".
+    // A real board's hex grid has multiple 2-step paths between any two
+    // hexes 2 apart, so this isolates the "can't pass through" behaviour
+    // without that alternate-route noise.
+    const start: CubeCoordinates = { q: 0, r: 0, s: 0 };
+    const mid = positionAt(start, Direction.N);
+    const end = positionAt(mid, Direction.N);
+    const fakeTiles = [start, mid, end].map(
+      (cube) => ({ cube: () => cube }) as unknown as GameTileHex
+    );
+
+    const dests = moveRange(makeMover(3), start, {
+      tiles: fakeTiles,
+      units: [{ unit: { id: 1 } as any, position: mid, owner }],
+    });
+
+    expect(dests.map((d) => cubeKey(d))).not.toContain(cubeKey(mid));
+    expect(dests.map((d) => cubeKey(d))).not.toContain(cubeKey(end));
   });
 
   test("returns nothing when the unit has no movement budget (highlight absent)", () => {
     const tiles = makeTiles(5, 5);
     const center = cubeAt(tiles, 2, 2);
     const spent = new (Movable(Unit, 3))(); // never replenished -> canMove() false
-    expect(validMoveDestinations(spent, center, { tiles, units: [] })).toEqual([]);
+    expect(moveRange(spent, center, { tiles, units: [] })).toEqual([]);
   });
 
   test("returns nothing for a non-movable unit", () => {
     const tiles = makeTiles(5, 5);
     const center = cubeAt(tiles, 2, 2);
-    expect(validMoveDestinations({ id: 7 }, center, { tiles, units: [] })).toEqual([]);
+    expect(moveRange({ id: 7 }, center, { tiles, units: [] })).toEqual([]);
+  });
+});
+
+describe("pathTo", () => {
+  function makeMover(budget: number) {
+    const unit = new (Movable(Unit, budget))();
+    unit.replenish();
+    return unit;
+  }
+
+  test("an adjacent target resolves to a single-step path", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const dir = validDirections(center, ctxOf(tiles))[0];
+    const target = positionAt(center, dir);
+
+    const path = pathTo(makeMover(3), center, target, { tiles, units: [] });
+    expect(path).toEqual([dir]);
+  });
+
+  test("a target 2 steps away resolves to a 2-step path that actually lands on it", () => {
+    const tiles = makeTiles(9, 9);
+    const center = cubeAt(tiles, 4, 4);
+    const dests = moveRange(makeMover(3), center, { tiles, units: [] });
+    const twoStepTarget = dests.find((d) => hexDistance(d, center) === 2)!;
+
+    const path = pathTo(makeMover(3), center, twoStepTarget, { tiles, units: [] });
+    expect(path).toHaveLength(2);
+    const landedAt = path!.reduce((pos, dir) => positionAt(pos, dir), center);
+    expect(cubeKey(landedAt)).toBe(cubeKey(twoStepTarget));
+  });
+
+  test("returns null when the target is out of the unit's budget range", () => {
+    const tiles = makeTiles(9, 9);
+    const center = cubeAt(tiles, 4, 4);
+    const dir = validDirections(center, ctxOf(tiles))[0];
+    let farTarget = center;
+    for (let i = 0; i < 4; i++) farTarget = positionAt(farTarget, dir);
+
+    expect(pathTo(makeMover(3), center, farTarget, { tiles, units: [] })).toBeNull();
+  });
+
+  test("returns null when the only route is blocked by an occupied hex", () => {
+    const start: CubeCoordinates = { q: 0, r: 0, s: 0 };
+    const mid = positionAt(start, Direction.N);
+    const end = positionAt(mid, Direction.N);
+    const fakeTiles = [start, mid, end].map(
+      (cube) => ({ cube: () => cube }) as unknown as GameTileHex
+    );
+
+    const path = pathTo(makeMover(3), start, end, {
+      tiles: fakeTiles,
+      units: [{ unit: { id: 1 } as any, position: mid, owner }],
+    });
+    expect(path).toBeNull();
+  });
+
+  test("returns null for the unit's own position", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    expect(pathTo(makeMover(3), center, center, { tiles, units: [] })).toBeNull();
+  });
+
+  test("returns null when the unit has no movement budget", () => {
+    const tiles = makeTiles(5, 5);
+    const center = cubeAt(tiles, 2, 2);
+    const dir = validDirections(center, ctxOf(tiles))[0];
+    const target = positionAt(center, dir);
+    const spent = new (Movable(Unit, 3))(); // never replenished
+    expect(pathTo(spent, center, target, { tiles, units: [] })).toBeNull();
   });
 });
 
@@ -290,5 +396,31 @@ describe("randomValidDirection", () => {
       owner,
     }));
     expect(randomValidDirection(center, ctxOf(tiles, occupied))).toBeNull();
+  });
+});
+
+describe("moveSucceeded", () => {
+  test("true when the unit's state position matches the attempted destination", () => {
+    const tiles = makeTiles(5, 5);
+    const unit = { id: 1 } as any;
+    const destination = cubeAt(tiles, 2, 2);
+    const state = { units: [{ unit, position: destination, owner }] };
+    expect(moveSucceeded(unit, destination, state)).toBe(true);
+  });
+
+  test("false when the reducer rejected the move (unit still at its old position)", () => {
+    const tiles = makeTiles(5, 5);
+    const unit = { id: 1 } as any;
+    const oldPosition = cubeAt(tiles, 1, 1);
+    const attemptedDestination = cubeAt(tiles, 2, 2);
+    const state = { units: [{ unit, position: oldPosition, owner }] };
+    expect(moveSucceeded(unit, attemptedDestination, state)).toBe(false);
+  });
+
+  test("false when the unit isn't found in state at all", () => {
+    const tiles = makeTiles(5, 5);
+    const unit = { id: 1 } as any;
+    const destination = cubeAt(tiles, 2, 2);
+    expect(moveSucceeded(unit, destination, { units: [] })).toBe(false);
   });
 });

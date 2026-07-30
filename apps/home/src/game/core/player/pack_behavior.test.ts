@@ -3,13 +3,18 @@ import { PackBehavior, createPackMemory } from "./pack_behavior";
 import { PlayerActionType, type PlayerAction, type MoveAction } from "../player_action";
 import { PlayerColor } from "./player";
 import { Unit, Movable, Damageable, Damaging, Sightful, Leader, Follower } from "../units";
-import { positionAt, hexDistance } from "../grid";
+import { positionAt, hexDistance, cubeKey } from "../grid";
 import { makeTiles, cubeAt } from "../grid/test_helpers";
 import { directionToward, randomValidDirection, createMoveContext } from "./movement";
 import type { GameTileHex, UnitPosition } from "../board";
 import type { StoreProxy } from "../store";
 import type { GameEvent } from "../game_event";
 import type { State } from "../world";
+import { Game } from "../game";
+import { Terrain, type Board } from "../board";
+import { createPlayerStore } from "../player_store";
+import { PackLeader, PackFollower } from "../../main/units/wolf";
+import { GameEventType } from "../game_event";
 
 const wolves = { id: "wolves", name: "Pack", color: PlayerColor.RED };
 
@@ -271,5 +276,104 @@ describe("PackBehavior", () => {
     })();
 
     expect(dispatched.some((a) => a.type === PlayerActionType.Attack)).toBe(false);
+  });
+
+  // Regression for #172: PackBehavior computes one occupancy snapshot
+  // (createMoveContext) before moving every wolf in the loop, so a follower
+  // later in the loop can pick a destination another wolf already stepped
+  // into earlier in the same loop. Positions below are a known geometric
+  // collision found by brute-force search over a real makeTiles board: both
+  // followers independently compute "toward the leader" steps that land on
+  // the exact same hex. This drives PackBehavior through a *real* Store and
+  // reducer (unlike the mock store above, which never applies dispatched
+  // actions to state) so the reducer's live occupancy check is genuinely
+  // exercised, not bypassed by test scaffolding.
+  function setupCollisionScenario() {
+    const board: Board = {
+      rows: 3,
+      cols: 3,
+      tiles: Array.from({ length: 3 }, (_, x) =>
+        Array.from({ length: 3 }, (_, y) => {
+          const sectionName =
+            x === 0 && y === 0
+              ? "leader_spawn"
+              : x === 1 && y === 1
+              ? "a_spawn"
+              : x === 2 && y === 0
+              ? "b_spawn"
+              : "none";
+          return { x, y, type: Terrain.WATER, textureName: "grass", sectionName };
+        })
+      ).flat(),
+    };
+
+    const game = new Game(board);
+    game.add(wolves);
+
+    const leader = new PackLeader();
+    const followerA = new PackFollower();
+    const followerB = new PackFollower();
+
+    game.spawnInSection(wolves, leader, "leader_spawn");
+    game.spawnInSection(wolves, followerA, "a_spawn");
+    game.spawnInSection(wolves, followerB, "b_spawn");
+    leader.replenish();
+    followerA.replenish();
+    followerB.replenish();
+
+    return { game, leader, followerA, followerB };
+  }
+
+  test("two wolves never end up on the same hex after a pack turn", () => {
+    const { game } = setupCollisionScenario();
+
+    const store = createPlayerStore(game.world.store, wolves);
+    new PackBehavior(store, createPackMemory(), () => 0).takeActions();
+
+    const positions = game.world.getState().units.map((u) => cubeKey(u.position));
+    expect(new Set(positions).size).toBe(positions.length);
+  });
+
+  // Issue #172's acceptance criteria explicitly asks for multiple pack turns,
+  // not just one: a collision that only manifests once the pack has wandered
+  // a few turns (e.g. once positions have converged further) wouldn't be
+  // caught by a single-turn check. The memory instance is reused across
+  // turns, same as Scenario does in the real game (a fresh PackBehavior is
+  // constructed each turn, but the pack's no-backtrack memory persists).
+  test("two wolves never end up on the same hex across several consecutive pack turns", () => {
+    const { game, leader, followerA, followerB } = setupCollisionScenario();
+    const memory = createPackMemory();
+
+    for (let turn = 0; turn < 5; turn++) {
+      leader.replenish();
+      followerA.replenish();
+      followerB.replenish();
+
+      const store = createPlayerStore(game.world.store, wolves);
+      new PackBehavior(store, memory, () => 0).takeActions();
+
+      const positions = game.world.getState().units.map((u) => cubeKey(u.position));
+      expect(new Set(positions).size).toBe(positions.length);
+    }
+  });
+
+  // Before the ctx-refresh fix, follower B would still *dispatch* a Move onto
+  // the hex follower A had just taken (computed from the stale pre-loop
+  // snapshot) — the reducer silently rejected it, wasting the attempt. With a
+  // fresh ctx each iteration, no wolf ever dispatches a Move at a hex another
+  // wolf already holds at that point in the loop.
+  test("no wolf dispatches a move onto a hex another wolf already occupies mid-loop", () => {
+    const { game } = setupCollisionScenario();
+    const movedTo: string[] = [];
+    game.world.subscribe((_state, action) => {
+      if (action.type === GameEventType.Move) {
+        movedTo.push(cubeKey(action.position));
+      }
+    });
+
+    const store = createPlayerStore(game.world.store, wolves);
+    new PackBehavior(store, createPackMemory(), () => 0).takeActions();
+
+    expect(new Set(movedTo).size).toBe(movedTo.length);
   });
 });

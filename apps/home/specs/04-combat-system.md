@@ -8,7 +8,7 @@ The combat system resolves attacks between units, applies damage, and removes de
 
 **In scope:** Attack initiation, damage application, unit death, death side effects (removal from board, event emission).
 
-**Boundaries:** What triggers an attack (player input spec, enemy AI spec). Visual animations for combat are out of scope here.
+**Boundaries:** What triggers an attack — including auto-attack on move (player input spec, ADR-0004) — and enemy AI's own attack decisions (enemy AI spec). Visual animations for combat are out of scope here, except the attack-target highlight, which is player input's concern (spec 03).
 
 ## Behaviors
 
