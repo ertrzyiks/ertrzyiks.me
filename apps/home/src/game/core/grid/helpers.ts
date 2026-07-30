@@ -1,11 +1,10 @@
-import type { CubeCoordinates, PointLike } from "honeycomb-grid";
-import { extendHex } from "honeycomb-grid";
-import { Grid, Hex as SizedHex } from "./create_grid";
+import { defineHex, Orientation, type CubeCoordinates, type Point } from "honeycomb-grid";
+import { Grid } from "./create_grid";
 
 // Unsized: cartesianToCube/cubeToCartesian below operate on honeycomb-grid's
 // offset/grid-index coordinates (matching how TerrainTiles keys its lookup
 // map, via hex.coordinates()) — NOT real screen/world pixel coordinates.
-const Hex = extendHex({ orientation: "flat" });
+const UnsizedHex = defineHex({ orientation: Orientation.FLAT });
 
 const directionalOffset: { [direction: string]: CubeCoordinates } = {
   sw: { r: 1, q: -1, s: 0 },
@@ -16,28 +15,19 @@ const directionalOffset: { [direction: string]: CubeCoordinates } = {
   nw: { r: 0, q: -1, s: 1 },
 };
 
-export function cartesianToCube(point: PointLike) {
-  return Hex().cartesianToCube(point);
+export function cartesianToCube(point: Point): CubeCoordinates {
+  const hex = new UnsizedHex({ col: point.x, row: point.y });
+  return { q: hex.q, r: hex.r, s: hex.s };
 }
 
-export function cubeToCartesian(point: CubeCoordinates) {
-  return Hex().cubeToCartesian(point);
+export function cubeToCartesian(cube: CubeCoordinates): Point {
+  const hex = new UnsizedHex(cube);
+  return { x: hex.col, y: hex.row };
 }
 
-// toPoint() (used to position rendered sprites) returns a hex's top-left
-// corner in the size-calibrated coordinate space; pointToHex expects that
-// same space's *center* point instead — they differ by exactly half a hex's
-// width/height. A real click's world coordinates land in toPoint()'s space
-// (they come from a sprite's actual rendered position), so that offset has
-// to be added back before pointToHex can resolve the right hex.
-const halfHexWidth = SizedHex().width() / 2;
-const halfHexHeight = SizedHex().height() / 2;
-
-export function pointToCube(point: PointLike): CubeCoordinates {
-  return Grid.pointToHex({
-    x: point.x + halfHexWidth,
-    y: point.y + halfHexHeight,
-  }).cube();
+export function pointToCube(point: Point): CubeCoordinates {
+  const hex = Grid.pointToHex(point);
+  return { q: hex.q, r: hex.r, s: hex.s };
 }
 
 export function positionAt(position: CubeCoordinates, direction: string) {

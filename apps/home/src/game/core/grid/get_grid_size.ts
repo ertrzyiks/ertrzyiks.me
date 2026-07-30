@@ -1,7 +1,8 @@
-import type { Grid, Hex } from "honeycomb-grid";
+import type { Grid } from "honeycomb-grid";
+import type { GameTileHex } from "../board";
 
-export function getGridSize(grid: Grid<Hex<any>>) {
-  const lastHex = grid.get(grid.length - 1);
+export function getGridSize(grid: Grid<GameTileHex>) {
+  const lastHex = grid.toArray()[grid.size - 1];
 
   if (!lastHex) throw new Error("No hex found in grid");
 

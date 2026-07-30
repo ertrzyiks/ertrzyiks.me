@@ -38,7 +38,7 @@ export interface State {
 export class World {
   store: Store<GameEvent, State>;
 
-  constructor(grid: Grid) {
+  constructor(grid: Grid<GameTileHex>) {
     const tiles = grid.reduce((acc, hex) => {
       // @ts-ignore
       acc.push(hex);

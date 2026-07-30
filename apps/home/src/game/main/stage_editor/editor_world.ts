@@ -5,7 +5,7 @@ import {
   type EventSystem,
   type Spritesheet,
 } from "pixi.js";
-import type { PointLike } from "honeycomb-grid";
+import type { Point as PointLike } from "honeycomb-grid";
 import { GameViewport } from "../../shared/viewport";
 import { Tile } from "../../shared/renderable/tile";
 import { TerrainTiles } from "../../shared/terrain_tiles";
