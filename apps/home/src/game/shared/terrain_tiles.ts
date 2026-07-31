@@ -1,4 +1,4 @@
-import type { PointLike } from "honeycomb-grid";
+import type { Point as PointLike } from "honeycomb-grid";
 
 export class TerrainTiles<T> {
   protected objects: { [x: number]: { [y: number]: T } } = {};

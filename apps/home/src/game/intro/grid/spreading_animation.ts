@@ -1,8 +1,8 @@
-import type { DisplayObject } from "pixi.js";
+import type { Container } from "pixi.js";
 import RecursiveTween from "../../lib/recursive_tween";
 import { Tween, Easing } from "@tweenjs/tween.js";
 import { getNextSpreadingWave } from "./get_spreading_wave";
-import type { CubeCoordinates, PointLike } from "honeycomb-grid";
+import type { CubeCoordinates, Point as PointLike } from "honeycomb-grid";
 import { TerrainTiles } from "../../shared/terrain_tiles";
 import { Tile } from "../../shared/renderable/tile";
 
@@ -35,8 +35,8 @@ export class GridSpreadAnimation {
   }
 
   private state: any;
-  private subject: Array<DisplayObject> = [];
-  private waveCache: { [wave: number]: Array<DisplayObject> } = {};
+  private subject: Array<Container> = [];
+  private waveCache: { [wave: number]: Array<Container> } = {};
   private tween: RecursiveTween;
   private onCompleteCallback?: CompleteCallback | null = null;
 
@@ -92,7 +92,7 @@ export class GridSpreadAnimation {
     }
   }
 
-  protected applyUpdate(element: DisplayObject, values: { alpha: number }) {
+  protected applyUpdate(element: Container, values: { alpha: number }) {
     element.alpha = values.alpha;
   }
 

@@ -58,7 +58,6 @@ export class PackBehavior extends Behavior {
 
   takeActions() {
     const state = this.store.getState();
-    const ctx = createMoveContext(state);
 
     // The pack only coheres around a living leader. If none is present the pack
     // has dissolved and followers fall back to wandering.
@@ -75,6 +74,15 @@ export class PackBehavior extends Behavior {
     for (const entry of ordered) {
       const unit = entry.unit;
       if (!isMovable(unit) || !unit.canMove()) continue;
+
+      // Recomputed every iteration, not once for the whole turn: an earlier
+      // wolf in this same loop may have just taken a hex a later wolf would
+      // otherwise consider free. Without this, a later wolf can pick a
+      // destination another wolf already stepped into moments ago — the
+      // reducer then silently rejects that wolf's move (see
+      // specs/02-movement-system.md), wasting its turn instead of taking a
+      // still-available step.
+      const ctx = createMoveContext(this.store.getState());
 
       if (isPackLeader(unit)) {
         this.wander(unit, entry.position, ctx);

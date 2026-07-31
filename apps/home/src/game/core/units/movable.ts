@@ -3,6 +3,7 @@ import { Unit } from "./unit";
 export interface IMovable extends Unit {
   canMove(): boolean;
   step(cost: number): void;
+  remainingBudget(): number;
 }
 
 export function isMovable(arg: any): arg is IMovable {
@@ -22,6 +23,10 @@ export function Movable<TBase extends Constructor<Unit>>(
 
     step(cost: number) {
       this.movementPoints -= cost;
+    }
+
+    remainingBudget() {
+      return this.movementPoints;
     }
 
     replenish() {

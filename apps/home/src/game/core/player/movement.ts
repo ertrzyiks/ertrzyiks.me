@@ -41,27 +41,106 @@ export function createMoveContext(
   };
 }
 
+interface ReachableNode {
+  position: CubeCoordinates;
+  // How this node was first reached during the flood fill — null for the
+  // unit's own starting hex. Lets pathTo() walk the steps back afterward
+  // without a second traversal.
+  cameFromDir: Direction | null;
+  cameFromKey: string | null;
+}
+
 /**
- * Cube coordinates of the hexes a unit may legally move to *right now*: the
- * in-bounds, unoccupied neighbours of `position` — but only when the unit is
- * Movable and still has movement budget. Returns [] otherwise.
+ * Flood fill of every hex reachable from `position` within `budget` steps,
+ * stepping only through in-bounds, unoccupied hexes (an occupied hex blocks
+ * passage entirely, not just landing). Shared by moveRange() (which cares
+ * about the reachable set) and pathTo() (which walks the recorded
+ * predecessors back into a concrete route) so the two can't drift apart on
+ * what "reachable" means.
+ */
+function reachableNodes(
+  position: CubeCoordinates,
+  ctx: MoveContext,
+  budget: number
+): Map<string, ReachableNode> {
+  const nodes = new Map<string, ReachableNode>();
+  nodes.set(cubeKey(position), { position, cameFromDir: null, cameFromKey: null });
+  let frontier: CubeCoordinates[] = [position];
+
+  for (let step = 0; step < budget && frontier.length > 0; step++) {
+    const next: CubeCoordinates[] = [];
+    for (const pos of frontier) {
+      for (const d of validDirections(pos, ctx)) {
+        const neighbour = positionAt(pos, d);
+        const key = cubeKey(neighbour);
+        if (nodes.has(key)) continue;
+        nodes.set(key, { position: neighbour, cameFromDir: d, cameFromKey: cubeKey(pos) });
+        next.push(neighbour);
+      }
+    }
+    frontier = next;
+  }
+
+  return nodes;
+}
+
+/**
+ * Cube coordinates of every hex a unit could end its move on *right now*: not
+ * just the adjacent ring, but every hex reachable within its full remaining
+ * movement budget. Returns [] when the unit isn't Movable or has no budget
+ * left.
  *
  * Why here: this is the single source of truth the selection highlight in the
  * renderer draws (spec 03 "when a unit is selected, valid move destinations are
  * visually highlighted"; "when the player cannot act — no budget — highlight is
- * absent"). Keeping it a pure function of state makes the highlight rule
- * unit-testable and keeps it in step with the same in-bounds + occupancy +
- * budget checks the caller (game_world's click handler) uses before dispatching
- * a Move. See specs/03-player-input.md.
+ * absent") and what a click is allowed to auto-path to in one action (ADR-0003
+ * — superseding the original "no multi-step pathfinding" scope note). Keeping
+ * it a pure function of state makes the highlight/auto-path rule unit-testable
+ * and keeps it in step with the same in-bounds + occupancy + budget checks the
+ * caller (game_world's click handler) uses before dispatching a Move.
  */
-export function validMoveDestinations(
+export function moveRange(
   unit: unknown,
   position: CubeCoordinates,
   state: Pick<State, "tiles" | "units"> & Partial<Pick<State, "allUnits">>
 ): CubeCoordinates[] {
   if (!isMovable(unit) || !unit.canMove()) return [];
   const ctx = createMoveContext(state);
-  return validDirections(position, ctx).map((d) => positionAt(position, d));
+  const nodes = reachableNodes(position, ctx, unit.remainingBudget());
+  nodes.delete(cubeKey(position));
+  return [...nodes.values()].map((n) => n.position);
+}
+
+/**
+ * The sequence of directions to walk `unit` from `position` to `target`
+ * within its remaining movement budget, stepping only through in-bounds,
+ * unoccupied hexes — i.e. a concrete route through moveRange()'s reachable
+ * set. Returns null when `target` isn't reachable this turn (out of budget,
+ * off the board, blocked, or `target` equals `position`). Powers auto-path
+ * (ADR-0003): a click on any moveRange() hex resolves to the exact steps
+ * needed, not just a single adjacent hop.
+ */
+export function pathTo(
+  unit: unknown,
+  position: CubeCoordinates,
+  target: CubeCoordinates,
+  state: Pick<State, "tiles" | "units"> & Partial<Pick<State, "allUnits">>
+): Direction[] | null {
+  if (!isMovable(unit) || !unit.canMove()) return null;
+  if (cubeKey(position) === cubeKey(target)) return null;
+
+  const ctx = createMoveContext(state);
+  const nodes = reachableNodes(position, ctx, unit.remainingBudget());
+  const targetNode = nodes.get(cubeKey(target));
+  if (!targetNode || targetNode.cameFromDir === null) return null;
+
+  const path: Direction[] = [];
+  let node: ReachableNode | undefined = targetNode;
+  while (node && node.cameFromDir !== null) {
+    path.push(node.cameFromDir);
+    node = node.cameFromKey ? nodes.get(node.cameFromKey) : undefined;
+  }
+  return path.reverse();
 }
 
 /**
@@ -90,6 +169,22 @@ export function validAttackTargets(
         hexDistance(position, u.position) === 1
     )
     .map((u) => u.position);
+}
+
+/**
+ * Whether `unit` actually ended up at `position` in `state`. The reducer
+ * silently no-ops an invalid Move (zero budget, occupied destination, out of
+ * bounds) rather than throwing, so a dispatched Move can't be assumed to have
+ * succeeded just because it fired — a subscriber (e.g. the renderer deciding
+ * whether to animate a step) must check the resulting state instead.
+ */
+export function moveSucceeded(
+  unit: unknown,
+  position: CubeCoordinates,
+  state: Pick<State, "units">
+): boolean {
+  const entry = state.units.find((u) => u.unit === unit);
+  return !!entry && cubeKey(entry.position) === cubeKey(position);
 }
 
 /** Directions whose neighbouring hex is on the board and unoccupied. */

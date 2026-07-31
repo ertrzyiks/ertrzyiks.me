@@ -1,19 +1,33 @@
-import { Application, DisplayObject, Point } from "pixi.js";
+import { Application, Container, Point } from "pixi.js";
 import TWEEN from "@tweenjs/tween.js";
 import { create as createIntro } from "./intro";
 import { GameViewport } from "./shared/viewport";
 
 const main = () => import("./main");
 
-const app = new Application({
-  backgroundAlpha: 0,
-  resolution: window.devicePixelRatio,
-});
-app.ticker.add(() => {
-  TWEEN.update();
-});
+// PixiJS v8: the renderer/ticker/stage aren't ready until the async init()
+// resolves (the sync constructor-with-options pattern is deprecated and no
+// longer actually initializes anything). Memoized so `initialize()` — called
+// again each time the intro replays via reinitialize() — only inits once.
+const app = new Application();
+let appReady: Promise<void> | null = null;
 
-window.addEventListener("resize", resize);
+function ensureAppReady(): Promise<void> {
+  if (!appReady) {
+    appReady = app
+      .init({
+        backgroundAlpha: 0,
+        resolution: window.devicePixelRatio,
+      })
+      .then(() => {
+        app.ticker.add(() => {
+          TWEEN.update();
+        });
+        window.addEventListener("resize", resize);
+      });
+  }
+  return appReady;
+}
 
 function resize() {
   app.renderer.resize(window.innerWidth, window.innerHeight);
@@ -36,16 +50,14 @@ const loadIntro = async (startingPoint: Point) => {
   app.stage.addChild(viewport);
   resize();
 
-  // @ts-ignore
-  if (!document.body.contains(app.view)) {
+  if (!document.body.contains(app.canvas)) {
     const el = document.getElementById("game");
     // @ts-ignore
-    el.parentNode.replaceChild(app.view, el);
+    el.parentNode.replaceChild(app.canvas, el);
   }
 
   app.start();
-  // @ts-ignore
-  app.view.style.display = "";
+  app.canvas.style.display = "";
 
   viewport.emitter.on("exit", () => {
     close();
@@ -62,14 +74,13 @@ const loadMain = async function (app: Application) {
 
 function close() {
   app.stop();
-  // @ts-ignore
-  app.view.style.display = "none";
+  app.canvas.style.display = "none";
   // app.loader.reset();
 
   while (app.stage.children[0]) {
     const child = app.stage.children[0] as GameViewport;
     app.stage.removeChild(child);
-    child.destroy({ children: true, texture: true, baseTexture: true });
+    child.destroy({ children: true, texture: true, textureSource: true });
   }
 
   reinitialize();
@@ -81,7 +92,7 @@ function reinitialize() {
   );
 }
 
-function fadeOut(viewport: DisplayObject) {
+function fadeOut(viewport: Container) {
   let state = { alpha: 1 };
   return new Promise<void>((resolve) => {
     const tween = new TWEEN.Tween(state)
@@ -96,6 +107,7 @@ function fadeOut(viewport: DisplayObject) {
 }
 
 export async function initialize(x: number, y: number) {
+  await ensureAppReady();
   const viewport = await loadIntro(new Point(x, y));
   const onIntroFinish = new Promise<void>((resolve) => {
     viewport.emitter.on("finish", () => resolve());

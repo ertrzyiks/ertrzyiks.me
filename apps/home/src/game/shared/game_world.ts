@@ -2,7 +2,7 @@ import {
   Container,
   EventBoundary,
   Graphics,
-  type IDestroyOptions,
+  type DestroyOptions,
   Sprite,
   Spritesheet,
   Texture,
@@ -17,6 +17,7 @@ import { Game, GameEventType } from "../core";
 import { PlayerColor } from "../core/player/player";
 import type { CubeCoordinates } from "honeycomb-grid";
 import { cubeToCartesian, cubeKey } from "../core/grid/helpers";
+import { moveSucceeded } from "../core/player/movement";
 import { TerrainTiles } from "./terrain_tiles";
 import type { ObservableSubscriptionDone } from "./observable";
 import { type GameEvent } from "../core";
@@ -26,7 +27,6 @@ const FOG_HEX_Y_OFFSET = 4;
 
 function buildFogGraphic(): Graphics {
   const g = new Graphics();
-  g.beginFill(0x000000, 0.85);
   const points: number[] = [];
   for (let side = 0; side < 7; side++) {
     points.push(
@@ -34,8 +34,8 @@ function buildFogGraphic(): Graphics {
       FOG_HEX_Y_OFFSET + FOG_HEX_SIZE * Math.sin((side * 2 * Math.PI) / 6)
     );
   }
-  g.drawPolygon(points);
-  g.endFill();
+  g.poly(points);
+  g.fill({ color: 0x000000, alpha: 0.85 });
   return g;
 }
 
@@ -48,6 +48,15 @@ export class GameWorld extends Container {
   // in onWorldUpdate below). Subclasses read this to gate input — spec 03
   // "Clicks during... an animation... are ignored".
   protected isUnitMoving = false;
+  // Set once destroy() runs (e.g. StageManager swapping in the next stage's
+  // MainWorld — main/stage_manager.ts's onStageEnded). A subclass method
+  // suspended mid-`await` (a multi-step move, an auto-attack's highlight
+  // delay) can resume after this instance — and its Pixi Container tree —
+  // has already been torn down; every such resume point must check this
+  // before touching any Pixi object again, or risk exactly the kind of
+  // internal PixiJS crash (a destroyed Container's renderPipeId no longer
+  // resolving) issue #175 reported.
+  protected isDestroyed = false;
   protected tickerFunction = () => this.cull();
   protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles();
   protected unitSprites: Map<number, Container> = new Map();
@@ -105,9 +114,8 @@ export class GameWorld extends Container {
               : action.owner.color === PlayerColor.GREEN
                 ? 0x33cc55
                 : 0x3366ff;
-          bgHex.beginFill(hexColor);
-          bgHex.drawPolygon(this.createHexPoints(50));
-          bgHex.endFill();
+          bgHex.poly(this.createHexPoints(50));
+          bgHex.fill(hexColor);
           bgHex.alpha = 0.6;
           unitContainer.addChild(bgHex);
 
@@ -129,7 +137,13 @@ export class GameWorld extends Container {
         const unitSprite = this.unitSprites.get(action.unit.id);
         const moveTile = this.getTerrainAt(action.position);
         this.updateFog(state);
-        if (unitSprite && moveTile) {
+        // The reducer silently no-ops an invalid move (occupied destination,
+        // zero budget, out of bounds) rather than throwing — dispatch still
+        // notifies subscribers with the attempted action either way. Without
+        // this check, a rejected move would still animate the sprite onto the
+        // (already-occupied) destination, visually desyncing it from its real
+        // logical position. See specs/02-movement-system.md.
+        if (unitSprite && moveTile && moveSucceeded(action.unit, action.position, state)) {
           this.isUnitMoving = true;
           this.currentTween = new TWEEN.Tween(unitSprite)
             .to({ x: moveTile.x, y: moveTile.y }, 500)
@@ -302,11 +316,12 @@ export class GameWorld extends Container {
     return points;
   }
 
-  destroy(options?: IDestroyOptions | boolean) {
+  destroy(options?: DestroyOptions | boolean) {
     if (this.currentTween) {
       this.currentTween.stop();
     }
 
+    this.isDestroyed = true;
     this.game.finish();
     super.destroy(options);
   }

@@ -1,4 +1,5 @@
-import type { CubeCoordinates, Hex } from "honeycomb-grid";
+import type { CubeCoordinates } from "honeycomb-grid";
+import type { Hex } from "./grid/create_grid";
 import { Unit } from "./units";
 import type { Player } from "./player";
 
@@ -12,7 +13,7 @@ export interface GameTile {
   type: Terrain;
 }
 
-export type GameTileHex = Hex<GameTile>;
+export type GameTileHex = Hex;
 
 export interface UnitPosition {
   unit: Unit;

@@ -1,52 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { Game } from "../core/game";
-import { Terrain, type Board } from "../core/board";
 import { GameEventType } from "../core/game_event";
 import { isDamaging } from "../core/units";
 import { Scenario } from "./scenario";
 import { createStage1Definition } from "./stages/stage1";
 import { createStage2Definition } from "./stages/stage2";
 import { createStage3Definition } from "./stages/stage3";
-
-// A single flat row with every section any stage definition under test might
-// reference, so Stage 1/2/3 definitions can all spawn onto it. `World.
-// tileBySection` falls back to tiles[0] for an unknown name, so every section
-// used below must be a real, distinct tile or a bug there would go unnoticed.
-function makeBoard(): Board {
-  const sections = [
-    "spawn_a",
-    "spawn_b",
-    "wolf_1",
-    "wolf_2",
-    "wolf_3",
-    "village",
-    "bandit_1",
-    "bandit_2",
-    "bandit_3",
-    "gate",
-    "wanderer_spawn",
-    "bandit_4",
-    "bandit_5",
-    "bandit_6",
-    "captain_spawn",
-    "campfire",
-  ];
-  return {
-    rows: 1,
-    cols: sections.length,
-    tiles: sections.map((sectionName, x) => ({
-      x,
-      y: 0,
-      type: Terrain.WATER,
-      textureName: "grass",
-      sectionName,
-    })),
-  };
-}
-
-// Flush the microtask-based `Observable` pipeline (shared/observable.ts) that
-// carries turn transitions between Scenario and Game.
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+import { makeBoard, flush } from "./test_helpers";
 
 describe("Scenario (Stage 1 definition)", () => {
   test("spawns Whirley's two heroes, the wolf pack, and the Wanderer at their sections", () => {

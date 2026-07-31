@@ -28,9 +28,8 @@ export class Tile extends Tileable {
 
     if (DEBUG) {
       const graphics = new Graphics();
-      graphics.beginFill(0x121212);
-      graphics.drawPolygon(points);
-      graphics.endFill();
+      graphics.poly(points);
+      graphics.fill(0x121212);
       graphics.alpha = 0.5;
       this.addChild(graphics);
     }
