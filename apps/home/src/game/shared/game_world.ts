@@ -21,6 +21,19 @@ import { moveSucceeded } from "../core/player/movement";
 import { TerrainTiles } from "./terrain_tiles";
 import type { ObservableSubscriptionDone } from "./observable";
 import { type GameEvent } from "../core";
+import type { Unit } from "../core/units";
+import type { IRenderable } from "./renderable/renderable";
+
+// Duck-typed rather than a static `Unit & IRenderable` param type: not every
+// `Unit` is guaranteed Renderable (e.g. a bare test double), and core/game_event.ts
+// can't import shared's IRenderable without inverting the core->shared layering.
+function isRenderable(unit: Unit): unit is Unit & IRenderable {
+  return typeof (unit as Partial<IRenderable>).textureName === "string";
+}
+
+// Fallback for a unit with no Renderable mixin applied (see isRenderable) —
+// keeps the old shared "ship" placeholder rather than throwing.
+const FALLBACK_UNIT_TEXTURE = "ship";
 
 const FOG_HEX_SIZE = 50;
 const FOG_HEX_Y_OFFSET = 4;
@@ -119,11 +132,17 @@ export class GameWorld extends Container {
           bgHex.alpha = 0.6;
           unitContainer.addChild(bgHex);
 
-          // Layer 2: Ship icon on top
-          const shipTexture = Texture.from("ship");
-          const shipSprite = new Tile(shipTexture, action.position);
-          shipSprite.scale.x = -1;
-          unitContainer.addChild(shipSprite);
+          // Layer 2: unit sprite on top, picked by type (gh #192) — each
+          // concrete unit class sets its own textureName via the Renderable
+          // mixin (shared/renderable). scale.x flip is a leftover from the
+          // old shared "ship" icon; kept for now, see gh #194.
+          const unitTextureName = isRenderable(action.unit)
+            ? action.unit.textureName
+            : FALLBACK_UNIT_TEXTURE;
+          const unitTexture = Texture.from(unitTextureName);
+          const unitSprite = new Tile(unitTexture, action.position);
+          unitSprite.scale.x = -1;
+          unitContainer.addChild(unitSprite);
 
           this.unitSprites.set(action.unit.id, unitContainer);
           this.unitContainer.addChild(unitContainer);

@@ -28,10 +28,13 @@ import {
 } from "./roster_editor_reducer";
 import { RosterEditorEventType, type RosterEditorEvent } from "./roster_editor_event";
 import type { StageRosterData } from "./stage_roster";
+import { TERRAIN_TEXTURE_NAMES } from "../../assets_gen/terrain_sprites";
 
 const DEFAULT_ROWS = 6;
 const DEFAULT_COLS = 8;
-const AVAILABLE_TEXTURES = ["water", "grass"];
+// Every terrain texture packed into the board atlases (gh #191) — see
+// assets_gen/terrain_sprites.ts for the roster.
+const AVAILABLE_TEXTURES = TERRAIN_TEXTURE_NAMES;
 
 /** Turns the store's Honeycomb `GameTileHex[]` back into the plain `Board` shape `/api/stage-editor/save` (and board{1,2,3}.json) expect. */
 function boardFromState(state: State): Board {
