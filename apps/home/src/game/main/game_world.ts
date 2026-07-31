@@ -83,13 +83,14 @@ export class MainWorld extends GameWorld {
     protected board: Board,
     protected events: EventSystem,
     protected sheet: Spritesheet,
+    protected unitsSheet: Spritesheet,
     // Injectable so callers other than the real site (e.g. the interaction
     // test harness, docs/adr/0001) can boot MainWorld against a minimal
     // definition/script instead of always mounting Stage 1 in full.
     definition: StageDefinition = createStage1Definition(),
     narrativeScript: NarrativeScript = createStage1Narrative(definition.player.id, "wanderer")
   ) {
-    super(board, events, sheet);
+    super(board, events, sheet, unitsSheet);
 
     this.narrative = new NarrativeEngine(narrativeScript);
     this.scenario = new Scenario(this.game, definition);

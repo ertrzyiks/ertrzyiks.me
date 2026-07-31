@@ -18,7 +18,11 @@ export class IntroWorld extends GameWorld {
     protected events: EventSystem,
     protected sheet: Spritesheet
   ) {
-    super(board, events, sheet);
+    // The intro's single atlas (intro-0) carries both its terrain (water)
+    // and its "ship" unit frame, so it doubles as its own units sheet — see
+    // shared/game_world.ts's constructor comment for why Spawn needs one
+    // passed directly rather than relying on Texture.from(name).
+    super(board, events, sheet, sheet);
     this.emitter = new EventEmitter();
     this.scenario = new Scenario(this.game);
   }

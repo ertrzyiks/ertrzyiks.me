@@ -10,12 +10,15 @@ export async function preload() {
   const sheet = new Spritesheet(boardTexture.source, data);
   await sheet.parse();
 
-  // Load the dedicated units sheet (gh #192) to make its textures (hero,
-  // wanderer, wolf, bandit, banditCaptain) available globally the same way —
-  // game_world.ts's Spawn handling looks them up via Texture.from(name).
+  // Dedicated units sheet (gh #192: hero, wanderer, wolf, bandit,
+  // banditCaptain). Returned alongside `sheet` and read directly via
+  // `unitsSheet.textures[name]` — not through Texture.from(name)'s global
+  // Cache, which never gets populated for a manually-constructed/parsed
+  // Spritesheet like this one (that only happens via the real
+  // Assets.load(".json") pipeline).
   const unitsTexture = await Assets.load(unitsImage.src);
   const unitsSheet = new Spritesheet(unitsTexture.source, unitsData);
   await unitsSheet.parse();
 
-  return { sheet };
+  return { sheet, unitsSheet };
 }

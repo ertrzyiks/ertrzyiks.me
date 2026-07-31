@@ -56,7 +56,7 @@ if (!import.meta.env.DEV) {
           TWEEN.update();
         });
 
-        const { sheet } = await preload();
+        const { sheet, unitsSheet } = await preload();
 
         // Default stays no narrative script — nothing should block input in
         // the harness (docs/adr/0001). ?narrative=1 opts a specific test into
@@ -81,6 +81,7 @@ if (!import.meta.env.DEV) {
           createHarnessBoard(),
           app.renderer.events,
           sheet,
+          unitsSheet,
           definition,
           narrativeScript
         );

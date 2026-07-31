@@ -5,7 +5,6 @@ import {
   type DestroyOptions,
   Sprite,
   Spritesheet,
-  Texture,
   type EventSystem,
   ColorMatrixFilter,
 } from "pixi.js";
@@ -78,7 +77,16 @@ export class GameWorld extends Container {
   constructor(
     protected board: Board,
     protected events: EventSystem,
-    protected sheet: Spritesheet
+    protected sheet: Spritesheet,
+    // Units' own atlas (gh #192). Passed and read directly — like `sheet` is
+    // for terrain — rather than relying on Texture.from(name)'s global Cache
+    // lookup: that lookup only ever resolves for Spritesheets registered
+    // through the real Assets.load(".json") pipeline (its CacheParser
+    // extension is what expands one cache entry into one per frame name).
+    // preload.ts manually constructs `new Spritesheet(texture, data)` +
+    // `.parse()`, which never touches Cache.set() at all, so Texture.from()
+    // here always warned "not found in the Cache" and rendered no icon.
+    protected unitsSheet: Spritesheet
   ) {
     super();
     this.game = new Game(board);
@@ -137,7 +145,7 @@ export class GameWorld extends Container {
           // there's no per-type icon to fall back to since gh #194 removed
           // the old shared "ship" placeholder.
           if (isRenderable(action.unit)) {
-            const unitTexture = Texture.from(action.unit.textureName);
+            const unitTexture = this.unitsSheet.textures[action.unit.textureName];
             const unitSprite = new Tile(unitTexture, action.position);
             unitContainer.addChild(unitSprite);
           }

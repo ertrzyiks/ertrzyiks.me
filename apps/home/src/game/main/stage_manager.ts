@@ -29,7 +29,8 @@ export class StageManager extends Container {
 
   constructor(
     protected events: EventSystem,
-    protected sheet: Spritesheet
+    protected sheet: Spritesheet,
+    protected unitsSheet: Spritesheet
   ) {
     super();
     this.mainWorld = this.mountStage(this.currentIndex);
@@ -51,6 +52,7 @@ export class StageManager extends Container {
       entry.board,
       this.events,
       this.sheet,
+      this.unitsSheet,
       definition,
       entry.createNarrative(definition.player.id, "wanderer")
     );
