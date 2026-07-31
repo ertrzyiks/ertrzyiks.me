@@ -56,7 +56,7 @@ export class MainWorld extends GameWorld {
   // select/move a second unit concurrently with it (issue #178).
   protected isAwaitingAutoAttackHighlight = false;
 
-  // World-space layer for the selected unit's valid-move highlights (spec 03).
+  // World-space layer for the selected unit's move-range highlights (spec 03).
   // Lives in the viewport so highlights pan/zoom with the board.
   protected highlightContainer: Container = new Container();
 
@@ -537,7 +537,7 @@ export class MainWorld extends GameWorld {
     this.updateHighlights();
   }
 
-  // Redraw the valid-move highlights and attack-target highlights for the
+  // Redraw the move-range highlights and attack-target highlights for the
   // currently selected unit. Both are absent when it is not the human's
   // turn, a dialog is up, or nothing is selected (spec 03 "Visual Feedback").
   protected updateHighlights() {
