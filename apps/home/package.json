@@ -15,7 +15,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@astrojs/check": "0.9.9",
+    "@astrojs/check": "0.9.10",
     "@tweenjs/tween.js": "25.0.0",
     "@types/dat.gui": "0.7.13",
     "@types/debounce": "1.2.4",
