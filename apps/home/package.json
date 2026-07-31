@@ -9,6 +9,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "generate:sprites": "bash ./scripts/generate-sprites.sh",
+    "generate:board-atlases": "node ../../node_modules/.pnpm/vite-node@*/node_modules/vite-node/vite-node.mjs src/game/assets_gen/generate_board_atlases.ts",
+    "generate:units-atlas": "node ../../node_modules/.pnpm/vite-node@*/node_modules/vite-node/vite-node.mjs src/game/assets_gen/generate_units_atlas.ts",
     "test": "vitest",
     "test:e2e": "playwright test"
   },

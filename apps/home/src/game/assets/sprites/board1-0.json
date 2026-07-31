@@ -1,28 +1,195 @@
-{"frames": {
-
-"grass":
 {
-	"frame": {"x":1,"y":1,"w":100,"h":87},
-	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
-	"sourceSize": {"w":100,"h":87}
-},
-"water":
-{
-	"frame": {"x":103,"y":1,"w":100,"h":87},
-	"rotated": false,
-	"trimmed": false,
-	"spriteSourceSize": {"x":0,"y":0,"w":100,"h":87},
-	"sourceSize": {"w":100,"h":87}
-}},
-"meta": {
-	"app": "https://www.codeandweb.com/texturepacker",
-	"version": "1.0",
-	"image": "board1-0.png",
-	"format": "RGBA8888",
-	"size": {"w":204,"h":89},
-	"scale": "1",
-	"smartupdate": "$TexturePacker:SmartUpdate:c84c0f7443e435cb2b7ce8a925bcf2de:d35afa174b1d8a95f5ab2eb73d551007:8d56cc8117b3a4f76d94e4a663da9c0a$"
-}
+  "frames": {
+    "grass": {
+      "frame": {
+        "x": 1,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "water": {
+      "frame": {
+        "x": 99,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "grass2": {
+      "frame": {
+        "x": 197,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "grass3": {
+      "frame": {
+        "x": 295,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "sand": {
+      "frame": {
+        "x": 393,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "forest1": {
+      "frame": {
+        "x": 491,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "forest2": {
+      "frame": {
+        "x": 589,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "mountain1": {
+      "frame": {
+        "x": 687,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    },
+    "mountain2": {
+      "frame": {
+        "x": 785,
+        "y": 1,
+        "w": 96,
+        "h": 84
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 96,
+        "h": 84
+      },
+      "sourceSize": {
+        "w": 96,
+        "h": 84
+      }
+    }
+  },
+  "meta": {
+    "app": "ertrzyiks.me hand-rolled atlas packer",
+    "version": "1.0",
+    "image": "board1-0.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 882,
+      "h": 86
+    },
+    "scale": "1"
+  }
 }
