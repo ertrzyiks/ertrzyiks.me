@@ -92,6 +92,14 @@ export class MainWorld extends GameWorld {
   ) {
     super(board, events, sheet, unitsSheet);
 
+    // Center the camera on the board. Without this, pixi-viewport's default
+    // camera position shows the board's origin corner rather than fitting
+    // its content in view — there's no other moveCenter()/fit() call
+    // anywhere in this codebase, so most of the board renders off-screen
+    // above/right of what's visible.
+    const { worldWidth, worldHeight } = this.game.world.getState();
+    this.viewport.moveCenter(worldWidth / 2, worldHeight / 2);
+
     this.narrative = new NarrativeEngine(narrativeScript);
     this.scenario = new Scenario(this.game, definition);
 
