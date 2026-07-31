@@ -25,15 +25,13 @@ import type { Unit } from "../core/units";
 import type { IRenderable } from "./renderable/renderable";
 
 // Duck-typed rather than a static `Unit & IRenderable` param type: not every
-// `Unit` is guaranteed Renderable (e.g. a bare test double), and core/game_event.ts
-// can't import shared's IRenderable without inverting the core->shared layering.
+// `Unit` is guaranteed Renderable — e.g. main/harness/interaction_harness.ts's
+// HarnessTarget is a plain Damageable(Unit) test stand-in with no icon of its
+// own — and core/game_event.ts can't import shared's IRenderable without
+// inverting the core->shared layering.
 function isRenderable(unit: Unit): unit is Unit & IRenderable {
   return typeof (unit as Partial<IRenderable>).textureName === "string";
 }
-
-// Fallback for a unit with no Renderable mixin applied (see isRenderable) —
-// keeps the old shared "ship" placeholder rather than throwing.
-const FALLBACK_UNIT_TEXTURE = "ship";
 
 const FOG_HEX_SIZE = 50;
 const FOG_HEX_Y_OFFSET = 4;
@@ -134,15 +132,15 @@ export class GameWorld extends Container {
 
           // Layer 2: unit sprite on top, picked by type (gh #192) — each
           // concrete unit class sets its own textureName via the Renderable
-          // mixin (shared/renderable). scale.x flip is a leftover from the
-          // old shared "ship" icon; kept for now, see gh #194.
-          const unitTextureName = isRenderable(action.unit)
-            ? action.unit.textureName
-            : FALLBACK_UNIT_TEXTURE;
-          const unitTexture = Texture.from(unitTextureName);
-          const unitSprite = new Tile(unitTexture, action.position);
-          unitSprite.scale.x = -1;
-          unitContainer.addChild(unitSprite);
+          // mixin (shared/renderable). Non-Renderable units (e.g. harness
+          // test stand-ins) render with just the colored hex background —
+          // there's no per-type icon to fall back to since gh #194 removed
+          // the old shared "ship" placeholder.
+          if (isRenderable(action.unit)) {
+            const unitTexture = Texture.from(action.unit.textureName);
+            const unitSprite = new Tile(unitTexture, action.position);
+            unitContainer.addChild(unitSprite);
+          }
 
           this.unitSprites.set(action.unit.id, unitContainer);
           this.unitContainer.addChild(unitContainer);

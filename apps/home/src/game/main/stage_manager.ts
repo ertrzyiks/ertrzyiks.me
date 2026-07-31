@@ -74,9 +74,11 @@ export class StageManager extends Container {
     }
 
     // No `texture`/`baseTexture` here (unlike game_loader.ts's own destroy
-    // call for the intro viewport): board tiles and unit sprites read from
-    // the shared `sheet`/global "ship" texture the *next* MainWorld reuses —
-    // destroying those would break its rendering, not just this one's.
+    // call for the intro viewport): board tiles read from the shared `sheet`
+    // and unit sprites read from the globally-registered per-type textures
+    // (hero/wanderer/wolf/bandit/banditCaptain, gh #192) that the *next*
+    // MainWorld reuses — destroying those would break its rendering, not
+    // just this one's.
     this.removeChild(this.mainWorld);
     this.mainWorld.destroy({ children: true });
 
