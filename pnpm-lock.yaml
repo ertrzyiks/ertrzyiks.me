@@ -42,8 +42,8 @@ importers:
         specifier: 0.9.9
         version: 0.9.9(prettier@3.9.4)(typescript@5.9.3)
       '@tweenjs/tween.js':
-        specifier: 17.6.0
-        version: 17.6.0
+        specifier: 25.0.0
+        version: 25.0.0
       '@types/dat.gui':
         specifier: 0.7.13
         version: 0.7.13
@@ -842,8 +842,8 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@tweenjs/tween.js@17.6.0':
-    resolution: {integrity: sha512-utSXj0WHi4qr/iyfFHGMJBaL+ixQ2N7BAmx1R5g8jBqykJfjBUQ0hKWwXf767hbALC3zOoOIofKYSDWu5n04JQ==}
+  '@tweenjs/tween.js@25.0.0':
+    resolution: {integrity: sha512-XKLA6syeBUaPzx4j3qwMqzzq+V4uo72BnlbOjmuljLrRqdsd3qnzvZZoxvMHZ23ndsRS4aufU6JOZYpCbU6T1A==}
 
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
@@ -3436,7 +3436,7 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@tweenjs/tween.js@17.6.0': {}
+  '@tweenjs/tween.js@25.0.0': {}
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
