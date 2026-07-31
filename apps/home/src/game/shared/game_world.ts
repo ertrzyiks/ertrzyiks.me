@@ -11,7 +11,7 @@ import {
 } from "pixi.js";
 import { GameViewport } from "./viewport";
 import { Tile } from "./renderable/tile";
-import TWEEN from "@tweenjs/tween.js";
+import TWEEN, { type Tween } from "@tweenjs/tween.js";
 import type { Board, State, GameTileHex } from "../core";
 import { Game, GameEventType } from "../core";
 import { PlayerColor } from "../core/player/player";
@@ -54,7 +54,7 @@ export class GameWorld extends Container {
   protected game: Game;
   protected viewport: GameViewport;
   protected boundary: EventBoundary;
-  protected currentTween: TWEEN.Tween | null = null;
+  protected currentTween: Tween | null = null;
   // True for the ~600ms a unit's move tween is in flight (see the Move case
   // in onWorldUpdate below). Subclasses read this to gate input — spec 03
   // "Clicks during... an animation... are ignored".
@@ -162,7 +162,7 @@ export class GameWorld extends Container {
         // logical position. See specs/02-movement-system.md.
         if (unitSprite && moveTile && moveSucceeded(action.unit, action.position, state)) {
           this.isUnitMoving = true;
-          this.currentTween = new TWEEN.Tween(unitSprite)
+          this.currentTween = new TWEEN.Tween(unitSprite, true)
             .to({ x: moveTile.x, y: moveTile.y }, 500)
             .delay(100)
             .onComplete(() => {

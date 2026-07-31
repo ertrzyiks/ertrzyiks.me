@@ -95,7 +95,7 @@ function reinitialize() {
 function fadeOut(viewport: Container) {
   let state = { alpha: 1 };
   return new Promise<void>((resolve) => {
-    const tween = new TWEEN.Tween(state)
+    const tween = new TWEEN.Tween(state, true)
       .to({ alpha: 0 }, 700)
       .onUpdate(() => {
         viewport.alpha = state.alpha;
