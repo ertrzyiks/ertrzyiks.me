@@ -2,6 +2,18 @@
 // matches the "flat" orientation honeycomb-grid is configured with
 // elsewhere in the game (see core/grid/create_grid.ts) — inscribed in a
 // width x height bounding box.
+//
+// Sizing note for anything composited on top of this shape (e.g. a unit
+// sprite over the owner-color tint hex in game_world.ts): the hex only
+// spans the *full* bounding-box width at its vertical midpoint. It tapers
+// linearly to half that width at the very top and bottom edges (the
+// left/right points sit at height*0.5, not at the corners). A silhouette
+// that's tall *and* wide near its top or bottom (e.g. a quadruped with a
+// head at one end and legs at the other, as opposed to a narrow humanoid)
+// can be narrower than the bounding box and still poke past the hex's
+// edge there — see the wolf sprite fix on gh issue #190. When designing
+// such a silhouette, keep its horizontal extent well inside the taper at
+// whatever row it actually occupies, not just inside the full bounding box.
 function hexVertices(width: number, height: number): [number, number][] {
   return [
     [width * 0.25, 0],
