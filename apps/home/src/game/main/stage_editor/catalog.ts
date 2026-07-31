@@ -16,8 +16,10 @@ type GameStoreProxy = StoreProxy<GameEvent, State, PlayerAction>;
  * Fixed set of unit types an editor-authored roster can spawn (issue #170
  * "no plugin/registration mechanism for new types — a genuinely new unit
  * still requires a code change"). Covers every unit `main/stages/stage{1,2,3}`
- * hand-write today, except "Wolf": this codebase has no standalone Wolf unit,
- * only the pack's Leader/Follower roles, so those two stand in for it.
+ * hand-write today. No standalone "Wolf" key: `PackLeader`/`PackFollower` are
+ * the wolf-pack roles this catalog exposes — see
+ * docs/adr/0006-stage-editor-catalog-covers-wolf-via-pack-leader-follower.md
+ * for why #170's literal "Wolf" catalog-list entry doesn't get its own key.
  */
 export const UNIT_CATALOG = {
   Hero: () => new Hero(),
