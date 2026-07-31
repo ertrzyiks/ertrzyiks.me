@@ -3,6 +3,7 @@ import { GameEventType } from "../game_event";
 import type { State } from "../world";
 import { EMPTY_PLAYTHROUGH_STATE } from "../world_defaults";
 import { isMovable, isSightful, isDamageable, isDamaging } from "../units";
+import type { Unit } from "../units";
 import type { CubeCoordinates } from "honeycomb-grid";
 import { hexDistance, cubeKey } from "../grid";
 import type { Player } from "../player";
@@ -31,6 +32,23 @@ function revealAround(
   });
 
   return { ...state.revealedTiles, [owner.id]: updated };
+}
+
+// Shared by Move and Spawn: a unit that can see reveals tiles around a
+// position by its sight range; a unit that can't leaves revealedTiles
+// unchanged. Owner is passed explicitly rather than derived, since Move
+// reads it off the roster entry (movingUnit.owner) while Spawn reads it
+// off the action (action.owner).
+function revealAroundIfSightful(
+  state: State,
+  unit: Unit,
+  owner: Player,
+  position: CubeCoordinates
+): Record<string, Record<string, true>> {
+  const sightRadius = isSightful(unit) ? unit.sightRange : 0;
+  return sightRadius > 0
+    ? revealAround(state, owner, position, sightRadius)
+    : state.revealedTiles;
 }
 
 export function gameReducer(state: State, action: GameEvent) {
@@ -103,11 +121,14 @@ export function gameReducer(state: State, action: GameEvent) {
       }
 
       if (isMovable(action.unit)) action.unit.step(1);
-      const sightRadius = isSightful(action.unit) ? action.unit.sightRange : 0;
-      const revealedAfterMove =
-        movingUnit && sightRadius > 0
-          ? revealAround(state, movingUnit.owner, action.position, sightRadius)
-          : state.revealedTiles;
+      const revealedAfterMove = movingUnit
+        ? revealAroundIfSightful(
+            state,
+            action.unit,
+            movingUnit.owner,
+            action.position
+          )
+        : state.revealedTiles;
       return {
         ...state,
         revealedTiles: revealedAfterMove,
@@ -139,11 +160,12 @@ export function gameReducer(state: State, action: GameEvent) {
     }
 
     case GameEventType.Spawn: {
-      const spawnRange = isSightful(action.unit) ? action.unit.sightRange : 0;
-      const revealedAfterSpawn =
-        spawnRange > 0
-          ? revealAround(state, action.owner, action.position, spawnRange)
-          : state.revealedTiles;
+      const revealedAfterSpawn = revealAroundIfSightful(
+        state,
+        action.unit,
+        action.owner,
+        action.position
+      );
       return {
         ...state,
         revealedTiles: revealedAfterSpawn,
