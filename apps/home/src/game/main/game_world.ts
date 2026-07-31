@@ -537,6 +537,30 @@ export class MainWorld extends GameWorld {
     this.updateHighlights();
   }
 
+  // Draws a single hex-shaped highlight (move-range marker or attack-target
+  // frame — see updateHighlights below) positioned over `tile`. `style.fill`
+  // is optional because the attack-target frame is stroke-only, with no
+  // fill, unlike the move-range marker.
+  protected drawHexOutline(
+    tile: Tileable,
+    style: {
+      fill?: number;
+      fillAlpha?: number;
+      stroke: number;
+      strokeAlpha: number;
+      strokeWidth: number;
+    }
+  ): Graphics {
+    const outline = new Graphics();
+    outline.poly(this.createHexPoints(50));
+    if (style.fill !== undefined) {
+      outline.fill({ color: style.fill, alpha: style.fillAlpha });
+    }
+    outline.stroke({ width: style.strokeWidth, color: style.stroke, alpha: style.strokeAlpha });
+    outline.position.set(tile.x, tile.y);
+    return outline;
+  }
+
   // Redraw the move-range highlights and attack-target highlights for the
   // currently selected unit. Both are absent when it is not the human's
   // turn, a dialog is up, or nothing is selected (spec 03 "Visual Feedback").
@@ -566,11 +590,13 @@ export class MainWorld extends GameWorld {
     for (const dest of moveRange(live.unit, live.position, state)) {
       const tile = this.getTerrainAt(dest);
       if (!tile) continue;
-      const marker = new Graphics();
-      marker.poly(this.createHexPoints(50));
-      marker.fill({ color: 0x4ad66a, alpha: 0.25 });
-      marker.stroke({ width: 3, color: 0x4ad66a, alpha: 0.9 });
-      marker.position.set(tile.x, tile.y);
+      const marker = this.drawHexOutline(tile, {
+        fill: 0x4ad66a,
+        fillAlpha: 0.25,
+        stroke: 0x4ad66a,
+        strokeAlpha: 0.9,
+        strokeWidth: 3,
+      });
       this.highlightContainer.addChild(marker);
     }
 
@@ -580,10 +606,11 @@ export class MainWorld extends GameWorld {
     for (const target of validAttackTargets(live.unit, live.position, "human", state)) {
       const tile = this.getTerrainAt(target);
       if (!tile) continue;
-      const frame = new Graphics();
-      frame.poly(this.createHexPoints(50));
-      frame.stroke({ width: 4, color: 0xff3333, alpha: 0.95 });
-      frame.position.set(tile.x, tile.y);
+      const frame = this.drawHexOutline(tile, {
+        stroke: 0xff3333,
+        strokeAlpha: 0.95,
+        strokeWidth: 4,
+      });
       this.highlightContainer.addChild(frame);
     }
   }
