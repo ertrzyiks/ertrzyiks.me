@@ -103,10 +103,10 @@ export function gameReducer(state: State, action: GameEvent) {
       }
 
       if (isMovable(action.unit)) action.unit.step(1);
-      const moveRange = isSightful(action.unit) ? action.unit.sightRange : 0;
+      const sightRadius = isSightful(action.unit) ? action.unit.sightRange : 0;
       const revealedAfterMove =
-        movingUnit && moveRange > 0
-          ? revealAround(state, movingUnit.owner, action.position, moveRange)
+        movingUnit && sightRadius > 0
+          ? revealAround(state, movingUnit.owner, action.position, sightRadius)
           : state.revealedTiles;
       return {
         ...state,
