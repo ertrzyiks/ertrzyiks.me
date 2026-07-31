@@ -23,22 +23,22 @@ import type { NamedSprite } from "./atlas";
 const NATIVE = 32;
 const SCALE = 3;
 
-type Test = (x: number, y: number) => boolean;
+type PixelPredicate = (x: number, y: number) => boolean;
 interface Layer {
-  test: Test;
+  test: PixelPredicate;
   key: string;
 }
 
-const rect = (x0: number, y0: number, w: number, h: number): Test => (x, y) =>
+const rect = (x0: number, y0: number, w: number, h: number): PixelPredicate => (x, y) =>
   x >= x0 && x < x0 + w && y >= y0 && y < y0 + h;
 
-const circle = (cx: number, cy: number, r: number): Test => (x, y) =>
+const circle = (cx: number, cy: number, r: number): PixelPredicate => (x, y) =>
   (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r;
 
-const points = (pts: [number, number][], size = 1): Test => (x, y) =>
+const points = (pts: [number, number][], size = 1): PixelPredicate => (x, y) =>
   pts.some(([px, py]) => Math.abs(px - x) < size && Math.abs(py - y) < size);
 
-const and = (a: Test, b: Test): Test => (x, y) => a(x, y) && b(x, y);
+const and = (a: PixelPredicate, b: PixelPredicate): PixelPredicate => (x, y) => a(x, y) && b(x, y);
 
 // Expands the silhouette by 1 native px into a dark outline — the standard
 // low-res pixel-art readability trick.

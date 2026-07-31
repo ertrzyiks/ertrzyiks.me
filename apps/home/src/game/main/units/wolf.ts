@@ -6,7 +6,7 @@ import { Renderable } from '../../shared/renderable'
 // See specs/09-stage-1.md. Wolf damage is not fixed by the specs; values are
 // chosen below the bandits' 8 so wolves read as the weaker early threat.
 // Leader/Follower share the same "wolf" sprite — the AI-role distinction
-// between them isn't visual (see ADR-0005's referring map notes).
+// between them isn't visual (see assets_gen/unit_sprites.ts's UNIT_ROSTER).
 export const PackLeader = Leader(Renderable(Sightful(Movable(Damaging(Damageable(Unit, 20), 7), 2), 2), "wolf"))
 
 // Pack Follower: the standard forest wolf (15 HP, sight 1, bite 5). Trails the leader.
