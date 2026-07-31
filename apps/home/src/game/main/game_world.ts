@@ -18,6 +18,8 @@ import { createStage1Narrative } from "./narrative/stage1";
 import { DialogBox } from "../shared/dialog_box";
 import { CompletionScreen } from "../shared/completion_screen";
 import type { StageDefinition } from "./stages/stage";
+import type { Unit } from "../core/units/unit";
+import type { Direction } from "../core/direction";
 
 // How long the attack-target frame is visible before an auto-attack's damage
 // actually applies (ADR-0004) — long enough for the player to register which
@@ -419,33 +421,51 @@ export class MainWorld extends GameWorld {
 
     if (unitOnTile) {
       if (unitOnTile.owner.id === "human") {
-        this.selectedUnit = unitOnTile;
-        this.updateHighlights();
+        this.selectFriendlyUnit(unitOnTile);
         return;
       }
 
-      // Enemy/NPC unit clicked: attack only if it is a legal target for the
-      // selected unit's remaining attack charge — validAttackTargets applies
-      // the same adjacency + Damageable + charge checks the reducer enforces
-      // (spec 03 "Click on an Enemy Unit").
-      if (this.selectedUnit) {
-        const targets = validAttackTargets(this.selectedUnit.unit, this.selectedUnit.position, "human", state);
-        if (targets.some(t => cubeKey(t) === cubeKey(unitOnTile.position))) {
-          this.scenario.attackUnit(this.selectedUnit.unit, unitOnTile.position);
-          // Redraw: the target may have died (its frame should disappear) or
-          // the remaining eligible targets may have changed — the highlight
-          // must reflect the post-attack state, not linger from selection
-          // time (spec 03 "Visual Feedback").
-          this.updateHighlights();
-        }
-      }
+      this.handleManualAttack(unitOnTile, state);
       return;
     }
 
-    // Move the selected unit — possibly several steps in one click, to any
-    // hex within its full remaining budget, not just an adjacent one
-    // (ADR-0003, superseding spec 03's original "no multi-step pathfinding"
-    // scope note).
+    await this.handleMoveClick(tile, state);
+  }
+
+  // Clicking one of the human player's own units selects it, refreshing the
+  // move-range/attack-target highlights to reflect its budget from where it
+  // now stands.
+  protected selectFriendlyUnit(unit: UnitPosition) {
+    this.selectedUnit = unit;
+    this.updateHighlights();
+  }
+
+  // Enemy/NPC unit clicked: attack only if it is a legal target for the
+  // selected unit's remaining attack charge — validAttackTargets applies
+  // the same adjacency + Damageable + charge checks the reducer enforces
+  // (spec 03 "Click on an Enemy Unit").
+  protected handleManualAttack(target: UnitPosition, state: State) {
+    if (!this.selectedUnit) {
+      return;
+    }
+
+    const targets = validAttackTargets(this.selectedUnit.unit, this.selectedUnit.position, "human", state);
+    if (targets.some(t => cubeKey(t) === cubeKey(target.position))) {
+      this.scenario.attackUnit(this.selectedUnit.unit, target.position);
+      // Redraw: the target may have died (its frame should disappear) or
+      // the remaining eligible targets may have changed — the highlight
+      // must reflect the post-attack state, not linger from selection
+      // time (spec 03 "Visual Feedback").
+      this.updateHighlights();
+    }
+  }
+
+  // Move the selected unit — possibly several steps in one click, to any
+  // hex within its full remaining budget, not just an adjacent one
+  // (ADR-0003, superseding spec 03's original "no multi-step pathfinding"
+  // scope note) — then resolve any auto-attack (ADR-0004) and reselect for
+  // the player's next click.
+  protected async handleMoveClick(tile: Tileable, state: State) {
     if (!this.selectedUnit) {
       return;
     }
@@ -462,6 +482,30 @@ export class MainWorld extends GameWorld {
     const movedUnitId = this.selectedUnit.unit.id;
     const unit = this.selectedUnit.unit;
 
+    const moveOutcome = await this.executeMovePath(unit, path);
+    if (moveOutcome !== "completed") {
+      // Torn down mid-wait, or a narrative dialog opened (or the stage
+      // ended) partway through — don't keep walking the rest of the
+      // precomputed path underneath it, and nothing below is safe/relevant
+      // to run either.
+      return;
+    }
+
+    const shouldReselectAfterMove = await this.resolveAutoAttack(movedUnitId);
+    if (!shouldReselectAfterMove) {
+      return;
+    }
+
+    this.reselectAfterMove(movedUnitId);
+  }
+
+  // Walks `unit` one step at a time along `path`, awaiting each step's move
+  // animation before dispatching the next (ADR-0003). Returns "completed"
+  // once every step has landed, or "aborted" if this instance was torn down
+  // mid-wait (issue #175) or the human turn ended (dialog/turn change)
+  // partway through — either way the caller must not treat the move as
+  // having finished normally.
+  protected async executeMovePath(unit: Unit, path: Direction[]): Promise<"completed" | "aborted"> {
     this.isAutoPathing = true;
     try {
       for (const direction of path) {
@@ -471,59 +515,73 @@ export class MainWorld extends GameWorld {
           // This instance was torn down mid-wait (e.g. StageManager already
           // swapped in the next stage's MainWorld — issue #175) — nothing
           // below is safe to touch on a destroyed Pixi Container tree.
-          return;
+          return "aborted";
         }
         if (!this.isPlayerTurn || this.dialogActive) {
           // A narrative dialog opened (or the stage ended) partway through —
           // don't keep walking the rest of the precomputed path underneath it.
-          return;
+          return "aborted";
         }
       }
     } finally {
       this.isAutoPathing = false;
     }
+    return "completed";
+  }
 
-    // Auto-attack (ADR-0004): landing adjacent to exactly one eligible enemy
-    // always attacks it — there's no way to end a move next to an
-    // unambiguous target without attacking. With 2+ eligible enemies the
-    // choice is genuinely ambiguous, so this doesn't auto-resolve; it keeps
-    // this unit selected (regardless of remaining movement budget) and
-    // highlighted so the player's next click — on one of the highlighted
-    // enemies — resolves it via the existing manual click-to-attack path
-    // above.
+  // Auto-attack (ADR-0004): landing adjacent to exactly one eligible enemy
+  // always attacks it — there's no way to end a move next to an
+  // unambiguous target without attacking. With 2+ eligible enemies the
+  // choice is genuinely ambiguous, so this doesn't auto-resolve; it keeps
+  // this unit selected (regardless of remaining movement budget) and
+  // highlighted so the player's next click — on one of the highlighted
+  // enemies — resolves it via the manual click-to-attack path
+  // (handleManualAttack).
+  //
+  // Returns false when the caller must stop right after this (ambiguous
+  // targets left selected, or torn down mid-delay); true when it's safe to
+  // continue on to the normal post-move reselection.
+  protected async resolveAutoAttack(movedUnitId: number): Promise<boolean> {
     const postMoveState = this.game.world.getState();
     const moved = this.findUnitById(postMoveState, movedUnitId);
-    if (moved) {
-      const targets = validAttackTargets(moved.unit, moved.position, "human", postMoveState);
-      if (targets.length === 1) {
-        this.selectedUnit = moved;
-        this.updateHighlights(); // shows the attack-target frame before damage lands
-        this.isAwaitingAutoAttackHighlight = true;
-        try {
-          await this.delay(ATTACK_HIGHLIGHT_DELAY_MS);
-        } finally {
-          this.isAwaitingAutoAttackHighlight = false;
-        }
-        if (this.isDestroyed) {
-          // Torn down while the highlight delay was in flight (issue #175) —
-          // the reducer/scenario are still safe to call (they're plain
-          // objects, not Pixi), but there's no world left to reflect the
-          // result in, and nothing later in this method is safe to run.
-          return;
-        }
-        this.scenario.attackUnit(moved.unit, targets[0]);
-      } else if (targets.length > 1) {
-        this.selectedUnit = moved;
-        this.updateHighlights();
-        return;
-      }
+    if (!moved) {
+      return true;
     }
 
-    // After moving (and any auto-attack), keep the same unit selected if it
-    // still has movement budget (so the player can spend further remaining
-    // budget); otherwise fall back to the next unit that has not moved yet.
-    // The turn no longer ends on its own — the player ends it explicitly via
-    // the End Turn button (spec 03).
+    const targets = validAttackTargets(moved.unit, moved.position, "human", postMoveState);
+    if (targets.length === 1) {
+      this.selectedUnit = moved;
+      this.updateHighlights(); // shows the attack-target frame before damage lands
+      this.isAwaitingAutoAttackHighlight = true;
+      try {
+        await this.delay(ATTACK_HIGHLIGHT_DELAY_MS);
+      } finally {
+        this.isAwaitingAutoAttackHighlight = false;
+      }
+      if (this.isDestroyed) {
+        // Torn down while the highlight delay was in flight (issue #175) —
+        // the reducer/scenario are still safe to call (they're plain
+        // objects, not Pixi), but there's no world left to reflect the
+        // result in, and nothing later is safe to run.
+        return false;
+      }
+      this.scenario.attackUnit(moved.unit, targets[0]);
+      return true;
+    } else if (targets.length > 1) {
+      this.selectedUnit = moved;
+      this.updateHighlights();
+      return false;
+    }
+
+    return true;
+  }
+
+  // After moving (and any auto-attack), keep the same unit selected if it
+  // still has movement budget (so the player can spend further remaining
+  // budget); otherwise fall back to the next unit that has not moved yet.
+  // The turn no longer ends on its own — the player ends it explicitly via
+  // the End Turn button (spec 03).
+  protected reselectAfterMove(movedUnitId: number) {
     const finalState = this.game.world.getState();
     const finalUnit = this.findUnitById(finalState, movedUnitId);
     const range = finalUnit ? moveRange(finalUnit.unit, finalUnit.position, finalState) : [];
