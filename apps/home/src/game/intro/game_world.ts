@@ -76,6 +76,15 @@ export class IntroWorld extends GameWorld {
     return sprite;
   }
 
+  // Fog-of-war (base GameWorld's renderFog/updateFog) is a real-gameplay
+  // mechanic keyed on a unit's sight range — the intro's Ship has none (it's
+  // a scripted cinematic, not a player unit with hidden information to
+  // reveal), so every fog tile would otherwise stay permanently visible at
+  // its full 85% black opacity for the whole scene. Skip building fog tiles
+  // at all; updateFog() is then naturally a no-op against an empty
+  // fogTiles map.
+  protected renderFog() {}
+
   private fadeOut() {
     let state = { alpha: 1 };
     return new TWEEN.Tween(state, true)
