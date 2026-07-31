@@ -83,7 +83,12 @@ export class GridSpreadAnimation {
   }
 
   createTween(_: number) {
-    return new Tween(this.state).easing(Easing.Sinusoidal.InOut);
+    // `true` restores tween.js v25's default-group auto-add (see
+    // game_loader.ts's ticker: `TWEEN.update()` only drives tweens in that
+    // group) — without it this tween is never updated, so the intro's
+    // grid-spread reveal (and everything chained off its onComplete:
+    // scenario.start(), the "finish" event) never advances at all.
+    return new Tween(this.state, true).easing(Easing.Sinusoidal.InOut);
   }
 
   handleUpdate() {
