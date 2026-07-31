@@ -47,6 +47,15 @@ export class MainWorld extends GameWorld {
   // while handleTileClick's loop is still awaiting the next one.
   protected isAutoPathing = false;
 
+  // True while the pre-damage attack-highlight delay (ADR-0004,
+  // ATTACK_HIGHLIGHT_DELAY_MS) is in flight after a move auto-attacked an
+  // unambiguous target. Deliberately a separate flag from isAutoPathing
+  // (already false by this point — that one covers only the move loop
+  // itself): canAcceptInput() must also block input here, since
+  // attackUnit()'s dispatch is still pending and a re-entrant click could
+  // select/move a second unit concurrently with it (issue #178).
+  protected isAwaitingAutoAttackHighlight = false;
+
   // World-space layer for the selected unit's valid-move highlights (spec 03).
   // Lives in the viewport so highlights pan/zoom with the board.
   protected highlightContainer: Container = new Container();
@@ -341,7 +350,8 @@ export class MainWorld extends GameWorld {
       this.isPlayerTurn &&
       !this.dialogActive &&
       !this.isUnitMoving &&
-      !this.isAutoPathing
+      !this.isAutoPathing &&
+      !this.isAwaitingAutoAttackHighlight
     );
   }
 
@@ -488,7 +498,12 @@ export class MainWorld extends GameWorld {
       if (targets.length === 1) {
         this.selectedUnit = moved;
         this.updateHighlights(); // shows the attack-target frame before damage lands
-        await this.delay(ATTACK_HIGHLIGHT_DELAY_MS);
+        this.isAwaitingAutoAttackHighlight = true;
+        try {
+          await this.delay(ATTACK_HIGHLIGHT_DELAY_MS);
+        } finally {
+          this.isAwaitingAutoAttackHighlight = false;
+        }
         if (this.isDestroyed) {
           // Torn down while the highlight delay was in flight (issue #175) —
           // the reducer/scenario are still safe to call (they're plain
