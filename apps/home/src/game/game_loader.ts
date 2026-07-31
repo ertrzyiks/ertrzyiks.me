@@ -77,10 +77,20 @@ function close() {
   app.canvas.style.display = "none";
   // app.loader.reset();
 
+  // No `texture`/`textureSource` here: board/units/intro sprites read from
+  // the shared, Assets-managed atlases `preload()` loads once per page
+  // session (aliased "board1"/"units"/"intro") — destroying a
+  // TextureSource that way (rather than via Assets.unload()) leaves
+  // Assets' own cache still pointing at the now-destroyed GPU resource, so
+  // every future preload() on this page (reinitialize() below always
+  // triggers one) resolves to a broken texture instead of reloading it.
+  // That's a permanent, session-wide break, not just this viewport's —
+  // matches the same reasoning main/stage_manager.ts's teardown already
+  // documents for the exact same class of shared atlas.
   while (app.stage.children[0]) {
     const child = app.stage.children[0] as GameViewport;
     app.stage.removeChild(child);
-    child.destroy({ children: true, texture: true, textureSource: true });
+    child.destroy({ children: true });
   }
 
   reinitialize();
