@@ -1,0 +1,90 @@
+diff --git a/lib/scene/container/RenderGroup.js b/lib/scene/container/RenderGroup.js
+index 0b71077811b681a7909138189f0d6d757b4903b2..cecb4c1bf53cfe78c5e568b66568f0e34fd0ade3 100644
+--- a/lib/scene/container/RenderGroup.js
++++ b/lib/scene/container/RenderGroup.js
+@@ -156,7 +156,9 @@ class RenderGroup {
+   }
+   updateRenderable(renderable) {
+     if (renderable.globalDisplayStatus < 7) return;
+-    this.instructionSet.renderPipes[renderable.renderPipeId].updateRenderable(renderable);
++    const pipe = this.instructionSet.renderPipes[renderable.renderPipeId];
++    if (!pipe) return;
++    pipe.updateRenderable(renderable);
+     renderable.didViewUpdate = false;
+   }
+   onChildViewUpdate(child) {
+diff --git a/lib/scene/container/RenderGroup.mjs b/lib/scene/container/RenderGroup.mjs
+index 8f8fb74b9deec90289c6b7f93472b344f406c66a..147c1e213a979c972e9a642f4edaace22a6b4303 100644
+--- a/lib/scene/container/RenderGroup.mjs
++++ b/lib/scene/container/RenderGroup.mjs
+@@ -154,7 +154,9 @@ class RenderGroup {
+   }
+   updateRenderable(renderable) {
+     if (renderable.globalDisplayStatus < 7) return;
+-    this.instructionSet.renderPipes[renderable.renderPipeId].updateRenderable(renderable);
++    const pipe = this.instructionSet.renderPipes[renderable.renderPipeId];
++    if (!pipe) return;
++    pipe.updateRenderable(renderable);
+     renderable.didViewUpdate = false;
+   }
+   onChildViewUpdate(child) {
+diff --git a/lib/scene/container/RenderGroupSystem.js b/lib/scene/container/RenderGroupSystem.js
+index f8e45fe9c0024e8a542a29b293f215d819f7b582..554a806119d201df9eaeb82596081a3001f74f34 100644
+--- a/lib/scene/container/RenderGroupSystem.js
++++ b/lib/scene/container/RenderGroupSystem.js
+@@ -118,6 +118,7 @@ class RenderGroupSystem {
+     const { list, index } = renderGroup.childrenRenderablesToUpdate;
+     for (let i = 0; i < index; i++) {
+       const container = list[i];
++      if (!container) continue;
+       if (container.didViewUpdate) {
+         renderGroup.updateRenderable(container);
+       }
+diff --git a/lib/scene/container/RenderGroupSystem.mjs b/lib/scene/container/RenderGroupSystem.mjs
+index 03b8218cef97b82e0f67d6f9213f74d3d8577c3c..344ad845927df13bce8ef6408e36b6f9a66053dc 100644
+--- a/lib/scene/container/RenderGroupSystem.mjs
++++ b/lib/scene/container/RenderGroupSystem.mjs
+@@ -116,6 +116,7 @@ class RenderGroupSystem {
+     const { list, index } = renderGroup.childrenRenderablesToUpdate;
+     for (let i = 0; i < index; i++) {
+       const container = list[i];
++      if (!container) continue;
+       if (container.didViewUpdate) {
+         renderGroup.updateRenderable(container);
+       }
+diff --git a/lib/scene/container/utils/validateRenderables.js b/lib/scene/container/utils/validateRenderables.js
+index a0fdb63b3d9550c12fb6d43d9a94fcd52f3af1f6..194371d84623cbccbceb4f5c457814dc0b4e4752 100644
+--- a/lib/scene/container/utils/validateRenderables.js
++++ b/lib/scene/container/utils/validateRenderables.js
+@@ -6,8 +6,13 @@ function validateRenderables(renderGroup, renderPipes) {
+   let rebuildRequired = false;
+   for (let i = 0; i < renderGroup.childrenRenderablesToUpdate.index; i++) {
+     const container = list[i];
++    if (!container) continue;
+     const renderable = container;
+     const pipe = renderPipes[renderable.renderPipeId];
++    if (!pipe) {
++      rebuildRequired = true;
++      break;
++    }
+     rebuildRequired = pipe.validateRenderable(container);
+     if (rebuildRequired) {
+       break;
+diff --git a/lib/scene/container/utils/validateRenderables.mjs b/lib/scene/container/utils/validateRenderables.mjs
+index ed544d30759783459da76a0d537b1aa587783e34..1a157d762e1e720e262fcc26f78c8e21cb371342 100644
+--- a/lib/scene/container/utils/validateRenderables.mjs
++++ b/lib/scene/container/utils/validateRenderables.mjs
+@@ -4,8 +4,13 @@ function validateRenderables(renderGroup, renderPipes) {
+   let rebuildRequired = false;
+   for (let i = 0; i < renderGroup.childrenRenderablesToUpdate.index; i++) {
+     const container = list[i];
++    if (!container) continue;
+     const renderable = container;
+     const pipe = renderPipes[renderable.renderPipeId];
++    if (!pipe) {
++      rebuildRequired = true;
++      break;
++    }
+     rebuildRequired = pipe.validateRenderable(container);
+     if (rebuildRequired) {
+       break;
