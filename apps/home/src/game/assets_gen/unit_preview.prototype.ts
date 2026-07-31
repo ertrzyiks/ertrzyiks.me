@@ -165,22 +165,26 @@ const wolf = () =>
     },
     [
       // side-profile quadruped: body barrel, head + snout to the right,
-      // four legs, tail to the left.
-      { test: rect(9, 15, 18, 8), key: "fur" },
-      { test: rect(9, 20, 18, 3), key: "belly" },
-      { test: points([[6,13],[7,14],[8,15]], 1), key: "furShade" },
-      { test: rect(6, 12, 4, 4), key: "fur" }, // tail base
+      // four legs, tail to the left. Kept inside x=[3,27] — the hex tint
+      // background is only full-width at mid-height and tapers to half
+      // that at top/bottom, so a quadruped this tall+wide has to stay
+      // narrower than its bounding box would suggest to avoid poking out
+      // past the hex silhouette (see #190 review feedback).
+      { test: rect(7, 15, 16, 8), key: "fur" },
+      { test: rect(7, 20, 16, 3), key: "belly" },
+      { test: points([[3,13],[4,14],[5,15]], 1), key: "furShade" },
+      { test: rect(3, 12, 4, 4), key: "fur" }, // tail base
       // legs
-      { test: rect(10, 22, 3, 6), key: "furShade" },
-      { test: rect(16, 22, 3, 6), key: "furShade" },
-      { test: rect(22, 22, 3, 6), key: "fur" },
-      { test: rect(26, 22, 3, 6), key: "fur" },
+      { test: rect(8, 22, 3, 6), key: "furShade" },
+      { test: rect(13, 22, 3, 6), key: "furShade" },
+      { test: rect(18, 22, 3, 6), key: "fur" },
+      { test: rect(21, 22, 3, 6), key: "fur" },
       // head + snout
-      { test: circle(26, 13, 5), key: "fur" },
-      { test: rect(29, 14, 5, 3), key: "fur" }, // snout
-      { test: rect(32, 15, 1, 1), key: "nose" },
-      { test: rect(28, 8, 3, 4), key: "furShade" }, // ear
-      { test: rect(27, 12, 1, 1), key: "eye" },
+      { test: circle(21, 13, 4), key: "fur" },
+      { test: rect(23, 14, 4, 3), key: "fur" }, // snout
+      { test: rect(26, 15, 1, 1), key: "nose" },
+      { test: rect(21, 9, 2, 3), key: "furShade" }, // ear
+      { test: rect(22, 12, 1, 1), key: "eye" },
     ],
   );
 
