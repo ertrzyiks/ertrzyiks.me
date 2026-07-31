@@ -4,7 +4,7 @@ import { Scenario } from "./scenario";
 import { createStage1Definition } from "./stages/stage1";
 import type { EventSystem, Spritesheet } from "pixi.js";
 import { Text, Container, Graphics, Rectangle, EventEmitter } from "pixi.js";
-import TWEEN from "@tweenjs/tween.js";
+import TWEEN, { type Tween } from "@tweenjs/tween.js";
 import { pointToCube } from "../core/grid/helpers";
 import { cubeKey } from "../core/grid";
 import { moveRange, pathTo, validAttackTargets } from "../core/player/movement";
@@ -67,7 +67,7 @@ export class MainWorld extends GameWorld {
   protected endTurnButton: Container | null = null;
 
   protected turnIndicatorContainer: Container | null = null;
-  protected turnIndicatorTween: TWEEN.Tween | null = null;
+  protected turnIndicatorTween: Tween | null = null;
 
   // Narrative: the engine (pure) decides which beats fire; MainWorld presents
   // them as modal dialogs. While a dialog is open the whole world observable is
@@ -313,14 +313,14 @@ export class MainWorld extends GameWorld {
     this.turnIndicatorContainer.alpha = 0;
 
     // Fade in
-    this.turnIndicatorTween = new TWEEN.Tween(state)
+    this.turnIndicatorTween = new TWEEN.Tween(state, true)
       .to({ alpha: 1 }, 300)
       .onUpdate(() => {
         this.turnIndicatorContainer!.alpha = state.alpha;
       })
       .onComplete(() => {
         // Stay visible for 2.4 seconds, then fade out
-        this.turnIndicatorTween = new TWEEN.Tween(state)
+        this.turnIndicatorTween = new TWEEN.Tween(state, true)
           .to({ alpha: 0 }, 300)
           .delay(2400)
           .onUpdate(() => {

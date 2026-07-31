@@ -74,7 +74,7 @@ export class IntroWorld extends GameWorld {
 
   private fadeOut() {
     let state = { alpha: 1 };
-    return new TWEEN.Tween(state)
+    return new TWEEN.Tween(state, true)
       .to({ alpha: 0 }, 100)
       .onUpdate(() => {
         this.alpha = state.alpha;
