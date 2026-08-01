@@ -20,8 +20,9 @@ import { moveSucceeded } from "../core/player/movement";
 import { TerrainTiles } from "./terrain_tiles";
 import type { ObservableSubscriptionDone } from "./observable";
 import { type GameEvent } from "../core";
-import type { Unit } from "../core/units";
+import { isDamageable, type Unit } from "../core/units";
 import type { IRenderable } from "./renderable/renderable";
+import { drawHealthBar, HEALTH_BAR_HEIGHT } from "./health_bar";
 
 // Duck-typed rather than a static `Unit & IRenderable` param type: not every
 // `Unit` is guaranteed Renderable — e.g. main/harness/interaction_harness.ts's
@@ -34,6 +35,10 @@ function isRenderable(unit: Unit): unit is Unit & IRenderable {
 
 const FOG_HEX_SIZE = 50;
 const FOG_HEX_Y_OFFSET = 4;
+
+// Above the unit's hex background (its top edge sits around y = -46, see
+// createHexPoints' size/yOffset), clear of the sprite itself.
+const HEALTH_BAR_Y_OFFSET = -60;
 
 function buildFogGraphic(): Graphics {
   const g = new Graphics();
@@ -70,6 +75,7 @@ export class GameWorld extends Container {
   protected tickerFunction = () => this.cull();
   protected terrainTiles: TerrainTiles<Tile> = new TerrainTiles();
   protected unitSprites: Map<number, Container> = new Map();
+  protected healthBars: Map<number, Graphics> = new Map();
   protected fogTiles: Map<string, Graphics> = new Map();
   protected unitContainer: Container = new Container();
   protected fogContainer: Container = new Container();
@@ -170,6 +176,18 @@ export class GameWorld extends Container {
             unitContainer.addChild(unitSprite);
           }
 
+          // Layer 3: health bar (issue #220) — only for units that can take
+          // damage. Reads 0/maxHp (all red, empty) until the owner's first
+          // StartTurn replenishes hp, matching every other per-turn budget
+          // (movement, attack charges) starting empty on spawn.
+          if (isDamageable(action.unit)) {
+            const healthBar = new Graphics();
+            healthBar.position.set(0, HEALTH_BAR_Y_OFFSET);
+            drawHealthBar(healthBar, action.unit.currentHp() / action.unit.maxHp());
+            unitContainer.addChild(healthBar);
+            this.healthBars.set(action.unit.id, healthBar);
+          }
+
           this.unitSprites.set(action.unit.id, unitContainer);
           this.unitContainer.addChild(unitContainer);
         }
@@ -219,6 +237,15 @@ export class GameWorld extends Container {
             sprite.destroy();
             this.unitSprites.delete(action.target.id);
           }
+          this.healthBars.delete(action.target.id);
+        } else if (isDamageable(action.target)) {
+          // Still alive: redraw the health bar to reflect the new HP
+          // (issue #220) — the reducer already applied takeDamage before
+          // this subscriber runs, so action.target.currentHp() is current.
+          const healthBar = this.healthBars.get(action.target.id);
+          if (healthBar) {
+            drawHealthBar(healthBar, action.target.currentHp() / action.target.maxHp());
+          }
         }
         done();
         break;
@@ -242,6 +269,7 @@ export class GameWorld extends Container {
           sprite.destroy();
         });
         this.unitSprites.clear();
+        this.healthBars.clear();
         this.updateFog(state);
         done();
         break;

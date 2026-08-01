@@ -23,3 +23,4 @@ These specifications cover the behavioral contracts of all game systems. Impleme
 | 09-stage-1.md | Stage 1 "The Wreck" — beach to village through wolf forest |
 | 10-stage-2.md | Stage 2 "The Gate" — village entrance blocked by bandits |
 | 11-stage-3.md | Stage 3 "Let's Be Reasonable" — bandit camp negotiation |
+| 12-unit-health-display.md | Health indicator above each unit's sprite, color-coded by remaining HP |
