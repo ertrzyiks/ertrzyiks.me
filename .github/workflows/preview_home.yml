@@ -1,0 +1,113 @@
+name: Preview Home
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+
+concurrency:
+  group: home-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deploy_preview:
+    name: Deploy Home Preview
+    if: |
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (
+        (github.event.action == 'labeled' && github.event.label.name == 'preview') ||
+        (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'preview'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    env:
+      DOKKU_APP: home-pr-${{ github.event.pull_request.number }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 8.15.9
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v6.1.0
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm build
+        working-directory: ./apps/home
+
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+      - run: echo '167.71.190.115 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEYg+BGxM8IdEoQ8fx7aDoclC0eNXSpI6l/QkLRMF/cvjJcSCk4kz/4LEkSU8eXFawp8IX/yNOyV11sJZtCVBCs=' >> ~/.ssh/known_hosts
+
+      - name: Push to Dokku
+        working-directory: ./apps/home/dist
+        run: |
+          touch .static
+          git init
+          git config --global user.email "deploy-bot@ertrzyiks.me"
+          git config --global user.name "Deploy Bot"
+          git remote add dokku dokku@167.71.190.115:${{ env.DOKKU_APP }}
+          git add .
+          git commit -m 'Update'
+          git push dokku HEAD:master --force
+
+      - name: Get preview URL
+        id: url
+        run: |
+          URL=$(ssh dokku@167.71.190.115 url ${{ env.DOKKU_APP }})
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const url = `${{ steps.url.outputs.url }}`
+            const marker = '<!-- home-preview-comment -->'
+            const body = `${marker}\n🔍 Preview deployed: ${url}`
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const existing = comments.find(c => c.body.includes(marker))
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
