@@ -26,8 +26,9 @@ The player input system translates a human player's hex-click gestures into game
 ### Click on an Enemy Unit
 
 - The player clicks a hex occupied by an enemy unit.
-- If the enemy is adjacent to the player's unit and the player's unit has not yet used its attack action this turn, an attack is initiated.
-- If the enemy is not adjacent, no action is taken.
+- If the enemy is adjacent to the player's unit and the player's unit has not yet used its attack action this turn, an attack is initiated immediately.
+- If the enemy is not adjacent, but a hex adjacent to it lies within the player's unit's move range (reachable this turn, not just the adjacent ring) and the unit has not yet used its attack action, the unit auto-paths to the nearest such hex (fewest steps; ties resolved by move-range's own discovery order) and then attacks the clicked enemy — mirroring Click on an Empty Hex's auto-path, but ending in an attack against the exact enemy clicked rather than wherever eligible targets happen to be after the move.
+- If no such hex exists — the enemy is out of reach this turn, or every hex adjacent to it is occupied — no action is taken.
 
 ### Auto-Attack on Move
 
@@ -61,6 +62,8 @@ The player input system translates a human player's hex-click gestures into game
 - Clicking a hex within the unit's move range but not adjacent auto-paths the unit there in one click.
 - Clicking a hex outside the unit's move range does not move the unit.
 - Clicking an adjacent enemy initiates combat (if attack not yet used).
+- Clicking a non-adjacent enemy that the unit can still reach and attack this turn auto-paths next to it and attacks it in the same click.
+- Clicking a non-adjacent enemy the unit cannot reach this turn has no effect.
 - A move that lands next to exactly one eligible enemy attacks it automatically.
 - A move that lands next to two or more eligible enemies does not auto-attack; a follow-up click on one of them does.
 - Clicking during enemy turn has no effect.
