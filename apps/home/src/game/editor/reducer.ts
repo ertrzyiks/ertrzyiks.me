@@ -14,12 +14,14 @@ function stateFromBoard(board: Board) {
     return acc;
   }, [] as GridElement<typeof grid>[]);
 
-  const { worldWidth, worldHeight } = getGridBoundingBox(grid);
+  const { worldWidth, worldHeight, minX, minY } = getGridBoundingBox(grid);
 
   return {
     tiles,
     worldWidth,
     worldHeight,
+    minX,
+    minY,
     // `board.rows`/`board.cols` were never round-tripped into State here —
     // harmless while nothing read state.rows/state.cols back (the old dead
     // EditorWorld tracked its own rows/columns separately in its GUI data),

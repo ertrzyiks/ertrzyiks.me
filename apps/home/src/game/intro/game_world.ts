@@ -28,12 +28,14 @@ export class IntroWorld extends GameWorld {
   }
 
   setup(point: Point) {
-    // Convert screen coordinates to viewport-relative coordinates
-    const localPoint = this.viewport.toLocal(new Point(point.x, point.y));
+    // Convert screen coordinates to worldContainer-relative coordinates —
+    // tiles live in worldContainer's (shifted) frame, not viewport's own
+    // (see shared/game_world.ts's constructor comment).
+    const localPoint = this.worldContainer.toLocal(new Point(point.x, point.y));
 
     // Find the tile that contains this point
     let clickedTile: Tileable | null = null;
-    for (const tile of this.viewport.children) {
+    for (const tile of this.worldContainer.children) {
       if (tile instanceof Tileable) {
         const bounds = tile.getBounds();
         if (bounds.containsPoint(localPoint.x, localPoint.y)) {

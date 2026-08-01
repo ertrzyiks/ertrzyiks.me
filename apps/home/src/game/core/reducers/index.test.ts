@@ -24,6 +24,8 @@ function makeState(overrides: Partial<State> = {}): State {
     outcome: null,
     worldWidth: 300,
     worldHeight: 200,
+    minX: 0,
+    minY: 0,
     cols: 5,
     rows: 5,
     ...overrides,
