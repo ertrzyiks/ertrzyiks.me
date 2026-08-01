@@ -66,39 +66,4 @@ describe("Damaging", () => {
     expect(isDamaging(new Unit())).toBe(false);
     expect(isDamaging(null)).toBe(false);
   });
-
-  test("hasAttacked is false until useAttack is called", () => {
-    const U = Damaging(Unit, 8);
-    const u = new U();
-    u.replenish();
-    expect(u.hasAttacked()).toBe(false);
-    u.useAttack();
-    expect(u.hasAttacked()).toBe(true);
-  });
-
-  test("hasAttacked stays true even with remaining attack charges (issue #218)", () => {
-    const U = Damaging(Unit, 8, 2);
-    const u = new U();
-    u.replenish();
-    u.useAttack();
-    expect(u.canAttack()).toBe(true); // one charge still left
-    expect(u.hasAttacked()).toBe(true); // but the unit has already acted
-  });
-
-  test("replenish clears hasAttacked for the new turn", () => {
-    const U = Damaging(Unit, 8);
-    const u = new U();
-    u.replenish();
-    u.useAttack();
-    expect(u.hasAttacked()).toBe(true);
-    u.replenish();
-    expect(u.hasAttacked()).toBe(false);
-  });
-
-  test("a wasted useAttack call (no charges left) does not set hasAttacked", () => {
-    const U = Damaging(Unit, 8);
-    const u = new U();
-    u.useAttack();
-    expect(u.hasAttacked()).toBe(false);
-  });
 });

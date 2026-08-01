@@ -105,13 +105,12 @@ export function gameReducer(state: State, action: GameEvent) {
       // rejected move never spends a movement point. See specs/02-movement-system.md.
       //
       // Zero-budget: a movable unit with no remaining budget cannot move.
+      // This also covers "already attacked this turn" (specs/04-combat-system.md
+      // "Attack is always a unit's last action") — TakeDamage drains the
+      // attacker's own movement budget to 0, so canMove() here is the single
+      // check both cases share, and the move-range UI highlight (which reads
+      // the same canMove()) goes empty right along with it.
       if (isMovable(action.unit) && !action.unit.canMove()) {
-        return state;
-      }
-      // Attack-locks-movement: attack is always a unit's last action for the
-      // turn (specs/04-combat-system.md) — once it has attacked, it cannot
-      // move again until its next replenish, regardless of leftover budget.
-      if (isDamaging(action.unit) && action.unit.hasAttacked()) {
         return state;
       }
       // Occupied-tile: a hex already held by ANOTHER unit is an invalid
@@ -152,6 +151,14 @@ export function gameReducer(state: State, action: GameEvent) {
       // spawned but not yet replenished, which read as 0 HP) are left untouched.
       // See specs/04-combat-system.md.
       if (isDamaging(action.inflictor)) action.inflictor.useAttack();
+      // Attack is always a unit's last action for the turn: drain any
+      // movement budget the attacker has left, rather than tracking a
+      // separate "has attacked" flag. This keeps canMove() the single
+      // source of truth the Move case above (and the move-range UI
+      // highlight, which reads the same canMove()) both rely on.
+      if (isMovable(action.inflictor)) {
+        action.inflictor.step(action.inflictor.remainingBudget());
+      }
       if (isDamageable(action.target)) action.target.takeDamage(action.damage);
 
       const targetDead =
