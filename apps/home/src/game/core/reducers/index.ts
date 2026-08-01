@@ -108,6 +108,12 @@ export function gameReducer(state: State, action: GameEvent) {
       if (isMovable(action.unit) && !action.unit.canMove()) {
         return state;
       }
+      // Attack-locks-movement: attack is always a unit's last action for the
+      // turn (specs/04-combat-system.md) — once it has attacked, it cannot
+      // move again until its next replenish, regardless of leftover budget.
+      if (isDamaging(action.unit) && action.unit.hasAttacked()) {
+        return state;
+      }
       // Occupied-tile: a hex already held by ANOTHER unit is an invalid
       // destination. (Bounds and adjacency are enforced by the callers, which
       // have the tile/click context the reducer lacks — the reducer enforces

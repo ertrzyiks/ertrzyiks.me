@@ -15,6 +15,7 @@ export interface IDamaging extends Unit {
   readonly damage: number
   canAttack(): boolean
   useAttack(): void
+  hasAttacked(): boolean
 }
 
 export function isDamaging(arg: any): arg is IDamaging {
@@ -29,18 +30,30 @@ export function Damaging<TBase extends Constructor<Unit>>(
   return class extends Base implements IDamaging {
     readonly damage: number = damage
     protected attacksLeft: number = 0
+    // Tracks whether the unit has attacked at all this turn, independent of
+    // attacksLeft — attack is always a unit's last action (specs/04), so even
+    // with attacksPerTurn > 1 a single attack locks out further movement.
+    protected attackedThisTurn: boolean = false
 
     canAttack() {
       return this.attacksLeft > 0
     }
 
     useAttack() {
-      if (this.attacksLeft > 0) this.attacksLeft -= 1
+      if (this.attacksLeft > 0) {
+        this.attacksLeft -= 1
+        this.attackedThisTurn = true
+      }
+    }
+
+    hasAttacked() {
+      return this.attackedThisTurn
     }
 
     replenish() {
       super.replenish()
       this.attacksLeft = attacksPerTurn
+      this.attackedThisTurn = false
     }
   }
 }

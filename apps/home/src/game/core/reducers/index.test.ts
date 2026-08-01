@@ -284,6 +284,41 @@ describe("Move", () => {
     expect(blocked.units[0].position).toEqual(first);
     expect(blocked).toBe(state);
   });
+
+  test("rejects a move by a unit that has already attacked this turn (spec 04, issue #218)", () => {
+    const MovableAttacker = Damaging(Movable(Unit, 3), 5);
+    const attacker = new MovableAttacker();
+    attacker.replenish();
+    const target = new (Damageable(Unit, 25))();
+    target.replenish();
+
+    const start = { q: 0, r: 0, s: 0 };
+    const targetPos = { q: 1, r: -1, s: 0 };
+    const destination = { q: -1, r: 1, s: 0 };
+
+    let state = makeState({
+      units: [
+        { unit: attacker, position: start, owner: human },
+        { unit: target, position: targetPos, owner: wolf },
+      ],
+    });
+    state = gameReducer(state, {
+      type: GameEventType.TakeDamage,
+      inflictor: attacker,
+      target,
+      damage: 5,
+    });
+    expect(attacker.canMove()).toBe(true); // movement budget untouched by attacking
+
+    const blocked = gameReducer(state, {
+      type: GameEventType.Move,
+      unit: attacker,
+      position: destination,
+    });
+
+    expect(blocked.units.find((u) => u.unit === attacker)!.position).toEqual(start);
+    expect(blocked).toBe(state);
+  });
 });
 
 describe("TakeDamage", () => {

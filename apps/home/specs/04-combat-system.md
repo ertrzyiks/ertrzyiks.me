@@ -36,6 +36,7 @@ The combat system resolves attacks between units, applies damage, and removes de
 
 - A successful attack consumes one attack action from the attacker.
 - A unit that has used all its attack actions this turn cannot attack again until turn start.
+- Attack is always a unit's last action for the turn: once a unit has attacked, it cannot move again this turn, even if it has remaining movement budget or further attack actions. This lock clears at the unit's next replenish (turn start).
 
 ### Counter-attack
 
@@ -47,6 +48,7 @@ The combat system resolves attacks between units, applies damage, and removes de
 - A unit at 0 HP is removed from the board after the attack.
 - A unit cannot attack the same turn after exhausting its attack actions.
 - A unit cannot attack a friendly unit.
+- A unit cannot move after attacking, for the remainder of that turn.
 - After turn start, attack actions are fully restored.
 
 ## Notable Behavior
