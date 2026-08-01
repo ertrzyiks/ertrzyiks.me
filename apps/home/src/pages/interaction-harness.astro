@@ -42,6 +42,7 @@ if (!import.meta.env.DEV) {
         createHarnessDefinition,
         createHarnessDefinitionWithEnemy,
         createHarnessDefinitionWithTwoEnemies,
+        createHarnessDefinitionWithAdjacentEnemy,
         createHarnessNarrativeScript,
       } from "../game/main/harness/interaction_harness";
       import { cubeKey } from "../game/core/grid/helpers";
@@ -73,9 +74,11 @@ if (!import.meta.env.DEV) {
         // ambiguous-targets case.
         const definition = params.get("enemy") === "2"
           ? createHarnessDefinitionWithTwoEnemies()
-          : params.has("enemy")
-            ? createHarnessDefinitionWithEnemy()
-            : createHarnessDefinition();
+          : params.get("enemy") === "adjacent"
+            ? createHarnessDefinitionWithAdjacentEnemy()
+            : params.has("enemy")
+              ? createHarnessDefinitionWithEnemy()
+              : createHarnessDefinition();
 
         const world = new MainWorld(
           createHarnessBoard(),

@@ -6,7 +6,7 @@ import type { EventSystem, Spritesheet } from "pixi.js";
 import { Text, Container, Graphics, Rectangle, EventEmitter } from "pixi.js";
 import TWEEN, { type Tween } from "@tweenjs/tween.js";
 import { pointToCube } from "../core/grid/helpers";
-import { cubeKey } from "../core/grid";
+import { cubeKey, hexDistance } from "../core/grid";
 import { moveRange, pathTo, validAttackTargets } from "../core/player/movement";
 import type { Tileable } from "../shared/renderable/tileable";
 import type { UnitPosition } from "../core/board";
@@ -19,6 +19,7 @@ import { DialogBox } from "../shared/dialog_box";
 import { CompletionScreen } from "../shared/completion_screen";
 import type { StageDefinition } from "./stages/stage";
 import type { Unit } from "../core/units/unit";
+import { isDamaging } from "../core/units";
 import type { Direction } from "../core/direction";
 
 // How long the attack-target frame is visible before an auto-attack's damage
@@ -441,7 +442,15 @@ export class MainWorld extends GameWorld {
         return;
       }
 
-      this.handleManualAttack(unitOnTile, state);
+      const attacked = this.handleManualAttack(unitOnTile, state);
+      if (!attacked) {
+        // Not adjacent yet: if the selected unit can still reach a hex next
+        // to this enemy and attack this turn, walk it there and attack in
+        // the same click (spec 03 "Click on an Enemy Unit") — mirrors "Click
+        // on an Empty Hex"'s auto-path, but for an enemy target instead of a
+        // destination tile. If no such hex is reachable, this is a no-op.
+        await this.handleApproachAndAttack(unitOnTile, state);
+      }
       return;
     }
 
@@ -459,10 +468,12 @@ export class MainWorld extends GameWorld {
   // Enemy/NPC unit clicked: attack only if it is a legal target for the
   // selected unit's remaining attack charge — validAttackTargets applies
   // the same adjacency + Damageable + charge checks the reducer enforces
-  // (spec 03 "Click on an Enemy Unit").
-  protected handleManualAttack(target: UnitPosition, state: State) {
+  // (spec 03 "Click on an Enemy Unit"). Returns whether the attack resolved,
+  // so the caller can fall back to handleApproachAndAttack when it didn't
+  // (e.g. the target isn't adjacent yet).
+  protected handleManualAttack(target: UnitPosition, state: State): boolean {
     if (!this.selectedUnit) {
-      return;
+      return false;
     }
 
     const targets = validAttackTargets(this.selectedUnit.unit, this.selectedUnit.position, "human", state);
@@ -473,7 +484,65 @@ export class MainWorld extends GameWorld {
       // must reflect the post-attack state, not linger from selection
       // time (spec 03 "Visual Feedback").
       this.updateHighlights();
+      return true;
     }
+    return false;
+  }
+
+  // Enemy clicked while not yet adjacent: if a hex next to it lies within
+  // the selected unit's move range and the unit hasn't used its attack this
+  // turn, auto-path to the nearest such hex (fewest steps; ties keep
+  // moveRange's BFS discovery order) and attack the clicked enemy directly —
+  // the player already declared which one they want, so this skips the
+  // ambiguous-target highlight flow resolveAutoAttack uses for a plain move
+  // onto a hex adjacent to several eligible enemies. A no-op when no
+  // reachable adjacent hex exists (out of range, or all occupied).
+  protected async handleApproachAndAttack(target: UnitPosition, state: State) {
+    if (!this.selectedUnit) {
+      return;
+    }
+    const unit = this.selectedUnit.unit;
+    if (!isDamaging(unit) || !unit.canAttack()) {
+      return;
+    }
+
+    const approachHexes = moveRange(unit, this.selectedUnit.position, state).filter(
+      (hex) => hexDistance(hex, target.position) === 1
+    );
+    if (approachHexes.length === 0) {
+      return;
+    }
+
+    let bestPath: Direction[] | null = null;
+    for (const hex of approachHexes) {
+      const path = pathTo(unit, this.selectedUnit.position, hex, state);
+      if (path && (!bestPath || path.length < bestPath.length)) {
+        bestPath = path;
+      }
+    }
+    if (!bestPath) {
+      return;
+    }
+
+    const movedUnitId = unit.id;
+    const moveOutcome = await this.executeMovePath(unit, bestPath);
+    if (moveOutcome !== "completed") {
+      return;
+    }
+
+    const postMoveState = this.game.world.getState();
+    const moved = this.findUnitById(postMoveState, movedUnitId);
+    if (!moved) {
+      return;
+    }
+    // Re-validate: the target may have died or moved (e.g. a narrative
+    // trigger fired mid-path) while we were walking over.
+    const targets = validAttackTargets(moved.unit, moved.position, "human", postMoveState);
+    if (targets.some((t) => cubeKey(t) === cubeKey(target.position))) {
+      this.selectedUnit = moved;
+      this.scenario.attackUnit(moved.unit, target.position);
+    }
+    this.reselectAfterMove(movedUnitId);
   }
 
   // Move the selected unit — possibly several steps in one click, to any

@@ -7,13 +7,14 @@ import { Hero } from "../units";
 import type { StageDefinition, UnitSpawn } from "../stages/stage";
 import type { NarrativeScript } from "../../core/narrative";
 
-// Deliberately minimal (docs/adr/0001): three tiles in a row plus two hexes
-// adjacent to "harness_next" ("harness_enemy_spot" and "harness_enemy_spot_2"),
-// one Hero, no enemies by default. Enough to drive the real click -> select ->
-// click -> move path through MainWorld without mounting Stage 1's wolves or
-// narrative. The second row exists only so an opt-in enemy (or two) has a hex
-// adjacent to "harness_next"/"harness_far" to stand on — a 1-row board can't
-// express that adjacency at all.
+// Deliberately minimal (docs/adr/0001): three tiles in a row plus three hexes
+// on the row below — "harness_adjacent_enemy_spot" (adjacent to
+// "harness_start" itself) and "harness_enemy_spot"/"harness_enemy_spot_2"
+// (adjacent to "harness_next") — one Hero, no enemies by default. Enough to
+// drive the real click -> select -> click -> move path through MainWorld
+// without mounting Stage 1's wolves or narrative. The second row exists only
+// so an opt-in enemy (or two) has a hex adjacent to a first-row tile to stand
+// on — a 1-row board can't express that adjacency at all.
 export function createHarnessBoard(): Board {
   return {
     rows: 2,
@@ -22,7 +23,7 @@ export function createHarnessBoard(): Board {
       { x: 0, y: 0, type: Terrain.WATER, textureName: "grass", sectionName: "harness_start" },
       { x: 1, y: 0, type: Terrain.WATER, textureName: "grass", sectionName: "harness_next" },
       { x: 2, y: 0, type: Terrain.WATER, textureName: "grass", sectionName: "harness_far" },
-      { x: 0, y: 1, type: Terrain.WATER, textureName: "grass", sectionName: "none" },
+      { x: 0, y: 1, type: Terrain.WATER, textureName: "grass", sectionName: "harness_adjacent_enemy_spot" },
       { x: 1, y: 1, type: Terrain.WATER, textureName: "grass", sectionName: "harness_enemy_spot_2" },
       { x: 2, y: 1, type: Terrain.WATER, textureName: "grass", sectionName: "harness_enemy_spot" },
     ],
@@ -83,6 +84,17 @@ export function createHarnessDefinitionWithTwoEnemies(): StageDefinition {
   return withHarnessEnemies([
     { section: "harness_enemy_spot", createUnit: () => new HarnessTarget() },
     { section: "harness_enemy_spot_2", createUnit: () => new HarnessTarget() },
+  ]);
+}
+
+// Opt-in (interaction-harness.astro's default stays enemy-free per docs/adr/0001).
+// Exists for interaction/click-to-attack.spec.ts (issue #219): a bare
+// click-to-attack with no preceding move — "harness_adjacent_enemy_spot" sits
+// next to "harness_start" itself, unlike the other enemy spots above, which
+// only became adjacent after the Hero moved onto "harness_next".
+export function createHarnessDefinitionWithAdjacentEnemy(): StageDefinition {
+  return withHarnessEnemies([
+    { section: "harness_adjacent_enemy_spot", createUnit: () => new HarnessTarget() },
   ]);
 }
 
