@@ -54,4 +54,21 @@ describe("getGridBoundingBox", () => {
     expect(worldHeight).toBeGreaterThan(maxTileY);
     expect(worldHeight).toBeLessThanOrEqual(maxTileY + TILE_SIZE);
   });
+
+  test("minX/minY report the grid's true top-left corner, not the origin", () => {
+    // The col/row 0 hex's own corners reach half a tile-width/height above
+    // and left of its center, so the grid's real top-left corner sits at
+    // negative X/Y — not [0, 0]. MainWorld's camera centering (main/game_world.ts)
+    // used to assume [0, 0] was the top-left corner, aiming the camera past
+    // the board's true center and clipping the top row off-screen.
+    const grid = createGrid(makeBoard(10, 8));
+    const { minX, minY } = getGridBoundingBox(grid);
+
+    expect(minX).toBeLessThan(0);
+    expect(minY).toBeLessThan(0);
+    // A flat-top hex's leftmost/topmost corner sits exactly TILE_SIZE (its
+    // own half-width) / half its height past its own center — never further.
+    expect(minX).toBeGreaterThanOrEqual(-TILE_SIZE);
+    expect(minY).toBeGreaterThanOrEqual(-(TILE_SIZE * Math.sqrt(3)) / 2);
+  });
 });

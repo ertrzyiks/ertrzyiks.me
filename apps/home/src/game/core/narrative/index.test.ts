@@ -64,6 +64,8 @@ function makeState(
     outcome: null,
     worldWidth: 500,
     worldHeight: 500,
+    minX: 0,
+    minY: 0,
     cols: 5,
     rows: 5,
   };

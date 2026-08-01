@@ -24,6 +24,8 @@ function makeStore() {
     outcome: null,
     worldWidth: 500,
     worldHeight: 500,
+    minX: 0,
+    minY: 0,
     cols: 10,
     rows: 10,
   };

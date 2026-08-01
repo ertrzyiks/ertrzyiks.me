@@ -96,15 +96,17 @@ export class MainWorld extends GameWorld {
     // camera position shows the board's origin corner rather than fitting
     // its content in view — there's no other moveCenter()/fit() call
     // anywhere in this codebase, so most of the board renders off-screen
-    // above/right of what's visible.
-    const { worldWidth, worldHeight } = this.game.world.getState();
-    this.viewport.moveCenter(worldWidth / 2, worldHeight / 2);
+    // above/right of what's visible. Simple half-width/half-height works
+    // here (unlike a raw state.worldWidth/2) because worldContainer (see
+    // shared/game_world.ts) already shifted the board so it truly spans
+    // [0, viewport.worldWidth] x [0, viewport.worldHeight].
+    this.viewport.moveCenter(this.viewport.worldWidth / 2, this.viewport.worldHeight / 2);
 
     this.narrative = new NarrativeEngine(narrativeScript);
     this.scenario = new Scenario(this.game, definition);
 
     // Highlights render above the board terrain/fog but move with the viewport.
-    this.viewport.addChild(this.highlightContainer);
+    this.worldContainer.addChild(this.highlightContainer);
     this.createEndTurnButton();
 
     // Board clicks are resolved here, not via per-tile pointertap listeners:
@@ -113,8 +115,13 @@ export class MainWorld extends GameWorld {
     // container's own hitArea as an override that its children are never
     // checked against — no tile or unit sprite can ever receive a pointer
     // event underneath it. "clicked" is pixi-viewport's own click-vs-drag
-    // disambiguation, carrying the world-space point to resolve manually.
-    this.viewport.on("clicked", (e) => this.handleViewportClicked(e.world));
+    // disambiguation, carrying the point in the viewport's own (unshifted)
+    // frame — converted into worldContainer's frame (where tile/hex
+    // coordinates actually live) before it's resolved to a hex below.
+    this.viewport.on("clicked", (e) => {
+      const local = this.worldContainer.toLocal(e.world, this.viewport);
+      this.handleViewportClicked(local);
+    });
 
     this.scenario.emitter.on("playerTurn", (data: { units: UnitPosition[] }) => {
       this.isPlayerTurn = true;

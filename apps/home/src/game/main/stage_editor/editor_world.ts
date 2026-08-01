@@ -112,6 +112,8 @@ export class StageEditorWorld extends Container {
       outcome: null,
       worldWidth: 1000,
       worldHeight: 1000,
+      minX: 0,
+      minY: 0,
       cols: 0,
       rows: 0,
     });

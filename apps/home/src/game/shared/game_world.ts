@@ -73,6 +73,10 @@ export class GameWorld extends Container {
   protected fogTiles: Map<string, Graphics> = new Map();
   protected unitContainer: Container = new Container();
   protected fogContainer: Container = new Container();
+  // Holds every tile/unit/fog/highlight sprite, offset by (-minX, -minY) so
+  // the board's true top-left corner sits at local (0, 0) — see the
+  // constructor's own comment for why pixi-viewport needs that to be true.
+  protected worldContainer: Container = new Container();
 
   constructor(
     protected board: Board,
@@ -91,17 +95,33 @@ export class GameWorld extends Container {
     super();
     this.game = new Game(board);
 
+    const state = this.game.world.getState();
+    // Flat-top hexes at col/row 0 extend into negative X/Y (state.minX/minY
+    // — see core/grid/get_grid_bounding_box.ts), but pixi-viewport's clamp
+    // plugin (shared/viewport.ts's worldClamp) and its automatic "underflow"
+    // re-centering (whenever the board is smaller than the screen — the
+    // common case) both hard-assume the rendered world spans [0, worldWidth]
+    // x [0, worldHeight], with no way to tell them otherwise. worldContainer
+    // shifts every tile/unit/fog/highlight sprite by (-minX, -minY) so that
+    // assumption is actually true, and everything downstream — clamp,
+    // moveCenter, cull() — can use the simple zero-based math it expects.
+    const shiftedWidth = state.worldWidth - state.minX;
+    const shiftedHeight = state.worldHeight - state.minY;
+
     this.viewport = new GameViewport({
-      worldWidth: this.game.world.getState().worldWidth,
-      worldHeight: this.game.world.getState().worldHeight,
+      worldWidth: shiftedWidth,
+      worldHeight: shiftedHeight,
       events,
     });
+
+    this.worldContainer.position.set(-state.minX, -state.minY);
+    this.viewport.addChild(this.worldContainer);
 
     this.boundary = new EventBoundary(this.viewport);
 
     this.renderTerrain();
-    this.viewport.addChild(this.unitContainer);
-    this.viewport.addChild(this.fogContainer);
+    this.worldContainer.addChild(this.unitContainer);
+    this.worldContainer.addChild(this.fogContainer);
     this.renderFog();
     this.observeWorldUpdates();
 
@@ -275,7 +295,7 @@ export class GameWorld extends Container {
       const sprite = this.createWorldTile(hex);
       const coords = hex.coordinates();
       this.terrainTiles.set(coords, sprite);
-      this.viewport.addChild(sprite);
+      this.worldContainer.addChild(sprite);
     });
   }
 
@@ -308,16 +328,22 @@ export class GameWorld extends Container {
   cull() {
     const viewport = this.viewport;
     const corner = viewport.corner;
-    const length = viewport.children.length;
+    // Sprites live in worldContainer's frame (shifted by (-minX, -minY) from
+    // viewport's own frame — see the constructor's comment), so the
+    // viewport-frame corner is translated into that same frame before
+    // comparing it against each child's own (worldContainer-local) position.
+    const offsetX = this.worldContainer.x;
+    const offsetY = this.worldContainer.y;
+    const length = this.worldContainer.children.length;
     const margin = 150;
 
-    const left = corner.x - margin;
-    const top = corner.y - margin;
-    const right = corner.x + viewport.screenWidth + margin;
-    const bottom = corner.y + viewport.screenHeight + margin;
+    const left = corner.x - offsetX - margin;
+    const top = corner.y - offsetY - margin;
+    const right = corner.x - offsetX + viewport.screenWidth + margin;
+    const bottom = corner.y - offsetY + viewport.screenHeight + margin;
 
     for (let i = 0; i < length; i++) {
-      const child = this.viewport.children[i];
+      const child = this.worldContainer.children[i];
 
       if (!(child instanceof Sprite)) continue;
 

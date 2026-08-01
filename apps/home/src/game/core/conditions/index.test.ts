@@ -55,6 +55,8 @@ function makeState(tiles: GameTileHex[], units: UnitPosition[]): State {
     outcome: null,
     worldWidth: 300,
     worldHeight: 300,
+    minX: 0,
+    minY: 0,
     cols: 3,
     rows: 3,
   };

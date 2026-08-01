@@ -20,6 +20,13 @@ export interface State {
   turn: number;
   worldWidth: number;
   worldHeight: number;
+  // Grid's true top-left corner (see getGridBoundingBox) — [0, 0] is NOT it
+  // for flat-top hexes. shared/game_world.ts's worldContainer shifts all
+  // rendering by (-minX, -minY) so the board actually spans [0, worldWidth]
+  // x [0, worldHeight], matching what pixi-viewport's clamp/moveCenter
+  // assume.
+  minX: number;
+  minY: number;
   cols: number;
   rows: number;
   tiles: Array<GameTileHex>;
@@ -45,7 +52,7 @@ export class World {
       return acc;
     }, []);
 
-    const { worldWidth, worldHeight } = getGridBoundingBox(grid);
+    const { worldWidth, worldHeight, minX, minY } = getGridBoundingBox(grid);
     const { cols, rows } = getGridSize(grid);
 
     // @ts-ignore
@@ -54,6 +61,8 @@ export class World {
       tiles,
       worldWidth,
       worldHeight,
+      minX,
+      minY,
       cols,
       rows,
     });
