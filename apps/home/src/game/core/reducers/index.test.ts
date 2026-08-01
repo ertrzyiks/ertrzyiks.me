@@ -284,6 +284,45 @@ describe("Move", () => {
     expect(blocked.units[0].position).toEqual(first);
     expect(blocked).toBe(state);
   });
+
+  test("rejects a move by a unit that has already attacked this turn (spec 04, issue #218)", () => {
+    const MovableAttacker = Damaging(Movable(Unit, 3), 5);
+    const attacker = new MovableAttacker();
+    attacker.replenish();
+    const target = new (Damageable(Unit, 25))();
+    target.replenish();
+
+    const start = { q: 0, r: 0, s: 0 };
+    const targetPos = { q: 1, r: -1, s: 0 };
+    const destination = { q: -1, r: 1, s: 0 };
+
+    let state = makeState({
+      units: [
+        { unit: attacker, position: start, owner: human },
+        { unit: target, position: targetPos, owner: wolf },
+      ],
+    });
+    state = gameReducer(state, {
+      type: GameEventType.TakeDamage,
+      inflictor: attacker,
+      target,
+      damage: 5,
+    });
+    // TakeDamage drains the attacker's remaining movement budget (see the
+    // TakeDamage describe block below) — canMove() is the single check the
+    // Move case (and the move-range UI highlight) both rely on, so a unit
+    // that attacked reads exactly like a unit that walked its full budget.
+    expect(attacker.canMove()).toBe(false);
+
+    const blocked = gameReducer(state, {
+      type: GameEventType.Move,
+      unit: attacker,
+      position: destination,
+    });
+
+    expect(blocked.units.find((u) => u.unit === attacker)!.position).toEqual(start);
+    expect(blocked).toBe(state);
+  });
 });
 
 describe("TakeDamage", () => {
@@ -384,6 +423,57 @@ describe("TakeDamage", () => {
     // target survived (25-10) and bystander is untouched despite reading 0 HP.
     expect(state.units.some((u) => u.unit === bystander)).toBe(true);
     expect(state.units).toHaveLength(3);
+  });
+
+  test("drains a movable attacker's remaining movement budget (spec 04, issue #218)", () => {
+    const MovableAttacker = Damaging(Movable(Unit, 3), 10);
+    const attacker = new MovableAttacker();
+    attacker.replenish();
+    const target = new Target();
+    target.replenish();
+    expect(attacker.canMove()).toBe(true);
+    expect(attacker.remainingBudget()).toBe(3);
+
+    const state = makeState({
+      units: [
+        { unit: attacker, position: { q: 0, r: 0, s: 0 }, owner: human },
+        { unit: target, position: { q: 1, r: -1, s: 0 }, owner: wolf },
+      ],
+    });
+    gameReducer(state, {
+      type: GameEventType.TakeDamage,
+      inflictor: attacker,
+      target,
+      damage: 10,
+    });
+
+    // Attack is always a unit's last action for the turn — the full
+    // remaining budget is drained, not just decremented by a step cost.
+    expect(attacker.remainingBudget()).toBe(0);
+    expect(attacker.canMove()).toBe(false);
+  });
+
+  test("does not throw draining budget for a non-movable attacker", () => {
+    const attacker = new Attacker(); // Damaging(Unit, 10) — no Movable
+    attacker.replenish();
+    const target = new Target();
+    target.replenish();
+
+    const state = makeState({
+      units: [
+        { unit: attacker, position: { q: 0, r: 0, s: 0 }, owner: human },
+        { unit: target, position: { q: 1, r: -1, s: 0 }, owner: wolf },
+      ],
+    });
+
+    expect(() =>
+      gameReducer(state, {
+        type: GameEventType.TakeDamage,
+        inflictor: attacker,
+        target,
+        damage: 10,
+      })
+    ).not.toThrow();
   });
 });
 
