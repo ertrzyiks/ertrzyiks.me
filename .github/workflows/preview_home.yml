@@ -62,7 +62,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
             pages deploy apps/home/dist
-            --project-name=home
+            --project-name=ertrzyiks-me
             --branch=pr-${{ github.event.pull_request.number }}
             --commit-dirty=true
 
