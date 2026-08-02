@@ -1,5 +1,6 @@
 import { Container, Graphics, Rectangle, Text } from "pixi.js";
 import type { DialogLine } from "../core/narrative";
+import { GAME_FONT_FAMILY } from "./fonts";
 
 // Why this exists: spec 07 requires a modal dialog that pauses all game input,
 // shows one line at a time, advances on a single player input per line, and
@@ -58,7 +59,7 @@ export class DialogBox extends Container {
         fontSize: 20,
         fontWeight: "bold",
         fill: 0x4aadd6,
-        fontFamily: "Arial",
+        fontFamily: GAME_FONT_FAMILY,
       },
     });
     this.speakerText.position.set(DialogBox.MARGIN, 20);
@@ -69,7 +70,7 @@ export class DialogBox extends Container {
       style: {
         fontSize: 18,
         fill: 0xffffff,
-        fontFamily: "Arial",
+        fontFamily: GAME_FONT_FAMILY,
         wordWrap: true,
         wordWrapWidth: DialogBox.WIDTH - DialogBox.MARGIN * 2,
       },
@@ -82,7 +83,7 @@ export class DialogBox extends Container {
       style: {
         fontSize: 13,
         fill: 0x8888aa,
-        fontFamily: "Arial",
+        fontFamily: GAME_FONT_FAMILY,
       },
     });
     this.hintText.anchor.set(1, 1);

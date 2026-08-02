@@ -17,6 +17,7 @@ import { NarrativeEngine, type NarrativeEvent, type NarrativeScript } from "../c
 import { createStage1Narrative } from "./narrative/stage1";
 import { DialogBox } from "../shared/dialog_box";
 import { CompletionScreen } from "../shared/completion_screen";
+import { GAME_FONT_FAMILY } from "../shared/fonts";
 import type { StageDefinition } from "./stages/stage";
 import type { Unit } from "../core/units/unit";
 import { isDamaging } from "../core/units";
@@ -320,7 +321,7 @@ export class MainWorld extends GameWorld {
         fontSize: 24,
         fontWeight: "bold",
         fill: color,
-        fontFamily: "Arial",
+        fontFamily: GAME_FONT_FAMILY,
         align: "center",
       },
     });
@@ -780,7 +781,7 @@ export class MainWorld extends GameWorld {
         fontSize: 18,
         fontWeight: "bold",
         fill: 0xffffff,
-        fontFamily: "Arial, sans-serif",
+        fontFamily: GAME_FONT_FAMILY,
       },
     });
     label.anchor.set(0.5, 0.5);

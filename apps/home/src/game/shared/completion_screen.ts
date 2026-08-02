@@ -1,4 +1,5 @@
 import { Container, Graphics, Rectangle, Text, type DestroyOptions } from "pixi.js";
+import { GAME_FONT_FAMILY } from "./fonts";
 
 // Why this exists: spec 08's "Stage Completed State" — "After the final
 // stage, the game displays an end screen and accepts no further gameplay
@@ -44,7 +45,7 @@ export class CompletionScreen extends Container {
       style: {
         fontSize: 20,
         fill: 0xffffff,
-        fontFamily: "Arial",
+        fontFamily: GAME_FONT_FAMILY,
         align: "center",
         wordWrap: true,
         wordWrapWidth: CompletionScreen.WIDTH - CompletionScreen.MARGIN * 2,

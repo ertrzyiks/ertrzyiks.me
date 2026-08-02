@@ -3,10 +3,14 @@ import data from "../assets/sprites/board1-0.json";
 import unitsImage from "../assets/sprites/units-0.png";
 import unitsData from "../assets/sprites/units-0.json";
 import { Spritesheet, Assets } from "pixi.js";
+import { loadGameFont } from "../shared/fonts";
 
 export async function preload() {
   Assets.add({ alias: "board1", src: image.src });
-  const boardTexture = await Assets.load("board1");
+  const [boardTexture] = await Promise.all([
+    Assets.load("board1"),
+    loadGameFont(),
+  ]);
   const sheet = new Spritesheet(boardTexture.source, data);
   await sheet.parse();
 
