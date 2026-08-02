@@ -60,8 +60,15 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # wrangler is a devDependency of apps/home (installed above by
+          # `pnpm install`) specifically so this step finds it already
+          # installed and skips its own `npm i wrangler@4` — that install
+          # hits an npm optional-dependency bug that tries to fetch
+          # @rollup/rollup-linux-arm64-gnu on the linux x64 runner and fails
+          # with EBADPLATFORM.
+          workingDirectory: apps/home
           command: >-
-            pages deploy apps/home/dist
+            pages deploy dist
             --project-name=ertrzyiks-me
             --branch=pr-${{ github.event.pull_request.number }}
             --commit-dirty=true
