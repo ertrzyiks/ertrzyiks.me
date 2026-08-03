@@ -5,6 +5,8 @@
   // asset fast path with no Worker invocation at all.
   "name": "ertrzyiks-me",
   "compatibility_date": "2026-08-03",
+  "workers_dev": true,
+  "preview_urls": true,
   "assets": {
     "directory": "./dist"
   }
