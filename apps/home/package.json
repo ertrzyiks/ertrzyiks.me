@@ -19,7 +19,7 @@
     "@tweenjs/tween.js": "25.0.0",
     "@types/dat.gui": "0.7.13",
     "@types/debounce": "1.2.4",
-    "astro": "^7.0.0",
+    "astro": "7.1.6",
     "dat.gui": "0.7.9",
     "debounce": "3.0.0",
     "honeycomb-grid": "4.1.5",
@@ -28,8 +28,8 @@
     "typescript": "5.9.3"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.0",
-    "@types/node": "^24.0.0",
+    "@playwright/test": "1.62.0",
+    "@types/node": "24.13.3",
     "vitest": "4.1.10"
   }
 }
