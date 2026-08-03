@@ -9,8 +9,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy_preview:
-    name: Deploy Home Preview
+  build:
+    name: Build Home
     if: |
       github.event.pull_request.head.repo.full_name == github.repository &&
       (
@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v7.0.1
@@ -54,6 +53,33 @@ jobs:
         run: pnpm build
         working-directory: ./apps/home
 
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: home-dist
+          path: apps/home/dist
+          retention-days: 1
+
+  deploy_preview:
+    name: Deploy Home Preview
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      # Deliberately no checkout/pnpm install here: this job only ever sees
+      # the built `dist` artifact from the `build` job, never our pnpm-managed
+      # node_modules or lockfile — wrangler-action's own installer previously
+      # failed with EBADPLATFORM (@rollup/rollup-linux-arm64-gnu on a linux
+      # x64 runner) when it ran in a working directory that also held our
+      # pnpm-created node_modules.
+      - name: Download build artifact
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: home-dist
+          path: dist
+
       - name: Deploy to Cloudflare Pages
         id: deploy
         uses: cloudflare/wrangler-action@v4
@@ -61,7 +87,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: >-
-            pages deploy apps/home/dist
+            pages deploy dist
             --project-name=ertrzyiks-me
             --branch=pr-${{ github.event.pull_request.number }}
             --commit-dirty=true

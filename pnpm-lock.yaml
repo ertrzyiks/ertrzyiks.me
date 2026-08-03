@@ -11,11 +11,7 @@ patchedDependencies:
 
 importers:
 
-  .:
-    dependencies:
-      '@rollup/rollup-linux-arm64-gnu':
-        specifier: ^4.62.2
-        version: 4.62.2
+  .: {}
 
   apps/blog:
     dependencies:
@@ -798,6 +794,7 @@ packages:
 
   '@rollup/rollup-linux-arm64-gnu@4.62.2':
     resolution: {integrity: sha512-wnFJkogWvN4jm/hQRF2UBaeUmk20j5+DmHvoyWii2b8HJDyvz1MF2OU/6ynXt2KR63rbZLWkFpoytpdc/yBuSA==}
+    cpu: [arm64]
     os: [linux]
 
   '@rollup/rollup-linux-arm64-musl@4.62.2':
@@ -3188,7 +3185,8 @@ snapshots:
   '@rollup/rollup-linux-arm-musleabihf@4.62.2':
     optional: true
 
-  '@rollup/rollup-linux-arm64-gnu@4.62.2': {}
+  '@rollup/rollup-linux-arm64-gnu@4.62.2':
+    optional: true
 
   '@rollup/rollup-linux-arm64-musl@4.62.2':
     optional: true
