@@ -68,34 +68,34 @@ jobs:
       pull-requests: write
 
     steps:
-      # Deliberately no checkout/pnpm install here: this job only ever sees
-      # the built `dist` artifact from the `build` job, never our pnpm-managed
-      # node_modules or lockfile — wrangler-action's own installer previously
-      # failed with EBADPLATFORM (@rollup/rollup-linux-arm64-gnu on a linux
-      # x64 runner) when it ran in a working directory that also held our
+      # Only checked out for apps/home/wrangler.jsonc — deliberately no
+      # pnpm install here: this job otherwise only ever sees the built `dist`
+      # artifact from the `build` job, never our pnpm-managed node_modules or
+      # lockfile — wrangler-action's own installer previously failed with
+      # EBADPLATFORM (@rollup/rollup-linux-arm64-gnu on a linux x64 runner)
+      # when it ran in a working directory that also held our
       # pnpm-created node_modules.
+      - uses: actions/checkout@v7.0.1
+
       - name: Download build artifact
         uses: actions/download-artifact@v8.0.1
         with:
           name: home-dist
-          path: dist
+          path: apps/home/dist
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Workers
         id: deploy
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: >-
-            pages deploy dist
-            --project-name=ertrzyiks-me
-            --branch=pr-${{ github.event.pull_request.number }}
-            --commit-dirty=true
+          workingDirectory: apps/home
+          command: versions upload
 
       - name: Comment preview URL on PR
         uses: actions/github-script@v9
         env:
-          PREVIEW_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.deployment-url }}
         with:
           script: |
             const marker = '<!-- home-preview-comment -->'

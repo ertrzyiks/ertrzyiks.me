@@ -1,0 +1,11 @@
+{
+  // Pure static-assets Worker (no fetch handler / `main`): the Astro build
+  // already emits real per-route HTML files (output: "static" in
+  // astro.config.mjs), so requests are served straight from Cloudflare's
+  // asset fast path with no Worker invocation at all.
+  "name": "ertrzyiks-me",
+  "compatibility_date": "2026-08-03",
+  "assets": {
+    "directory": "./dist"
+  }
+}

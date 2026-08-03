@@ -59,6 +59,7 @@ home/.cache
 home/.git-deploy
 home/dist
 .pnpm-store/
+.wrangler/
 /.idea/
 /.claude/skills/
 **/.claude/settings.local.json
