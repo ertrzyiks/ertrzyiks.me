@@ -1,4 +1,12 @@
 import { Application, Container, Point } from "pixi.js";
+// Force-include Text's CanvasTextPipe registration (extensions.add), which
+// this project's production bundler (Rolldown) tree-shakes away despite
+// pixi.js's package.json marking scene/text/init as side-effectful — see the
+// debug investigation on the End Turn button issue. Without this, every
+// PixiJS Text in the built app silently renders nothing (no error: the
+// pixi.js@8.19.0 patch here defensively skips any renderable whose
+// renderPipeId has no matching registered pipe).
+import "pixi.js/text";
 import TWEEN from "@tweenjs/tween.js";
 import { create as createIntro } from "./intro";
 import { GameViewport } from "./shared/viewport";

@@ -2,7 +2,7 @@ import { GameWorld } from "../shared/game_world";
 import type { Board, Player } from "../core";
 import { Scenario } from "./scenario";
 import { createStage1Definition } from "./stages/stage1";
-import type { EventSystem, Spritesheet } from "pixi.js";
+import type { EventSystem, Spritesheet, DestroyOptions } from "pixi.js";
 import { Text, Container, Graphics, Rectangle, EventEmitter } from "pixi.js";
 import TWEEN, { type Tween } from "@tweenjs/tween.js";
 import { pointToCube } from "../core/grid/helpers";
@@ -17,6 +17,7 @@ import { NarrativeEngine, type NarrativeEvent, type NarrativeScript } from "../c
 import { createStage1Narrative } from "./narrative/stage1";
 import { DialogBox } from "../shared/dialog_box";
 import { CompletionScreen } from "../shared/completion_screen";
+import { GAME_FONT_FAMILY } from "../shared/fonts";
 import type { StageDefinition } from "./stages/stage";
 import type { Unit } from "../core/units/unit";
 import { isDamaging } from "../core/units";
@@ -26,6 +27,9 @@ import type { Direction } from "../core/direction";
 // actually applies (ADR-0004) — long enough for the player to register which
 // enemy is about to be hit, without feeling like a wait.
 const ATTACK_HIGHLIGHT_DELAY_MS = 400;
+
+const END_TURN_BUTTON_WIDTH = 140;
+const END_TURN_BUTTON_HEIGHT = 48;
 
 export class MainWorld extends GameWorld {
   // Public, unlike `scenario.emitter` (which MainWorld consumes internally
@@ -66,6 +70,7 @@ export class MainWorld extends GameWorld {
   // Screen-space "End Turn" control (spec 03): the human turn ends only when the
   // player asks, never automatically. Shown only during the human's turn.
   protected endTurnButton: Container | null = null;
+  protected onEndTurnButtonResize: (() => void) | null = null;
 
   protected turnIndicatorContainer: Container | null = null;
   protected turnIndicatorTween: Tween | null = null;
@@ -316,7 +321,7 @@ export class MainWorld extends GameWorld {
         fontSize: 24,
         fontWeight: "bold",
         fill: color,
-        fontFamily: "Arial",
+        fontFamily: GAME_FONT_FAMILY,
         align: "center",
       },
     });
@@ -759,14 +764,10 @@ export class MainWorld extends GameWorld {
   }
 
   protected createEndTurnButton() {
-    const width = 140;
-    const height = 48;
+    const width = END_TURN_BUTTON_WIDTH;
+    const height = END_TURN_BUTTON_HEIGHT;
 
     const button = new Container();
-    button.position.set(
-      window.innerWidth - width - 24,
-      window.innerHeight - height - 24
-    );
 
     const bg = new Graphics();
     bg.roundRect(0, 0, width, height, 10);
@@ -780,7 +781,7 @@ export class MainWorld extends GameWorld {
         fontSize: 18,
         fontWeight: "bold",
         fill: 0xffffff,
-        fontFamily: "Arial",
+        fontFamily: GAME_FONT_FAMILY,
       },
     });
     label.anchor.set(0.5, 0.5);
@@ -795,6 +796,21 @@ export class MainWorld extends GameWorld {
     button.visible = false;
     this.endTurnButton = button;
     this.addChild(button);
+    this.positionEndTurnButton();
+
+    this.onEndTurnButtonResize = this.positionEndTurnButton.bind(this);
+    window.addEventListener("resize", this.onEndTurnButtonResize);
+  }
+
+  // Keeps the button pinned to the bottom-right corner across window resizes
+  // — createEndTurnButton() otherwise only sets this once, from the window
+  // size at construction time.
+  protected positionEndTurnButton() {
+    if (!this.endTurnButton) return;
+    this.endTurnButton.position.set(
+      window.innerWidth - END_TURN_BUTTON_WIDTH - 24,
+      window.innerHeight - END_TURN_BUTTON_HEIGHT - 24
+    );
   }
 
   protected setEndTurnButtonVisible(visible: boolean) {
@@ -813,5 +829,12 @@ export class MainWorld extends GameWorld {
     this.setEndTurnButtonVisible(false);
     this.updateHighlights();
     this.scenario.endPlayerTurn();
+  }
+
+  destroy(options?: DestroyOptions | boolean) {
+    if (this.onEndTurnButtonResize) {
+      window.removeEventListener("resize", this.onEndTurnButtonResize);
+    }
+    super.destroy(options);
   }
 }
