@@ -33,3 +33,28 @@ data "onepassword_item" "yummy_next_algolia_search_key" {
   title = "yummy_next_algolia_search_key"
 }
 
+data "onepassword_item" "task_manager_redis_url" {
+  vault = "Dokku apps"
+  title = "task_manager_redis_url"
+}
+
+data "onepassword_item" "jobs_api_bearer_token" {
+  vault = "Dokku apps"
+  title = "jobs_api_bearer_token"
+}
+
+data "onepassword_item" "personal_assistant_gcloud_oauth_client_id" {
+  vault = "Dokku apps"
+  title = "personal_assistant_gcloud_oauth_client_id"
+}
+
+data "onepassword_item" "personal_assistant_gcloud_oauth_client_secret" {
+  vault = "Dokku apps"
+  title = "personal_assistant_gcloud_oauth_client_secret"
+}
+
+data "onepassword_item" "personal_assistant_gcloud_oauth_refresh_token" {
+  vault = "Dokku apps"
+  title = "personal_assistant_gcloud_oauth_refresh_token"
+}
+

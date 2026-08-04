@@ -44,17 +44,17 @@ for this client before; revoke access at https://myaccount.google.com/permission
 
 **1Password** (vault `Dokku apps`, item names as expected by the Terraform in #252):
 
-| 1Password item                             | Value                       |
-| -------------------------------------------- | ---------------------------- |
-| `gmail_oauth_client_id`                      | `GMAIL_OAUTH_CLIENT_ID`      |
-| `gmail_oauth_client_secret`                  | `GMAIL_OAUTH_CLIENT_SECRET`  |
-| `personal_assistant_gmail_refresh_token`     | `GMAIL_REFRESH_TOKEN`        |
+| 1Password item                                    | Value                       |
+| ---------------------------------------------------- | ---------------------------- |
+| `personal_assistant_gcloud_oauth_client_id`          | `GMAIL_OAUTH_CLIENT_ID`      |
+| `personal_assistant_gcloud_oauth_client_secret`      | `GMAIL_OAUTH_CLIENT_SECRET`  |
+| `personal_assistant_gcloud_oauth_refresh_token`      | `GMAIL_REFRESH_TOKEN`        |
 
 Either create these by hand in the 1Password app/GUI, or with the `op` CLI if you have it set up, e.g.:
 
 ```bash
 op item create --category=password --vault="Dokku apps" \
-  --title="personal_assistant_gmail_refresh_token" \
+  --title="personal_assistant_gcloud_oauth_refresh_token" \
   "password=<GMAIL_REFRESH_TOKEN value>"
 ```
 (repeat for the other two items)
