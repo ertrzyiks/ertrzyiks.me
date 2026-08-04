@@ -8,6 +8,6 @@
     "get-refresh-token": "node get-refresh-token.mjs"
   },
   "dependencies": {
-    "google-auth-library": "^11.0.0"
+    "google-auth-library": "11.0.0"
   }
 }
