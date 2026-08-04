@@ -95,8 +95,8 @@ resource "dokku_app" "task_manager" {
   app_name = "task-manager"
 
   config = {
-    REDIS_URL             = data.onepassword_item.task_manager_redis_url.password
-    JOBS_API_BEARER_TOKEN = data.onepassword_item.jobs_api_bearer_token.password
+    REDIS_URL             = data.onepassword_item.personal_assistant_task_manager_redis_url.password
+    JOBS_API_BEARER_TOKEN = data.onepassword_item.personal_assistant_jobs_api_bearer_token.password
   }
 
   domains = ["task-manager.ertrzyiks.me"]
@@ -110,7 +110,7 @@ resource "dokku_app" "personal_assistant" {
     GMAIL_CLIENT_ID       = data.onepassword_item.personal_assistant_gcloud_oauth_client_id.password
     GMAIL_CLIENT_SECRET   = data.onepassword_item.personal_assistant_gcloud_oauth_client_secret.password
     GMAIL_REFRESH_TOKEN   = data.onepassword_item.personal_assistant_gcloud_oauth_refresh_token.password
-    JOBS_API_BEARER_TOKEN = data.onepassword_item.jobs_api_bearer_token.password
+    JOBS_API_BEARER_TOKEN = data.onepassword_item.personal_assistant_jobs_api_bearer_token.password
     JOBS_API_BASE_URL     = "https://task-manager.ertrzyiks.me"
   }
 
