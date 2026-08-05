@@ -33,41 +33,49 @@ export function createApp(queue: JobsQueue, bearerToken: string): FastifyInstanc
   // vitest sets NODE_ENV=test and per-request logs would just be noise.
   const app = Fastify({ logger: process.env.NODE_ENV !== "test" });
 
-  app.addHook("onRequest", async (request, reply) => {
-    if (!isValidBearerToken(request.headers.authorization, bearerToken)) {
-      await reply.code(401).send({ error: "Unauthorized" });
-    }
-  });
+  // The bearer-auth hook is scoped to this encapsulated plugin rather than
+  // added on `app` directly, so it only covers the routes below. Fastify
+  // hooks cascade to nested `register()` contexts but not to siblings — this
+  // matters because devServer.ts mounts Bull Board as a sibling on the same
+  // `app` instance, and that UI needs to be reachable from a plain browser
+  // tab, which can't attach an Authorization header.
+  app.register(async (api) => {
+    api.addHook("onRequest", async (request, reply) => {
+      if (!isValidBearerToken(request.headers.authorization, bearerToken)) {
+        await reply.code(401).send({ error: "Unauthorized" });
+      }
+    });
 
-  app.post<{ Body: { emailId?: string } }>("/jobs", async (request, reply) => {
-    const emailId = request.body?.emailId;
-    if (typeof emailId !== "string" || emailId.length === 0) {
-      return reply.code(400).send({ error: "emailId is required" });
-    }
+    api.post<{ Body: { emailId?: string } }>("/jobs", async (request, reply) => {
+      const emailId = request.body?.emailId;
+      if (typeof emailId !== "string" || emailId.length === 0) {
+        return reply.code(400).send({ error: "emailId is required" });
+      }
 
-    const job = await queue.add(QUEUE_NAME, { emailId });
-    return reply.code(201).send({ jobId: job.id });
-  });
+      const job = await queue.add(QUEUE_NAME, { emailId });
+      return reply.code(201).send({ jobId: job.id });
+    });
 
-  app.get<{ Params: { jobId: string } }>("/jobs/:jobId", async (request, reply) => {
-    const response = await buildJobStatusResponse(queue, request.params.jobId);
-    if (!response) return reply.code(404).send();
-    return reply.send(response);
-  });
+    api.get<{ Params: { jobId: string } }>("/jobs/:jobId", async (request, reply) => {
+      const response = await buildJobStatusResponse(queue, request.params.jobId);
+      if (!response) return reply.code(404).send();
+      return reply.send(response);
+    });
 
-  app.post<{ Body: { jobIds?: string[] } }>("/jobs/status", async (request, reply) => {
-    const jobIds = request.body?.jobIds;
-    if (!Array.isArray(jobIds) || jobIds.some((id) => typeof id !== "string")) {
-      return reply.code(400).send({ error: "jobIds must be an array of strings" });
-    }
+    api.post<{ Body: { jobIds?: string[] } }>("/jobs/status", async (request, reply) => {
+      const jobIds = request.body?.jobIds;
+      if (!Array.isArray(jobIds) || jobIds.some((id) => typeof id !== "string")) {
+        return reply.code(400).send({ error: "jobIds must be an array of strings" });
+      }
 
-    // Missing jobs are silently omitted — the batch endpoint has no defined
-    // per-item error shape in the #241 spec.
-    const results = (
-      await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(queue, jobId)))
-    ).filter((result): result is JobStatusResponse => result !== null);
+      // Missing jobs are silently omitted — the batch endpoint has no defined
+      // per-item error shape in the #241 spec.
+      const results = (
+        await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(queue, jobId)))
+      ).filter((result): result is JobStatusResponse => result !== null);
 
-    return reply.send({ results });
+      return reply.send({ results });
+    });
   });
 
   return app;

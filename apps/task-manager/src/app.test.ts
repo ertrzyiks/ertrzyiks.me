@@ -59,6 +59,20 @@ describe("task-manager app", () => {
 
       expect(response.statusCode).toBe(401);
     });
+
+    it("does not gate routes registered as siblings on the returned app instance", async () => {
+      // devServer.ts mounts Bull Board this way (app.register(...) as a
+      // sibling of createApp's internal jobs-routes plugin), specifically so
+      // it's reachable from a plain browser tab, which can't attach an
+      // Authorization header. This pins that the auth hook stays scoped to
+      // the /jobs routes and doesn't leak back out to `app` itself.
+      app.get("/sibling-route", async () => ({ ok: true }));
+      await app.ready();
+
+      const response = await app.inject({ method: "GET", url: "/sibling-route" });
+
+      expect(response.statusCode).toBe(200);
+    });
   });
 
   describe("POST /jobs", () => {
