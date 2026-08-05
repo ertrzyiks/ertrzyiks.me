@@ -61,6 +61,9 @@ home/dist
 task-manager/dist
 apps/task-manager/dist
 apps/task-manager/.env
+apps/personal-assistant/dist
+apps/personal-assistant/.env
+apps/personal-assistant/data/
 .pnpm-store/
 .wrangler/
 /.idea/
