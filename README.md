@@ -1,47 +1,52 @@
 # ertrzyiks.me
 
+A pnpm workspace containing the apps that make up ertrzyiks.me and its supporting services.
+
 ## Installation
 
-You need NodeJS 6.x or newer.
+You need Node.js and [pnpm](https://pnpm.io/).
 
-To install all dependencies run:
+To install all dependencies for every app run:
 ```
-npm install
-```
-
-## Home (ertrzyiks.me)
-
-To start local server watching for changes run:
-```
-cd home
-npm start
+pnpm install
 ```
 
-### Deployment
-```
-cd home
-npm run deploy
-```
+## Apps
 
-## Blog (blog.ertrzyiks.me)
+### Home (ertrzyiks.me)
 
-It's a [Hexo](https://hexo.io/) blog with a custom theme.
-
-To start local server watching for changes run:
+Astro site for the main site. See [apps/home/README.md](apps/home/README.md).
 
 ```
-cd blog
-npm start
-
+cd apps/home
+pnpm dev
 ```
 
-### Deployment
+### Blog (blog.ertrzyiks.me)
 
-It uses Hexo's git deployment feature, [see](https://hexo.io/docs/deployment.html#Git).
-Make sure you have access to `dokku` user on the destination Dokku server and run:
+Astro-based blog. See [apps/blog/README.md](apps/blog/README.md).
 
 ```
-cd blog
-npm run build:prod
-npm run deploy
+cd apps/blog
+pnpm dev
+```
+
+### task-manager
+
+Jobs API server (plus a Mac-only worker) for the email → action-items automation. See
+[apps/task-manager/README.md](apps/task-manager/README.md).
+
+```
+cd apps/task-manager
+pnpm dev
+```
+
+### personal-assistant
+
+Orchestration service that polls Gmail and schedules jobs against `task-manager`. See
+[apps/personal-assistant/README.md](apps/personal-assistant/README.md).
+
+```
+cd apps/personal-assistant
+pnpm dev
 ```
