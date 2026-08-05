@@ -1,0 +1,22 @@
+{
+  "name": "task-manager",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "bullmq": "6.0.8",
+    "fastify": "5.11.2",
+    "ioredis": "6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "tsx": "4.23.7",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

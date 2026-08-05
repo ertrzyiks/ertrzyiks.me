@@ -1,0 +1,71 @@
+import Fastify, { type FastifyInstance } from "fastify";
+import { isValidBearerToken } from "./auth.js";
+import { toSimplifiedStatus, type SimplifiedStatus } from "./jobStatus.js";
+import type { JobsQueue } from "./jobsQueue.js";
+import { QUEUE_NAME } from "./queue.js";
+
+interface JobStatusResponse {
+  jobId: string;
+  status: SimplifiedStatus;
+  result?: unknown;
+  error?: string;
+}
+
+async function buildJobStatusResponse(
+  queue: JobsQueue,
+  jobId: string,
+): Promise<JobStatusResponse | null> {
+  const job = await queue.getJob(jobId);
+  if (!job) return null;
+
+  const status = toSimplifiedStatus(await job.getState());
+  const response: JobStatusResponse = { jobId, status };
+
+  if (status === "completed") response.result = job.returnvalue;
+  if (status === "failed") response.error = job.failedReason;
+
+  return response;
+}
+
+export function createApp(queue: JobsQueue, bearerToken: string): FastifyInstance {
+  const app = Fastify();
+
+  app.addHook("onRequest", async (request, reply) => {
+    if (!isValidBearerToken(request.headers.authorization, bearerToken)) {
+      await reply.code(401).send({ error: "Unauthorized" });
+    }
+  });
+
+  app.post<{ Body: { emailId?: string } }>("/jobs", async (request, reply) => {
+    const emailId = request.body?.emailId;
+    if (typeof emailId !== "string" || emailId.length === 0) {
+      return reply.code(400).send({ error: "emailId is required" });
+    }
+
+    const job = await queue.add(QUEUE_NAME, { emailId });
+    return reply.code(201).send({ jobId: job.id });
+  });
+
+  app.get<{ Params: { jobId: string } }>("/jobs/:jobId", async (request, reply) => {
+    const response = await buildJobStatusResponse(queue, request.params.jobId);
+    if (!response) return reply.code(404).send();
+    return reply.send(response);
+  });
+
+  app.post<{ Body: { jobIds?: string[] } }>("/jobs/status", async (request, reply) => {
+    const jobIds = request.body?.jobIds;
+    if (!Array.isArray(jobIds) || jobIds.some((id) => typeof id !== "string")) {
+      return reply.code(400).send({ error: "jobIds must be an array of strings" });
+    }
+
+    // Missing jobs are silently omitted — the batch endpoint has no defined
+    // per-item error shape in the #241 spec.
+    const results = (
+      await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(queue, jobId)))
+    ).filter((result): result is JobStatusResponse => result !== null);
+
+    return reply.send({ results });
+  });
+
+  return app;
+}
