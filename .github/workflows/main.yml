@@ -5,7 +5,32 @@ on:
     branches: [master]
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      home: ${{ steps.filter.outputs.home }}
+      blog: ${{ steps.filter.outputs.blog }}
+      task_manager: ${{ steps.filter.outputs.task_manager }}
+      personal_assistant: ${{ steps.filter.outputs.personal_assistant }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+            home: [*shared, 'apps/home/**']
+            blog: [*shared, 'apps/blog/**']
+            task_manager: [*shared, 'apps/task-manager/**']
+            personal_assistant: [*shared, 'apps/personal-assistant/**']
+
   release_home:
+    needs: changes
+    if: needs.changes.outputs.home == 'true'
     uses: ./.github/workflows/release_homepage.yml
     with:
       ref: ${{ github.ref }}
@@ -13,8 +38,27 @@ jobs:
       DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
 
   release_blog:
-    needs: release_home
+    needs: changes
+    if: needs.changes.outputs.blog == 'true'
     uses: ./.github/workflows/release_blog.yml
+    with:
+      ref: ${{ github.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  release_task_manager:
+    needs: changes
+    if: needs.changes.outputs.task_manager == 'true'
+    uses: ./.github/workflows/release_task_manager.yml
+    with:
+      ref: ${{ github.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  release_personal_assistant:
+    needs: changes
+    if: needs.changes.outputs.personal_assistant == 'true'
+    uses: ./.github/workflows/release_personal_assistant.yml
     with:
       ref: ${{ github.ref }}
     secrets:

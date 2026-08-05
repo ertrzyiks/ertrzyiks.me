@@ -1,0 +1,104 @@
+name: Release Personal Assistant
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Reference to deploy"
+        type: string
+        default: "master"
+    secrets:
+      DOKKU_DEPLOY_KEY:
+        required: true
+
+concurrency: personal-assistant-production
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || 'master' }}
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - uses: pnpm/action-setup@v6.0.10
+        with:
+          version: 11.20.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v6.1.0
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Test
+        run: pnpm test
+        working-directory: ./apps/personal-assistant
+
+      - name: Build
+        run: pnpm build
+        working-directory: ./apps/personal-assistant
+
+      # See release_task_manager.yml for why this synthesizes a deploy-only package.json/
+      # lockfile instead of reusing the workspace's pnpm-lock.yaml.
+      #
+      # Unlike task-manager's Fastify server, personal-assistant's entrypoint
+      # (src/server.ts) never binds an HTTP port — it's a poller with no inbound traffic
+      # (see apps/personal-assistant/README.md). Declaring it as a `web:` Procfile process
+      # would make Dokku route personal-assistant.ertrzyiks.me to it and run its default
+      # HTTP healthcheck against a port that's never listened on, which would fail the
+      # zero-downtime deploy check. So this ships as a `worker:` process type instead, which
+      # Dokku does not HTTP-healthcheck or auto-scale up on deploy — see the PR description
+      # for the one-time manual `dokku ps:scale personal-assistant worker=1` step this implies.
+      - name: Prepare deploy package
+        working-directory: ./apps/personal-assistant
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const deployPkg = {
+              name: pkg.name,
+              version: pkg.version,
+              private: true,
+              type: pkg.type,
+              scripts: { start: 'node server.js' },
+              dependencies: pkg.dependencies,
+            };
+            fs.writeFileSync('dist/package.json', JSON.stringify(deployPkg, null, 2) + '\n');
+          "
+          printf 'worker: node server.js\n' > dist/Procfile
+          cd dist && npm install --package-lock-only
+
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+      - run: echo '167.71.190.115 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEYg+BGxM8IdEoQ8fx7aDoclC0eNXSpI6l/QkLRMF/cvjJcSCk4kz/4LEkSU8eXFawp8IX/yNOyV11sJZtCVBCs=' >> ~/.ssh/known_hosts
+
+      - working-directory: ./apps/personal-assistant/dist
+        run: |
+          git init
+          git config --global user.email "deploy-bot@ertrzyiks.me"
+          git config --global user.name "Deploy Bot"
+          git remote add dokku dokku@167.71.190.115:personal-assistant
+          git add .
+          git commit -m 'Update'
+          git push dokku HEAD:master --force
