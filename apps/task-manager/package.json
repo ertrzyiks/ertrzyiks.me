@@ -20,8 +20,8 @@
     "ioredis": "6.0.0"
   },
   "devDependencies": {
-    "@bull-board/api": "8.4.0",
-    "@bull-board/fastify": "8.4.0",
+    "@bull-board/api": "8.6.0",
+    "@bull-board/fastify": "8.6.0",
     "@types/node": "24.13.3",
     "dotenv": "17.4.2",
     "tsx": "4.23.1",
