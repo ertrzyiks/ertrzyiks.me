@@ -1,0 +1,102 @@
+name: Release Task Manager
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Reference to deploy"
+        type: string
+        default: "master"
+    secrets:
+      DOKKU_DEPLOY_KEY:
+        required: true
+
+concurrency: task-manager-production
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || 'master' }}
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - uses: pnpm/action-setup@v6.0.10
+        with:
+          version: 11.20.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v6.1.0
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Test
+        run: pnpm test
+        working-directory: ./apps/task-manager
+
+      - name: Build
+        run: pnpm build
+        working-directory: ./apps/task-manager
+
+      # Dokku's Node/Herokuish buildpack (not the static buildpack `release_blog.yml`/
+      # `release_homepage.yml` use) needs a `package.json` + lockfile alongside the app so it
+      # can `npm install` production dependencies server-side, and a `Procfile` telling it what
+      # process to run. `apps/task-manager` is a pnpm workspace member with no lockfile of its
+      # own, so we synthesize a minimal, deploy-only `package.json` (name/version/type/
+      # dependencies only — no devDependencies, no workspace-relative anything) and a plain npm
+      # lockfile for it, then push the pre-built `dist/` output alongside them. TypeScript
+      # compilation itself already happened above via `pnpm build`, so the buildpack's own
+      # install step stays a plain `npm install` with no build step of its own to run.
+      - name: Prepare deploy package
+        working-directory: ./apps/task-manager
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const deployPkg = {
+              name: pkg.name,
+              version: pkg.version,
+              private: true,
+              type: pkg.type,
+              scripts: { start: 'node server.js' },
+              dependencies: pkg.dependencies,
+            };
+            fs.writeFileSync('dist/package.json', JSON.stringify(deployPkg, null, 2) + '\n');
+          "
+          printf 'web: node server.js\n' > dist/Procfile
+          cd dist && npm install --package-lock-only
+
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+      - run: echo '167.71.190.115 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEYg+BGxM8IdEoQ8fx7aDoclC0eNXSpI6l/QkLRMF/cvjJcSCk4kz/4LEkSU8eXFawp8IX/yNOyV11sJZtCVBCs=' >> ~/.ssh/known_hosts
+
+      - working-directory: ./apps/task-manager/dist
+        run: |
+          git init
+          git config --global user.email "deploy-bot@ertrzyiks.me"
+          git config --global user.name "Deploy Bot"
+          git remote add dokku dokku@167.71.190.115:task-manager
+          git add .
+          git commit -m 'Update'
+          git push dokku HEAD:master --force
