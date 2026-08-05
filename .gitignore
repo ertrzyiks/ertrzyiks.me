@@ -59,6 +59,8 @@ home/.cache
 home/.git-deploy
 home/dist
 task-manager/dist
+apps/task-manager/dist
+apps/task-manager/.env
 .pnpm-store/
 .wrangler/
 /.idea/
