@@ -120,3 +120,95 @@ pnpm --filter task-manager worker
 # a real BullMQ result, without needing Keychain/Gmail/LM Studio
 REDIS_URL=redis://localhost:6379 WORKER_FAKE_DEPS=true pnpm --filter task-manager worker
 ```
+
+## macOS LaunchAgent (#251)
+
+In normal use the worker isn't run by hand (`pnpm --filter task-manager worker`) — it runs as a
+user [LaunchAgent](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html)
+so it starts automatically at login and restarts itself if it crashes. The template plist lives at
+[`launchd/com.ertrzyiks.task-manager-worker.plist`](./launchd/com.ertrzyiks.task-manager-worker.plist):
+
+- `RunAtLoad = true` — starts the worker when you log in (or as soon as the agent is loaded).
+- `KeepAlive = true` — launchd restarts the worker if it exits for any reason, including a crash
+  (subject to launchd's default crash-loop throttling if it keeps failing immediately).
+- `ProgramArguments` runs the **built** `dist/worker.js` via `node` directly — not
+  `pnpm run worker` (that runs `tsx watch src/worker.ts`, the dev-only entrypoint) — matching how
+  the Jobs API server's `start` script runs `dist/server.js` rather than a dev script.
+- LM Studio itself (starting it, keeping a model loaded) is **not** managed by this LaunchAgent —
+  that stays your manual responsibility; the worker just calls whatever LM Studio has loaded at
+  the time (`src/lmStudio.ts`).
+
+### 1. Store the Gmail refresh token in the Keychain
+
+The worker reads the refresh token from the Keychain at startup (`src/keychain.ts`) instead of a
+plaintext file or env var. Get the refresh token first (see
+[`scripts/gmail-oauth/README.md`](../../scripts/gmail-oauth/README.md), #247), then store it under
+the exact account/service `keychain.ts` reads by default (`GMAIL_KEYCHAIN_ACCOUNT` /
+`GMAIL_KEYCHAIN_SERVICE`, default `task-manager-worker` / `gmail-refresh-token`):
+
+```bash
+security add-generic-password \
+  -a "task-manager-worker" \
+  -s "gmail-refresh-token" \
+  -w "<the refresh token>"
+```
+
+If you'd rather use a different account/service, set `GMAIL_KEYCHAIN_ACCOUNT`/
+`GMAIL_KEYCHAIN_SERVICE` in the plist's `EnvironmentVariables` to match whatever you stored it
+under.
+
+### 2. Build the worker and install the plist
+
+```bash
+pnpm --filter task-manager build   # produces apps/task-manager/dist/worker.js
+```
+
+Copy the template plist and fill in every `REPLACE_ME_*` placeholder (absolute path to `node`,
+absolute path to this repo checkout, `REDIS_URL`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`) —
+see the comments at the top of the plist for exactly what each one needs and where it comes from.
+Never commit a copy with real values filled in; the installed copy lives outside git:
+
+```bash
+cp apps/task-manager/launchd/com.ertrzyiks.task-manager-worker.plist \
+  ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
+# edit ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist to replace the placeholders
+```
+
+Load it (modern `launchctl bootstrap`, or the older `load` if your macOS version prefers it):
+
+```bash
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
+# or: launchctl load ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
+```
+
+### 3. Check it's running
+
+```bash
+launchctl list | grep com.ertrzyiks.task-manager-worker
+```
+
+A PID in the first column means it's running; a non-zero last-exit-status column means it exited
+and launchd is about to restart it (`KeepAlive`). Logs go to the `StandardOutPath`/
+`StandardErrorPath` files configured in the plist (`launchd/worker.log` /
+`launchd/worker-error.log` under your repo checkout by default).
+
+To stop/unload it:
+
+```bash
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
+# or: launchctl unload ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
+```
+
+### Offline worker / missed jobs
+
+If the worker isn't running when a job is scheduled (laptop closed, LaunchAgent not loaded yet,
+etc.), no special handling is needed: jobs live in BullMQ's Redis-backed queue regardless of
+whether a consumer is currently connected, so the worker just picks up any waiting jobs the next
+time it starts or reconnects. `KeepAlive` handles the "worker crashed" case; Redis persistence
+handles the "worker wasn't running at all" case.
+
+### What's verifiable outside macOS
+
+This plist was developed and reviewed in a Linux sandbox, where `launchd`/`launchctl` don't exist,
+so it has never actually been loaded or run for real — same verification gap as `src/keychain.ts`'s
+real Keychain read (see the PR that introduced this file for what was and wasn't checked).
