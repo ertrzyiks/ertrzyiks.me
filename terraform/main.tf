@@ -90,3 +90,36 @@ resource "dokku_app" "yummy_next" {
   domains = ["kuchnia-yummy.pl"]
 }
 
+# Task Manager app (Jobs API server, see #248)
+resource "dokku_app" "task_manager" {
+  app_name = "task-manager"
+
+  config = {
+    REDIS_URL             = data.onepassword_item.personal_assistant_task_manager_redis_url.password
+    JOBS_API_BEARER_TOKEN = data.onepassword_item.personal_assistant_jobs_api_bearer_token.password
+  }
+
+  domains = ["task-manager.ertrzyiks.me"]
+}
+
+# Personal Assistant app (email orchestration service, see #250)
+resource "dokku_app" "personal_assistant" {
+  app_name = "personal-assistant"
+
+  config = {
+    GMAIL_CLIENT_ID       = data.onepassword_item.personal_assistant_gcloud_oauth_client_id.password
+    GMAIL_CLIENT_SECRET   = data.onepassword_item.personal_assistant_gcloud_oauth_client_secret.password
+    GMAIL_REFRESH_TOKEN   = data.onepassword_item.personal_assistant_gcloud_oauth_refresh_token.password
+    JOBS_API_BEARER_TOKEN = data.onepassword_item.personal_assistant_jobs_api_bearer_token.password
+    JOBS_API_BASE_URL     = "https://task-manager.ertrzyiks.me"
+  }
+
+  domains = ["personal-assistant.ertrzyiks.me"]
+
+  storage = {
+    personal-assistant = {
+      mount_path = "/app/data"
+    }
+  }
+}
+
