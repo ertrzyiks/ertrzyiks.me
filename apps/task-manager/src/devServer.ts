@@ -19,7 +19,11 @@ const app = createApp(queue, bearerToken);
 
 await registerBullBoard(app, queue);
 
-app.listen({ port, host: "0.0.0.0" }).then(() => {
+try {
+  await app.listen({ port, host: "::" });
   app.log.info(`task-manager (dev) listening on port ${port}`);
   app.log.info(`Bull Board UI available at http://localhost:${port}${BULL_BOARD_BASE_PATH}`);
-});
+} catch (error) {
+  app.log.error(error);
+  process.exit(1);
+}
