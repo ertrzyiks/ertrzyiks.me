@@ -59,18 +59,19 @@ op item create --category=password --vault="Dokku apps" \
 ```
 (repeat for the other two items)
 
-**macOS Keychain** (read by the Mac worker at startup — implemented in #251, this just captures
-the secret now while you have it):
+**macOS Keychain** (read by the Mac worker at startup — see `apps/task-manager/src/keychain.ts`
+and the "macOS LaunchAgent" section of `apps/task-manager/README.md`, #251):
 
 ```bash
 security add-generic-password \
-  -a "$USER" \
-  -s "task-manager-gmail-refresh-token" \
+  -a "task-manager-worker" \
+  -s "gmail-refresh-token" \
   -w "<GMAIL_REFRESH_TOKEN value>"
 ```
 
-The service name above (`task-manager-gmail-refresh-token`) is provisional — #251 owns the actual
-Keychain read implementation and can rename it there if it picks a different convention.
+The account/service above (`task-manager-worker` / `gmail-refresh-token`) match `keychain.ts`'s
+defaults (`GMAIL_KEYCHAIN_ACCOUNT`/`GMAIL_KEYCHAIN_SERVICE`) — if you override those env vars for
+the worker, store the token under the same values instead.
 
 ## Notes
 

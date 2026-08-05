@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent for the task-manager Mac worker (apps/task-manager/src/worker.ts, #249/#251).
+  Keeps the worker consuming the `extract-action-items` BullMQ queue whenever the user is
+  logged in, and restarts it automatically if it crashes or exits unexpectedly (KeepAlive,
+  subject to launchd's default crash-loop throttling).
+
+  This file is a TEMPLATE. Every REPLACE_ME_* placeholder below must be substituted with a
+  real, machine-specific value before installing — see the "macOS LaunchAgent" section of
+  apps/task-manager/README.md for the install steps and where each value comes from. Never
+  commit a copy of this file with real secrets filled in; the installed copy lives outside
+  git, under ~/Library/LaunchAgents/.
+
+    - REPLACE_ME_NODE_PATH: absolute path to a `node` binary (e.g. `which node`). launchd
+      does not read your shell's PATH/nvm setup, so a bare "node" will not resolve.
+    - REPLACE_ME_REPO_PATH: absolute path to this repo checkout, e.g.
+      /Users/you/code/ertrzyiks.me
+    - REPLACE_ME_REDIS_URL: same Redis instance the Jobs API server uses.
+    - REPLACE_ME_GMAIL_CLIENT_ID / REPLACE_ME_GMAIL_CLIENT_SECRET: the OAuth client for the
+      worker's gmail.readonly credential (see scripts/gmail-oauth/README.md, #247). The
+      refresh token itself is NOT an env var here — it's read from the macOS Keychain at
+      startup (src/keychain.ts); see the README for the `security add-generic-password`
+      command that stores it there.
+
+  Optional env vars (GMAIL_KEYCHAIN_ACCOUNT, GMAIL_KEYCHAIN_SERVICE, LM_STUDIO_BASE_URL) are
+  omitted here since worker.ts already falls back to sensible defaults (see src/worker.ts) —
+  add them under EnvironmentVariables below only if you need to override a default.
+
+  Runs the built `dist/worker.js` directly via `node` — NOT `pnpm run worker` (which runs
+  `tsx watch src/worker.ts`, the dev-only entrypoint) — matching how the Jobs API's `start`
+  script runs `dist/server.js` rather than a dev script. Run the task-manager package's
+  build script first (see apps/task-manager/README.md) so `dist/worker.js` exists at the
+  path referenced below.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ertrzyiks.task-manager-worker</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE_ME_NODE_PATH</string>
+    <string>REPLACE_ME_REPO_PATH/apps/task-manager/dist/worker.js</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>REPLACE_ME_REPO_PATH/apps/task-manager</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>REDIS_URL</key>
+    <string>REPLACE_ME_REDIS_URL</string>
+    <key>GMAIL_CLIENT_ID</key>
+    <string>REPLACE_ME_GMAIL_CLIENT_ID</string>
+    <key>GMAIL_CLIENT_SECRET</key>
+    <string>REPLACE_ME_GMAIL_CLIENT_SECRET</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>REPLACE_ME_REPO_PATH/apps/task-manager/launchd/worker.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>REPLACE_ME_REPO_PATH/apps/task-manager/launchd/worker-error.log</string>
+</dict>
+</plist>
