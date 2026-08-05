@@ -58,6 +58,7 @@ node_modules
 home/.cache
 home/.git-deploy
 home/dist
+task-manager/dist
 .pnpm-store/
 .wrangler/
 /.idea/
