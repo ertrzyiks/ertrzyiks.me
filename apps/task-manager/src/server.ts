@@ -11,6 +11,10 @@ if (!bearerToken) throw new Error("JOBS_API_BEARER_TOKEN is required");
 const queue = createQueue(redisUrl);
 const app = createApp(queue, bearerToken);
 
-app.listen({ port, host: "0.0.0.0" }).then(() => {
+try {
+  await app.listen({ port, host: "::" });
   app.log.info(`task-manager listening on port ${port}`);
-});
+} catch (error) {
+  app.log.error(error);
+  process.exit(1);
+}

@@ -28,7 +28,10 @@ async function buildJobStatusResponse(
 }
 
 export function createApp(queue: JobsQueue, bearerToken: string): FastifyInstance {
-  const app = Fastify();
+  // Fastify's logger defaults to disabled (a silent no-op `app.log`), which
+  // made server startup/errors invisible — enable it outside tests, where
+  // vitest sets NODE_ENV=test and per-request logs would just be noise.
+  const app = Fastify({ logger: process.env.NODE_ENV !== "test" });
 
   app.addHook("onRequest", async (request, reply) => {
     if (!isValidBearerToken(request.headers.authorization, bearerToken)) {
