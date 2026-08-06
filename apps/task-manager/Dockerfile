@@ -22,10 +22,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/task-manager apps/task-manager
 RUN pnpm --filter task-manager build
 
-# Dokku's Dockerfile builder reads a `Procfile` from the image's WORKDIR (see Procfile below), the
-# same mechanism the old herokuish buildpack deploy relied on — so, like that deploy, this
-# synthesizes a deploy-only `package.json` (name/version/type/dependencies only — no
-# devDependencies, no workspace-relative anything) and lets plain `npm install` resolve
+# Synthesizes a deploy-only `package.json` (name/version/type/dependencies only — no
+# devDependencies, no workspace-relative anything) and lets `pnpm install` resolve
 # production-only dependencies directly into `dist/`, rather than shipping the whole pnpm
 # workspace's hoisted node_modules into the image.
 RUN node -e " \
@@ -42,14 +40,15 @@ RUN node -e " \
   "
 WORKDIR /repo/apps/task-manager/dist
 # `slim` has no python3/make/g++, so bullmq's optional native msgpackr-extract binding can't
-# compile here and npm logs a (non-fatal) failure for it — msgpackr transparently falls back to
-# its pure-JS implementation, confirmed working end-to-end against a real Redis in manual testing.
-RUN npm install --omit=dev
+# compile here. pnpm skips (rather than attempts and fails) build scripts for dependencies by
+# default, so unlike the old npm install this doesn't even try — msgpackr transparently falls
+# back to its pure-JS implementation, confirmed working end-to-end against a real Redis in
+# manual testing.
+RUN pnpm install --prod
 
 FROM node:24.19.0-slim AS runtime
 WORKDIR /app
 COPY --from=build /repo/apps/task-manager/dist ./
-COPY apps/task-manager/Procfile ./Procfile
 
 ENV NODE_ENV=production
 EXPOSE 3000
