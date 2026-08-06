@@ -25,8 +25,12 @@ jobs:
               - '.nvmrc'
             home: [*shared, 'apps/home/**']
             blog: [*shared, 'apps/blog/**']
-            task_manager: [*shared, 'apps/task-manager/**']
-            personal_assistant: [*shared, 'apps/personal-assistant/**']
+            # '.dockerignore' shapes the build context both Dockerfiles below share; the release
+            # workflow file itself is included too, so editing the deploy pipeline (e.g. bumping
+            # a pinned action, changing the image tag) re-runs it just like an app code change
+            # would, instead of silently going untested until the next unrelated release.
+            task_manager: [*shared, 'apps/task-manager/**', '.dockerignore', '.github/workflows/release_task_manager.yml']
+            personal_assistant: [*shared, 'apps/personal-assistant/**', '.dockerignore', '.github/workflows/release_personal_assistant.yml']
 
   release_home:
     needs: changes
