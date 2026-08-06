@@ -7,6 +7,7 @@
     ":automergeMinor",
     ":automergeDigest"
   ],
+  "minimumReleaseAge": "30 days",
   "packageRules": [
     {
       "matchPackageNames": ["typescript"],
