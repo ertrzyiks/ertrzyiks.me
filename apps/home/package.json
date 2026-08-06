@@ -20,7 +20,7 @@
     "@tweenjs/tween.js": "25.0.0",
     "@types/dat.gui": "0.7.13",
     "@types/debounce": "1.2.4",
-    "astro": "7.1.6",
+    "astro": "7.2.0",
     "dat.gui": "0.7.9",
     "debounce": "3.0.0",
     "honeycomb-grid": "4.1.5",
