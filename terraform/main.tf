@@ -100,16 +100,6 @@ resource "dokku_app" "task_manager" {
   }
 
   domains = ["task-manager.ertrzyiks.me"]
-
-  # Dockerfile-based deploys don't get herokuish's automatic web-port detection, so the proxy
-  # mapping has to be declared explicitly. Matches the `web:` process's EXPOSE 3000 (see
-  # apps/task-manager/Dockerfile).
-  ports = {
-    "80" = {
-      scheme         = "http"
-      container_port = "3000"
-    }
-  }
 }
 
 # Personal Assistant app (email orchestration service, see #250)
