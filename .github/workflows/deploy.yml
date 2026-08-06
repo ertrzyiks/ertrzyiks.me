@@ -1,0 +1,56 @@
+name: Deploy
+
+# Manual entry point: pick an app and a ref (branch, tag, or commit SHA) from the
+# Actions UI (or `gh workflow run deploy.yml -f app=... -f ref=...`) to deploy it
+# outside the normal push-to-master flow in main.yml. Each release_*.yml already
+# accepts a `ref` via workflow_call, so this just routes to the right one.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "App to deploy"
+        type: choice
+        required: true
+        options:
+          - home
+          - blog
+          - task-manager
+          - personal-assistant
+      ref:
+        description: "Branch, tag, or commit SHA to deploy"
+        type: string
+        required: false
+        default: master
+
+jobs:
+  deploy_home:
+    if: inputs.app == 'home'
+    uses: ./.github/workflows/release_homepage.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  deploy_blog:
+    if: inputs.app == 'blog'
+    uses: ./.github/workflows/release_blog.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  deploy_task_manager:
+    if: inputs.app == 'task-manager'
+    uses: ./.github/workflows/release_task_manager.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  deploy_personal_assistant:
+    if: inputs.app == 'personal-assistant'
+    uses: ./.github/workflows/release_personal_assistant.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
