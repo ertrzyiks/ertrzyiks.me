@@ -6,5 +6,13 @@
     ":automergePatch",
     ":automergeMinor",
     ":automergeDigest"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["typescript"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false,
+      "description": "TypeScript 7's native compiler breaks astro check (Cannot read properties of undefined (reading 'fileExists')) in apps/blog and apps/home. Upstream tracking: withastro/astro#17268 (open, 'unable to fix' as of 2026-08). Re-enable once Astro's language-server supports TS7. Follow-up: ertrzyiks/ertrzyiks.me#284."
+    }
   ]
 }
