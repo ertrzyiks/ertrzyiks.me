@@ -126,6 +126,17 @@ resource "dokku_app" "personal_assistant" {
 
   domains = ["personal-assistant.ertrzyiks.me"]
 
+  # Now runs a `web:` process with a /health liveness endpoint (see
+  # apps/personal-assistant/src/healthServer.ts) alongside the poller, so it needs the same
+  # explicit proxy mapping as task-manager — Dockerfile-based deploys don't get herokuish's
+  # automatic web-port detection.
+  ports = {
+    "80" = {
+      scheme         = "http"
+      container_port = "3000"
+    }
+  }
+
   storage = {
     personal-assistant = {
       mount_path = "/app/data"

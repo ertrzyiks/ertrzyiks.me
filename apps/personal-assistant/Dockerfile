@@ -1,8 +1,10 @@
 # Build context is the repo root (see release_personal_assistant.yml) — this app is a pnpm
 # workspace member and needs the shared lockfile/workspace manifest to install correctly.
 #
-# `server.ts` (built here as `dist/server.js`) is a poller with no inbound HTTP traffic — see
-# Procfile below and README.md for why this ships as a `worker:` process rather than `web:`.
+# `server.ts` (built here as `dist/server.js`) is mainly a poller with no meaningful inbound
+# traffic — its only HTTP surface is the liveness endpoint from healthServer.ts, which is what
+# lets this run as a `web:` process (see Procfile below) so Dokku's proxy has something to
+# route the domain to.
 
 FROM node:24.19.0-slim AS build
 WORKDIR /repo
@@ -48,4 +50,5 @@ COPY --from=build /repo/apps/personal-assistant/dist ./
 COPY apps/personal-assistant/Procfile ./Procfile
 
 ENV NODE_ENV=production
+EXPOSE 3000
 CMD ["node", "server.js"]
