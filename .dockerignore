@@ -1,0 +1,16 @@
+# Docker build context is the repo root (needed so the per-app Dockerfiles can `pnpm install`
+# against the shared workspace lockfile). Keep this list broad — anything not copied here still
+# works fine, it just makes the build context upload slower.
+.git
+.github
+.claude
+node_modules
+**/node_modules
+apps/*/dist
+apps/*/.env
+apps/*/data
+apps/*/coverage
+terraform
+scripts
+*.md
+.DS_Store

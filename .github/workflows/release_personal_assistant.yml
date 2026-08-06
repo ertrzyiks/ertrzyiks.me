@@ -14,9 +14,16 @@ on:
 
 concurrency: personal-assistant-production
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/personal-assistant
+
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@v7.0.1
@@ -53,52 +60,48 @@ jobs:
         run: pnpm test
         working-directory: ./apps/personal-assistant
 
-      - name: Build
-        run: pnpm build
-        working-directory: ./apps/personal-assistant
-
-      # See release_task_manager.yml for why this synthesizes a deploy-only package.json/
-      # lockfile instead of reusing the workspace's pnpm-lock.yaml.
-      #
-      # Unlike task-manager's Fastify server, personal-assistant's entrypoint
-      # (src/server.ts) never binds an HTTP port — it's a poller with no inbound traffic
-      # (see apps/personal-assistant/README.md). Declaring it as a `web:` Procfile process
-      # would make Dokku route personal-assistant.ertrzyiks.me to it and run its default
-      # HTTP healthcheck against a port that's never listened on, which would fail the
-      # zero-downtime deploy check. So this ships as a `worker:` process type instead, which
-      # Dokku does not HTTP-healthcheck or auto-scale up on deploy — see the PR description
-      # for the one-time manual `dokku ps:scale personal-assistant worker=1` step this implies.
-      - name: Prepare deploy package
-        working-directory: ./apps/personal-assistant
-        run: |
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            const deployPkg = {
-              name: pkg.name,
-              version: pkg.version,
-              private: true,
-              type: pkg.type,
-              scripts: { start: 'node server.js' },
-              dependencies: pkg.dependencies,
-            };
-            fs.writeFileSync('dist/package.json', JSON.stringify(deployPkg, null, 2) + '\n');
-          "
-          printf 'worker: node server.js\n' > dist/Procfile
-          cd dist && npm install --package-lock-only
-
-      - uses: webfactory/ssh-agent@v0.10.0
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4.6.0
         with:
-          ssh-private-key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - run: echo '167.71.190.115 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEYg+BGxM8IdEoQ8fx7aDoclC0eNXSpI6l/QkLRMF/cvjJcSCk4kz/4LEkSU8eXFawp8IX/yNOyV11sJZtCVBCs=' >> ~/.ssh/known_hosts
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.2.0
 
-      - working-directory: ./apps/personal-assistant/dist
-        run: |
-          git init
-          git config --global user.email "deploy-bot@ertrzyiks.me"
-          git config --global user.name "Deploy Bot"
-          git remote add dokku dokku@167.71.190.115:personal-assistant
-          git add .
-          git commit -m 'Update'
-          git push dokku HEAD:master --force
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+
+      # Build context is the repo root, not ./apps/personal-assistant — the Dockerfile needs the
+      # shared pnpm workspace lockfile to install this app's dependencies. See
+      # apps/personal-assistant/Dockerfile.
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          push: true
+          file: ./apps/personal-assistant/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=personal-assistant
+          cache-to: type=gha,mode=max,scope=personal-assistant
+
+      # Dokku reads a `Procfile` from the deployed image's WORKDIR to still start this as a
+      # `worker` process, not `web` (see apps/personal-assistant/Procfile and its README for why)
+      # — no herokuish/buildpack involved, just `git:from-image` pulling the digest built above.
+      # This app was already scaled to worker=1/web=0 from the previous buildpack deploy; that
+      # scale setting is per-app state on the Dokku host and isn't touched by switching builders,
+      # so no manual `dokku ps:scale` step is needed for this migration.
+      - name: Push to dokku
+        uses: dokku/github-action@v1.10.0
+        with:
+          git_remote_url: "ssh://dokku@167.71.190.115/personal-assistant"
+          ssh_private_key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+          deploy_docker_image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}
