@@ -1,8 +1,10 @@
 # Build context is the repo root (see release_personal_assistant.yml) — this app is a pnpm
 # workspace member and needs the shared lockfile/workspace manifest to install correctly.
 #
-# `server.ts` (built here as `dist/server.js`) is a poller with no inbound HTTP traffic — see
-# Procfile below and README.md for why this ships as a `worker:` process rather than `web:`.
+# `server.ts` (built here as `dist/server.js`) is mainly a poller with no meaningful inbound
+# traffic — its only HTTP surface is the liveness endpoint from healthServer.ts. No Procfile:
+# Dokku treats a Dockerfile app's CMD as its `web` process type by default (and proxies it
+# accordingly) whenever there's no Procfile to say otherwise, so one isn't needed here.
 
 FROM node:24.19.0-slim AS build
 WORKDIR /repo
@@ -21,10 +23,8 @@ RUN pnpm install --frozen-lockfile
 COPY apps/personal-assistant apps/personal-assistant
 RUN pnpm --filter personal-assistant build
 
-# Dokku's Dockerfile builder reads a `Procfile` from the image's WORKDIR (see Procfile below), the
-# same mechanism the old herokuish buildpack deploy relied on — so, like that deploy, this
-# synthesizes a deploy-only `package.json` (name/version/type/dependencies only — no
-# devDependencies, no workspace-relative anything) and lets plain `npm install` resolve
+# Synthesizes a deploy-only `package.json` (name/version/type/dependencies only — no
+# devDependencies, no workspace-relative anything) and lets `pnpm install` resolve
 # production-only dependencies directly into `dist/`, rather than shipping the whole pnpm
 # workspace's hoisted node_modules into the image.
 RUN node -e " \
@@ -40,12 +40,12 @@ RUN node -e " \
     fs.writeFileSync('apps/personal-assistant/dist/package.json', JSON.stringify(deployPkg, null, 2) + '\n'); \
   "
 WORKDIR /repo/apps/personal-assistant/dist
-RUN npm install --omit=dev
+RUN pnpm install --prod
 
 FROM node:24.19.0-slim AS runtime
 WORKDIR /app
 COPY --from=build /repo/apps/personal-assistant/dist ./
-COPY apps/personal-assistant/Procfile ./Procfile
 
 ENV NODE_ENV=production
+EXPOSE 3000
 CMD ["node", "server.js"]
