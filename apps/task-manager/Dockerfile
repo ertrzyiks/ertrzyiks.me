@@ -39,12 +39,19 @@ RUN node -e " \
     fs.writeFileSync('apps/task-manager/dist/package.json', JSON.stringify(deployPkg, null, 2) + '\n'); \
   "
 WORKDIR /repo/apps/task-manager/dist
-# `slim` has no python3/make/g++, so bullmq's optional native msgpackr-extract binding can't
-# compile here. pnpm skips (rather than attempts and fails) build scripts for dependencies by
-# default, so unlike the old npm install this doesn't even try — msgpackr transparently falls
-# back to its pure-JS implementation, confirmed working end-to-end against a real Redis in
-# manual testing.
-RUN pnpm install --prod
+# `--ignore-workspace`: this dist/ package.json isn't a declared pnpm-workspace.yaml member, but
+# without the flag pnpm still finds the workspace root above it and runs the install scoped to
+# "all workspace projects" instead of this directory alone — which, since dist/'s lockfile-less
+# package.json doesn't match what's on disk at the real workspace root, makes pnpm want to purge
+# and rebuild /repo/node_modules and abort with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY (no
+# TTY to confirm the purge in a `docker build`), rather than installing anything into dist/ at all.
+#
+# `--ignore-scripts`: `slim` has no python3/make/g++, so bullmq's optional native msgpackr-extract
+# binding can't compile here — msgpackr transparently falls back to its pure-JS implementation,
+# confirmed working end-to-end against a real Redis in manual testing. `--ignore-workspace` also
+# stops pnpm from reading pnpm-workspace.yaml's `allowBuilds`, so without `--ignore-scripts` pnpm
+# now hard-fails with ERR_PNPM_IGNORED_BUILDS instead of silently skipping the build as before.
+RUN pnpm install --prod --ignore-workspace --ignore-scripts
 
 FROM node:24.19.0-slim AS runtime
 WORKDIR /app
