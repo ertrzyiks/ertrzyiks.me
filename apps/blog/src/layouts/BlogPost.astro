@@ -40,7 +40,13 @@ const { title, date, updated, permalink, featured_image, comment_id } = Astro.pr
       }
 
       h1 {
-        font-size: 40px;
+        font-size: 28px;
+      }
+
+      @media (min-width: 900px) {
+        h1 {
+          font-size: 40px;
+        }
       }
 
       .date {
