@@ -67,5 +67,9 @@ apps/personal-assistant/data/
 .pnpm-store/
 .wrangler/
 /.idea/
-/.claude/skills/
+/.claude/skills/*
+# Project-specific skill, tracked despite the blanket ignore above.
+# (A trailing-slash ignore on the parent dir itself would prune traversal
+# entirely, making this negation a no-op — must ignore children instead.)
+!/.claude/skills/review-blog-post/
 **/.claude/settings.local.json
