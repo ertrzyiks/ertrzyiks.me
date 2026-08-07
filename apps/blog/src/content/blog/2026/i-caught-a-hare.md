@@ -28,7 +28,7 @@ I never trained for jumps, no way I was going to speed up. I was not fully aware
 I remember hitting the ground with the right side of my body. I hit with my shoulder and then with my head. I always wondered what happens to glasses in a situation like that, would they hurt my eyes? Not in this case, they just fell forward off my face. I quickly grabbed my glasses, my bike, and moved off the track because I didn't know if there is anyone riding behind me. I wouldn't want them to collide with me. I did a quick damage control, moved my arms and hands up and down. I figure that would be a good test to check if there are any broken bones in me. All good, fully operational. I started to think in the worst case I need to buy new glasses.
 
 I decided it's enough for today and started pushing my bike. I was still in the woods. A couple of steps later I saw black dots in front of my eyes. They quickly covered all my field of vision.
-I sighed. Great, so now I'm blind. I dropped my bike to the ground and sat on the grass. After a minute or two I noticed the black dots reverse their dance. I could see again so after a short break I grabbed my bike and started pushing it. Shortly after, I lost my sight again. A couple of cycles like that later I was sitting close to the road. I took a longer break there.
+I sighed. Great, so now I'm blind. I dropped my bike to the ground and sat on the grass. After a minute or two I noticed the black dots reverse their dance. I could see again so after a short break I grabbed my bike and started pushing it. Shortly after, I lost my sight again. Fortunately, it came back soon as well. A couple of cycles like that later I was sitting close to the road. I took a longer break there.
 
 # Break?
 
