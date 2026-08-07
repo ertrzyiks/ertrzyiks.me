@@ -1,5 +1,5 @@
 ---
-title: I caught a hare
+title: I caught a hare (and it bit me back)
 permalink: i-caught-a-hare/
 date: 2026-08-07 12:46:30
 featured_image: /content/2026/i-caught-a-hare.jpg
