@@ -1,6 +1,6 @@
 ---
 name: review-blog-post
-description: Review of a blog post in apps/blog before/after publishing — validates frontmatter against the content collection schema, file placement, permalink format/uniqueness, cover image existence, the <!-- more --> excerpt marker, and does a raw grammar/typo sanity pass (obvious misspellings, misplaced/missing commas, stray punctuation, wrong verb tense). Use when the user wants a blog post draft or a merged post reviewed, checked, or sanity-checked. This is a mechanical check only — structure plus surface-level grammar — never a rewrite of style, tone, or meaning.
+description: Review of a blog post in apps/blog before/after publishing — validates frontmatter against the content collection schema, file placement, permalink format/uniqueness, cover image existence, the <!-- more --> excerpt marker, trailing newline, and does a raw grammar/typo sanity pass (obvious misspellings, misplaced/missing commas, stray punctuation, wrong verb tense, dropped words that flip meaning like a missing "no"). Use when the user wants a blog post draft or a merged post reviewed, checked, or sanity-checked. This is a mechanical check only — structure plus surface-level grammar — never a rewrite of style, tone, or meaning.
 ---
 
 Checks a single post in `apps/blog/src/content/blog/` against the conventions this blog actually
@@ -48,6 +48,7 @@ Run through each item and record pass/fail with a one-line reason on any fail:
   excerpt/description via `astro-remark-description`; a post missing it silently gets no excerpt.
 - **Date sanity** — `date` (and `updated`, if present) parse as valid dates, and `updated` is not
   earlier than `date`.
+- **Trailing newline** — the file ends with a newline character (`tail -c1 <file> | wc -l` is `1`).
 
 ### 4. Grammar & typo sanity pass
 
@@ -60,6 +61,11 @@ Read the body prose and flag only mechanical mistakes, nothing else:
   a leftover punctuation mark from an edit.
 - **Wrong tense** — a verb whose tense breaks agreement with the rest of its own sentence (e.g.
   switches from past to present mid-sentence with no reason to).
+- **Dropped word that flips or breaks the meaning** — most often a missing negation ("there is
+  way..." when the sentence clearly means "there is *no* way...") or a missing article, where the
+  surrounding context makes it obvious a word was lost, typically to dictation. Treat this as
+  higher severity than the other categories: it doesn't just read awkwardly, it silently reverses
+  or garbles what the sentence says.
 
 Do not flag: word choice, phrasing, sentence length, repetition, tone, or anything that is a
 legitimate stylistic choice rather than an error. Do not flag informal/spoken constructions just
