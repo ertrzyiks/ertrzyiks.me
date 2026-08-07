@@ -38,7 +38,7 @@ That was the moment I realized there is no way I will go back home myself. I nee
 
 # Hospital
 
-So it was Thursday evening. They took a bunch x-rays of me and we waited for the doctor to tell if I needed a surgery. Apparently, in simple cases, you can just fix the arm so it does not move too much and wait a couple of weeks. However, when the doctor took a look he said that it will be an interesting case for the young doctors that will come the next day. Surgery it is then.
+So it was Thursday evening. They took a bunch x-rays of me and we waited for the doctor to tell if I needed a surgery. Apparently, in simple cases, you can just fix the arm so it does not move too much and wait a couple of weeks. However, when the doctor took a look he said that it will be an interesting case for the young doctors that will come the next day. Surgery it is then. Good news is I got back control over my right hand. Yay!
 
 They asked me if I want to go home or wait in the hospital. I was scheduled for patching up on Friday morning. I decided to spend that night at home. My wife and son grabbed me from the hospital. I arrived the next day in early morning hours. Around noon, they told me to start preparing for the surgery. I washed myself (not so easy with just one hand) as they told me to be ready in 15 minutes.
 Two hours later the doctor visited me and said there are technical issues:
