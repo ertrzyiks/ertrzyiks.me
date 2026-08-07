@@ -11,7 +11,8 @@ A couple years ago, my son fell to the ground while we were going with my family
 
 ## Joy of bike
 
-In the last years, I rediscovered the joy of riding a bike. I used to ride a lot, mostly at the asphalt roads between small cities and villages around my hometown. It's very hard to get such a peaceful experience in a big city though. My trekking bike had to make room for a mountain bike that works better with the uneven surface of the forest trails. While cruising through the hilly area of Tricity Landscape Park I spotted a sign that advertised single tracks for downhill. The temptation to give it a try was with me on every ride I had since then.
+In the last years, I rediscovered the joy of riding a bike. I used to ride a lot, mostly at the asphalt roads between small cities and villages around my hometown. It's good for health and nice opportunity to visit new places.
+It's very hard to get such an experience in a big city though. My trekking bike had to make room for a mountain bike that works better with the uneven surface of the forest trails. While cruising through the hilly area of Tricity Landscape Park I spotted a sign that advertised single tracks for downhill. The temptation to give it a try was with me on every ride I had since then.
 
 First, I bought a full face helmet (the best decision ever made). I found the information about the tracks and picked the easiest one to try. On one Thursday after work I grabbed my helmet and a bike. First, I found the bottom end of the tracks. After a long, uphill ride, I stopped on the starting spot on the top of the hill. I located the entrance to the one that I wanted to try and rolled down. I kept my speed under control and a couple of tight corners later, I was again on the bottom of the hill.
 
@@ -57,6 +58,6 @@ The next thing I remember was waking up to the conversation of the medical staff
 Later that day, I learned that my arm is now equipped with a titan plate and a couple of screws.
 They are big enough to annoy me long term so doctors will need to cut me again in a couple of months to remove them.
 
-## Recovery
+## Back home
 
-Meanwhile? I can't walk or sit for more than 30 minutes without immense pain. I cannot really use a keyboard for now, I "wrote" most of this article with dictation software. It's getting better over time. I will release the hare I caught once my collarbone is healed.
+The helmet saved me from any head injuries. Problems with sight occurred only in the hour after the accident and back to normal. The surgery was successful with no complications. I'm already looking forward to jump back on the bike in a couple of months. I will probably focus on some basics of control before I go back to the single tracks. What's certain is that I will release the hare I caught only after my collarbone is healed.
