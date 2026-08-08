@@ -55,3 +55,58 @@ describe("macKeychainReader", () => {
     );
   });
 });
+
+describe("resolveSecret", () => {
+  const ENV_VAR = "TASK_MANAGER_TEST_SECRET";
+
+  beforeEach(() => {
+    delete process.env[ENV_VAR];
+  });
+
+  it("returns the env var without touching the reader when one is set", async () => {
+    process.env[ENV_VAR] = "redis://env-value";
+    const { resolveSecret } = await import("./keychain.js");
+    const reader = { read: vi.fn() };
+
+    const value = await resolveSecret(reader, "worker-account", "redis-url", ENV_VAR);
+
+    expect(value).toBe("redis://env-value");
+    expect(reader.read).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the reader when the env var is unset", async () => {
+    const { resolveSecret } = await import("./keychain.js");
+    const reader = { read: vi.fn().mockResolvedValue("redis://keychain-value") };
+
+    const value = await resolveSecret(reader, "worker-account", "redis-url", ENV_VAR);
+
+    expect(value).toBe("redis://keychain-value");
+    expect(reader.read).toHaveBeenCalledWith("worker-account", "redis-url");
+  });
+
+  it("falls back to the reader when the env var is an empty string", async () => {
+    process.env[ENV_VAR] = "";
+    const { resolveSecret } = await import("./keychain.js");
+    const reader = { read: vi.fn().mockResolvedValue("redis://keychain-value") };
+
+    const value = await resolveSecret(reader, "worker-account", "redis-url", ENV_VAR);
+
+    expect(value).toBe("redis://keychain-value");
+    expect(reader.read).toHaveBeenCalledWith("worker-account", "redis-url");
+  });
+
+  it("wraps a Keychain miss in a message naming both the item and the env var alternative", async () => {
+    const { resolveSecret } = await import("./keychain.js");
+    const keychainError = new Error(
+      "security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.",
+    );
+    const reader = { read: vi.fn().mockRejectedValue(keychainError) };
+
+    const rejection = resolveSecret(reader, "worker-account", "redis-url", ENV_VAR);
+
+    await expect(rejection).rejects.toThrow('"redis-url"');
+    await expect(rejection).rejects.toThrow("worker-account");
+    await expect(rejection).rejects.toThrow(ENV_VAR);
+    await expect(rejection).rejects.toMatchObject({ cause: keychainError });
+  });
+});

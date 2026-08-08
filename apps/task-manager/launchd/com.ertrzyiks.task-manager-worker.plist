@@ -6,32 +6,32 @@
   logged in, and restarts it automatically if it crashes or exits unexpectedly (KeepAlive,
   subject to launchd's default crash-loop throttling).
 
-  This file is a TEMPLATE. Every REPLACE_ME_* placeholder below must be substituted with a
+  This file is a TEMPLATE. The one REPLACE_ME_* placeholder below must be substituted with a
   real, machine-specific value before installing — see the "macOS LaunchAgent" section of
-  apps/task-manager/README.md for the install steps and where each value comes from. Never
-  commit a copy of this file with real secrets filled in; the installed copy lives outside
-  git, under ~/Library/LaunchAgents/.
+  apps/task-manager/README.md for the install steps. Never commit a copy of this file with
+  real values filled in; the installed copy lives outside git, under ~/Library/LaunchAgents/.
 
-    - REPLACE_ME_NODE_PATH: absolute path to a `node` binary (e.g. `which node`). launchd
-      does not read your shell's PATH/nvm setup, so a bare "node" will not resolve.
     - REPLACE_ME_REPO_PATH: absolute path to this repo checkout, e.g.
       /Users/you/code/ertrzyiks.me
-    - REPLACE_ME_REDIS_URL: same Redis instance the Jobs API server uses.
-    - REPLACE_ME_GMAIL_CLIENT_ID / REPLACE_ME_GMAIL_CLIENT_SECRET: the OAuth client for the
-      worker's gmail.readonly credential (see scripts/gmail-oauth/README.md, #247). The
-      refresh token itself is NOT an env var here — it's read from the macOS Keychain at
-      startup (src/keychain.ts); see the README for the `security add-generic-password`
-      command that stores it there.
 
-  Optional env vars (GMAIL_KEYCHAIN_ACCOUNT, GMAIL_KEYCHAIN_SERVICE, LM_STUDIO_BASE_URL) are
-  omitted here since worker.ts already falls back to sensible defaults (see src/worker.ts) —
-  add them under EnvironmentVariables below only if you need to override a default.
+  Runs the standalone `dist-bin/task-manager-worker` executable directly — NOT `node
+  dist/worker.js` or `pnpm run worker` (the dev-only entrypoint). That executable is produced
+  by the "release:worker" package.json script (scripts/release-worker.mjs), which bundles
+  worker.ts via esbuild and packages it with @yao-pkg/pkg. Run that script (not just `build`)
+  before installing/reloading this LaunchAgent — see README.md's "macOS LaunchAgent" section
+  for why a standalone binary is used instead of the shared `node` interpreter: it lets the
+  Keychain access grant below be scoped to this one program.
 
-  Runs the built `dist/worker.js` directly via `node` — NOT `pnpm run worker` (which runs
-  `tsx watch src/worker.ts`, the dev-only entrypoint) — matching how the Jobs API's `start`
-  script runs `dist/server.js` rather than a dev script. Run the task-manager package's
-  build script first (see apps/task-manager/README.md) so `dist/worker.js` exists at the
-  path referenced below.
+  No secrets appear here. REDIS_URL, GMAIL_CLIENT_ID, and GMAIL_CLIENT_SECRET — like the
+  Gmail refresh token already did — are read from the macOS Keychain at startup (src/
+  keychain.ts) instead of being passed as EnvironmentVariables. release-worker.mjs
+  (re-)provisions all four Keychain items on every run, trusting this exact binary so
+  `security find-generic-password` doesn't prompt for authorization at every restart.
+
+  Optional env var overrides (GMAIL_KEYCHAIN_ACCOUNT, GMAIL_KEYCHAIN_SERVICE,
+  LM_STUDIO_BASE_URL) are omitted here since worker.ts already falls back to sensible
+  defaults (see src/worker.ts) — add them under EnvironmentVariables below only if you need
+  to override one.
 -->
 <plist version="1.0">
 <dict>
@@ -40,22 +40,11 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>REPLACE_ME_NODE_PATH</string>
-    <string>REPLACE_ME_REPO_PATH/apps/task-manager/dist/worker.js</string>
+    <string>REPLACE_ME_REPO_PATH/apps/task-manager/dist-bin/task-manager-worker</string>
   </array>
 
   <key>WorkingDirectory</key>
   <string>REPLACE_ME_REPO_PATH/apps/task-manager</string>
-
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>REDIS_URL</key>
-    <string>REPLACE_ME_REDIS_URL</string>
-    <key>GMAIL_CLIENT_ID</key>
-    <string>REPLACE_ME_GMAIL_CLIENT_ID</string>
-    <key>GMAIL_CLIENT_SECRET</key>
-    <string>REPLACE_ME_GMAIL_CLIENT_SECRET</string>
-  </dict>
 
   <key>RunAtLoad</key>
   <true/>

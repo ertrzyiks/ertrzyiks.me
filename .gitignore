@@ -60,6 +60,7 @@ home/.git-deploy
 home/dist
 task-manager/dist
 apps/task-manager/dist
+apps/task-manager/dist-bin
 apps/task-manager/.env
 apps/personal-assistant/dist
 apps/personal-assistant/.env
