@@ -10,13 +10,18 @@ user's Mac (via a LaunchAgent, see #243) and is the only thing that ever reads e
 
 ## Environment variables
 
-### Jobs API server (`server.ts` / `devServer.ts`)
+### Jobs API server (`server.ts`)
 
-| Variable                | Required | Description                                              |
-| ------------------------ | -------- | ---------------------------------------------------------- |
-| `REDIS_URL`              | yes      | Connection string for the BullMQ-backing Redis instance    |
-| `JOBS_API_BEARER_TOKEN`  | yes      | Shared secret every request must present as `Authorization: Bearer <token>` |
-| `PORT`                   | no       | HTTP port to listen on (default `3000`)                    |
+| Variable                                        | Required | Description                                              |
+| ------------------------------------------------ | -------- | ---------------------------------------------------------- |
+| `REDIS_URL`                                       | yes      | Connection string for the BullMQ-backing Redis instance    |
+| `JOBS_API_BEARER_TOKEN`                           | yes      | Shared secret every request must present as `Authorization: Bearer <token>` |
+| `PORT`                                            | no       | HTTP port to listen on (default `3000`)                    |
+| `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME`     | no\*     | Basic Auth username guarding the Bull Board UI (`/admin/queues`) |
+| `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD`     | no\*     | Basic Auth password guarding the Bull Board UI              |
+
+\* Bull Board is always mounted, but the Basic Auth check only applies when **both** vars are set —
+unset (the default locally) leaves it open. Production always sets both via Terraform (#313).
 
 ### Mac worker (`worker.ts`)
 
@@ -44,7 +49,7 @@ availability. See the PR that introduced this file for what was and wasn't verif
 
 ## Endpoints
 
-All endpoints require `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
+All `/jobs*` endpoints require `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
 
 - `POST /jobs` — `{ emailId }` → `201 { jobId }`
 - `GET /jobs/:jobId` — `200 { jobId, status, result?, error? }`, `404` if unknown
@@ -52,6 +57,10 @@ All endpoints require `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
 
 `status` is one of `pending | active | completed | failed`, collapsing BullMQ's internal states
 per the contract in #241.
+
+The [Bull Board](https://github.com/felixmosh/bull-board) queue-inspection UI is mounted at
+`/admin/queues` — a separate, browser-friendly Basic Auth scheme guards it instead (#296), not the
+Bearer token above.
 
 ## Development
 
@@ -81,15 +90,15 @@ pnpm --filter task-manager test
    pnpm --filter task-manager dev
    ```
 
-   This runs `src/devServer.ts` instead of the production `src/server.ts` entrypoint. It loads
-   `apps/task-manager/.env` (via `dotenv`) and additionally mounts the
-   [Bull Board](https://github.com/felixmosh/bull-board) queue-inspection UI, which the
-   production server never does — `server.ts` (what Dokku actually runs via `pnpm start`) has no
-   dependency on `dotenv` or `@bull-board/*` at all.
+   This runs `src/server.ts` — the same entrypoint Dokku runs in production (via `pnpm start` →
+   `node dist/server.js`). It loads `apps/task-manager/.env` (via `dotenv`, a no-op when no `.env`
+   file exists, which is why this is safe to do unconditionally in production too) and always
+   mounts the [Bull Board](https://github.com/felixmosh/bull-board) queue-inspection UI.
 
-4. Open the queue UI at **http://localhost:3000/admin/queues** (send the same
-   `Authorization: Bearer <JOBS_API_BEARER_TOKEN>` header/cookie the API expects — the auth hook
-   in `app.ts` guards every route, Bull Board included). Post a job and watch it show up:
+4. Open the queue UI at **http://localhost:3000/admin/queues**. If you left
+   `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME`/`_PASSWORD` unset in `.env`, it's open with no
+   prompt; set both to test the same Basic Auth flow production uses. Post a job and watch it show
+   up — the `/jobs` API itself still uses the separate Bearer scheme:
 
    ```bash
    curl -X POST http://localhost:3000/jobs \
