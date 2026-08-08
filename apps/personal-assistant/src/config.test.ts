@@ -7,6 +7,8 @@ const VALID_ENV = {
   GMAIL_REFRESH_TOKEN: "refresh-token",
   JOBS_API_BASE_URL: "http://localhost:3000",
   JOBS_API_BEARER_TOKEN: "bearer-token",
+  PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME: "admin",
+  PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD: "dashboard-secret",
 };
 
 describe("loadConfig", () => {
@@ -26,6 +28,10 @@ describe("loadConfig", () => {
       },
       databasePath: "/app/data/personal-assistant.sqlite",
       pollIntervalMs: 5 * 60 * 1000,
+      dashboardBasicAuth: {
+        username: "admin",
+        password: "dashboard-secret",
+      },
     });
   });
 
@@ -48,6 +54,8 @@ describe("loadConfig", () => {
     "GMAIL_REFRESH_TOKEN",
     "JOBS_API_BASE_URL",
     "JOBS_API_BEARER_TOKEN",
+    "PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME",
+    "PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD",
   ])("throws when %s is missing", (key) => {
     const env = { ...VALID_ENV };
     delete (env as Record<string, string | undefined>)[key];

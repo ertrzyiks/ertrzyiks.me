@@ -11,6 +11,10 @@ export interface Config {
   };
   databasePath: string;
   pollIntervalMs: number;
+  dashboardBasicAuth: {
+    username: string;
+    password: string;
+  };
 }
 
 // Matches the storage mount configured in terraform/main.tf's dokku_app.personal_assistant
@@ -39,5 +43,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     databasePath: env.DATABASE_PATH ?? DEFAULT_DATABASE_PATH,
     pollIntervalMs: Number(env.POLL_INTERVAL_MS ?? DEFAULT_POLL_INTERVAL_MS),
+    // Required (not optional, unlike task-manager's Bull Board Basic Auth vars, #296) — the
+    // snapshot dashboard (#297/#312) is the only non-liveness route this service exposes, so
+    // there's no low-friction local-dev case worth degrading safety for.
+    dashboardBasicAuth: {
+      username: required(env, "PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME"),
+      password: required(env, "PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD"),
+    },
   };
 }

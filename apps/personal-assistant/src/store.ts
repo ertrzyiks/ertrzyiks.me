@@ -13,6 +13,19 @@ export interface QueuedEmail {
   jobId: string;
 }
 
+/** One row of the snapshot dashboard's status breakdown (#297/#312). */
+export interface StatusCount {
+  status: string;
+  count: number;
+}
+
+/** One row of the snapshot dashboard's recent-failures list (#297/#312). */
+export interface FailedEmail {
+  id: string;
+  errorMessage: string | null;
+  updatedAt: string;
+}
+
 // Schema exactly as specified in #250/#242.
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS emails (
@@ -48,6 +61,10 @@ export interface Store {
   markEmailCompleted(emailId: string, actionItems: ActionItemInput[]): void;
   /** Emails still awaiting a job result (status='queued' with a job already scheduled). */
   getQueuedEmailsWithJobId(): QueuedEmail[];
+  /** Current counts of emails grouped by status, for the snapshot dashboard (#297/#312). */
+  getStatusCounts(): StatusCount[];
+  /** The most recently updated failed emails, capped at `limit` (#297/#312). */
+  getRecentFailures(limit: number): FailedEmail[];
   close(): void;
 }
 
@@ -75,6 +92,10 @@ export function createStore(path: string): Store {
   );
   const queuedWithJobStmt = db.prepare(
     "SELECT id, job_id FROM emails WHERE status = 'queued' AND job_id IS NOT NULL",
+  );
+  const statusCountsStmt = db.prepare("SELECT status, COUNT(*) as count FROM emails GROUP BY status");
+  const recentFailuresStmt = db.prepare(
+    "SELECT id, error_message, updated_at FROM emails WHERE status = 'failed' ORDER BY updated_at DESC LIMIT ?",
   );
 
   return {
@@ -119,6 +140,24 @@ export function createStore(path: string): Store {
     getQueuedEmailsWithJobId() {
       const rows = queuedWithJobStmt.all() as { id: string; job_id: string }[];
       return rows.map((row) => ({ emailId: row.id, jobId: row.job_id }));
+    },
+
+    getStatusCounts() {
+      const rows = statusCountsStmt.all() as { status: string; count: number }[];
+      return rows.map((row) => ({ status: row.status, count: row.count }));
+    },
+
+    getRecentFailures(limit) {
+      const rows = recentFailuresStmt.all(limit) as {
+        id: string;
+        error_message: string | null;
+        updated_at: string;
+      }[];
+      return rows.map((row) => ({
+        id: row.id,
+        errorMessage: row.error_message,
+        updatedAt: row.updated_at,
+      }));
     },
 
     close() {
