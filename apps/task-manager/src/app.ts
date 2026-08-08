@@ -36,9 +36,10 @@ export function createApp(queue: JobsQueue, bearerToken: string): FastifyInstanc
   // The bearer-auth hook is scoped to this encapsulated plugin rather than
   // added on `app` directly, so it only covers the routes below. Fastify
   // hooks cascade to nested `register()` contexts but not to siblings — this
-  // matters because devServer.ts mounts Bull Board as a sibling on the same
-  // `app` instance, and that UI needs to be reachable from a plain browser
-  // tab, which can't attach an Authorization header.
+  // matters because server.ts mounts Bull Board as a sibling on the same
+  // `app` instance, guarded by its own separate Basic Auth hook (#296/#311),
+  // and that UI needs to be reachable from a plain browser tab, which can't
+  // attach an Authorization: Bearer header the way an API client can.
   app.register(async (api) => {
     api.addHook("onRequest", async (request, reply) => {
       if (!isValidBearerToken(request.headers.authorization, bearerToken)) {

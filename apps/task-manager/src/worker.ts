@@ -1,4 +1,4 @@
-// Mac worker entry point (#249). Separate from `server.ts`/`devServer.ts` — this is
+// Mac worker entry point (#249). Separate from `server.ts` — this is
 // never deployed to Dokku, it only ever runs on the user's Mac via a LaunchAgent
 // (#243), colocated here so it can share the `EmailJobPayload`/`EmailJobResult`/
 // `ActionItem` types and `QUEUE_NAME` with the Jobs API server directly via import.
