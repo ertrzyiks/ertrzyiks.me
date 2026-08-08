@@ -24,7 +24,7 @@ logger.info(
 );
 
 const runner = startPolling({ gmail, jobsApi, store, logger }, config.pollIntervalMs);
-const health = startHealthServer(port, logger);
+const health = startHealthServer(port, store, config.dashboardBasicAuth, logger);
 
 function shutdown() {
   logger.info("shutting down");

@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createStore, type Store } from "./store.js";
 
 describe("store (in-memory)", () => {
@@ -66,6 +66,81 @@ describe("store (in-memory)", () => {
     store.markEmailCompleted("email-1", []);
 
     expect(store.getQueuedEmailsWithJobId()).toEqual([{ emailId: "email-2", jobId: "job-2" }]);
+  });
+
+  describe("getStatusCounts", () => {
+    it("returns no rows when there are no emails", () => {
+      expect(store.getStatusCounts()).toEqual([]);
+    });
+
+    it("groups emails by status", () => {
+      store.insertQueuedEmail("email-1");
+      store.insertQueuedEmail("email-2");
+      store.insertQueuedEmail("email-3");
+      store.markEmailFailed("email-2", "boom");
+      store.markEmailCompleted("email-3", []);
+
+      const counts = store.getStatusCounts();
+
+      expect(counts).toEqual(
+        expect.arrayContaining([
+          { status: "queued", count: 1 },
+          { status: "failed", count: 1 },
+          { status: "completed", count: 1 },
+        ]),
+      );
+      expect(counts).toHaveLength(3);
+    });
+  });
+
+  describe("getRecentFailures", () => {
+    it("returns no rows when there are no failures", () => {
+      expect(store.getRecentFailures(50)).toEqual([]);
+    });
+
+    it("only includes failed emails, with their error message", () => {
+      store.insertQueuedEmail("email-1");
+      store.insertQueuedEmail("email-2");
+      store.markEmailFailed("email-2", "boom");
+
+      const failures = store.getRecentFailures(50);
+
+      expect(failures).toHaveLength(1);
+      expect(failures[0]).toMatchObject({ id: "email-2", errorMessage: "boom" });
+    });
+
+    it("orders by most recently updated first", () => {
+      // Fake timers give each failure a distinct, controlled `updated_at` — two real-clock
+      // calls back-to-back can land in the same millisecond and make the ORDER BY tie-break
+      // arbitrarily, which would make this test flaky.
+      vi.useFakeTimers();
+      try {
+        store.insertQueuedEmail("email-1");
+        store.insertQueuedEmail("email-2");
+
+        vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+        store.markEmailFailed("email-1", "first failure");
+
+        vi.setSystemTime(new Date("2026-01-01T00:00:01.000Z"));
+        store.markEmailFailed("email-2", "second failure");
+      } finally {
+        vi.useRealTimers();
+      }
+
+      const failures = store.getRecentFailures(50);
+
+      expect(failures.map((f) => f.id)).toEqual(["email-2", "email-1"]);
+    });
+
+    it("caps the number of rows returned", () => {
+      for (let i = 0; i < 5; i++) {
+        const id = `email-${i}`;
+        store.insertQueuedEmail(id);
+        store.markEmailFailed(id, "boom");
+      }
+
+      expect(store.getRecentFailures(2)).toHaveLength(2);
+    });
   });
 });
 

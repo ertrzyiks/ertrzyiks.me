@@ -63,9 +63,25 @@ CREATE TABLE action_items (
 | `DATABASE_PATH`           | no       | Path to the SQLite file (default `/app/data/personal-assistant.sqlite`, matching the `storage` mount in `terraform/main.tf`'s `dokku_app.personal_assistant`) |
 | `POLL_INTERVAL_MS`        | no       | Milliseconds between poll cycles (default `300000`, i.e. 5 minutes)           |
 | `GMAIL_MAX_RESULTS`       | no       | Max messages fetched per `messages.list` call (default `50`)                  |
+| `PORT`                    | no       | HTTP port for the health/dashboard server (default `3000`)                    |
+| `PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME` | yes | Basic Auth username guarding the snapshot dashboard (`/admin/status`) |
+| `PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD` | yes | Basic Auth password guarding the snapshot dashboard |
 
 Polling frequency and retry/alerting policy are explicitly deferred per #250 — the above are
 reasonable starting defaults, expected to be revisited.
+
+## HTTP surface
+
+personal-assistant is mostly a background poller with no meaningful inbound traffic, but it runs
+one small HTTP server (`src/healthServer.ts`) alongside the poll loop so Dokku's proxy has
+something to route its domain to:
+
+- `GET /health` — `200 { status: "ok" }` whenever the process is up. No dependency check (Gmail,
+  Jobs API, sqlite) behind it, just liveness. Unauthenticated.
+- `GET /admin/status` — a snapshot dashboard: current `emails` counts by status, and the 50 most
+  recently updated failed emails with their `error_message` (#297/#312). Guarded by Basic Auth
+  (`WWW-Authenticate: Basic` challenge on a failed/missing check) — a separate scheme from the
+  Jobs API's Bearer token, chosen so the dashboard is reachable from a plain browser tab.
 
 ## Development
 
