@@ -11,7 +11,7 @@ A couple years ago, my son fell to the ground while we were going with my family
 
 ## Joy of bike
 
-In the last years, I rediscovered the joy of riding a bike. I used to ride a lot, mostly at the asphalt roads between small cities and villages around my hometown. It's good for health and nice opportunity to visit new places.
+In the last years, I rediscovered the joy of riding a bike. I used to ride a lot, mostly at the asphalt roads between small cities and villages around my hometown.
 It's very hard to get such an experience in a big city though. My trekking bike had to make room for a mountain bike that works better with the uneven surface of the forest trails. While cruising through the hilly area of Tricity Landscape Park I spotted a sign that advertised single tracks for downhill. The temptation to give it a try was with me on every ride I had since then.
 
 First, I bought a full face helmet (the best decision ever made). I found the information about the tracks and picked the easiest one to try. On one Thursday after work I grabbed my helmet and a bike. First, I found the bottom end of the tracks. After a long, uphill ride, I stopped on the starting spot on the top of the hill. I located the entrance to the one that I wanted to try and rolled down. I kept my speed under control and a couple of tight corners later, I was again on the bottom of the hill.
@@ -22,7 +22,7 @@ I came here with an idea to have one ride and cruise home. I enjoyed my very fir
 
 I climbed the top of the hill again. After a quick glimpse at the map, I found another easy track. This time, I kept my braking less aggressive which gave me a solid speed on the bottom of the hill. That was even more fun! I was approaching the end of the track, it was no longer steep but still covered with obstacles. I climbed a wooden structure and rolled down. I was caught off guard for what was coming next: two small bumps next to each other. At low speed, that could be a nice pump track-style feature. At higher speed, it could be a quick jump. I had less than a second to decide.
 
-I never trained for jumps, no way I was going to speed up. I was not fully aware how fast I'm going because I wasn't braking either. What I didn't know is my speed was just perfect ... to crash somewhere in between of the bumps.
+I never trained for jumps, no way I was going to speed up. I was not fully aware how fast I'm going because I wasn't braking either. I remember a sudden transition in my mind after I spotted the first bump. I realized there is one more and that second one is slightly higher. A single bump was a regular feature of the trails I've done in the past. The thing in front of my eyes, that was something new. Anyway, my speed was just perfect ... to crash right in between of the bumps.
 
 ## The crash
 
@@ -58,6 +58,6 @@ The next thing I remember was waking up to the conversation of the medical staff
 Later that day, I learned that my arm is now equipped with a titan plate and a couple of screws.
 They are big enough to annoy me long term so doctors will need to cut me again in a couple of months to remove them.
 
-## Back home
+## Aftermath
 
-The helmet saved me from any head injuries. Problems with sight occurred only in the hour after the accident and back to normal. The surgery was successful with no complications. I'm already looking forward to jump back on the bike in a couple of months. I will probably focus on some basics of control before I go back to the single tracks. What's certain is that I will release the hare I caught only after my collarbone is healed.
+The helmet did its job and I didn't suffer any head injuries. The problems with my vision lasted only about an hour and then returned to normal. The surgery was successful with no complications, but I need help with ordinary things for a while. I'm already looking forward to getting back on the bike in a couple of months. I will probably focus on improving my bike control before I go back to the single tracks. What's certain is that I will release the hare I caught only after my collarbone is healed.
