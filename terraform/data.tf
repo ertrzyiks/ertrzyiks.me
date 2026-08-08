@@ -58,3 +58,16 @@ data "onepassword_item" "personal_assistant_gcloud_oauth_refresh_token" {
   title = "personal_assistant_gcloud_oauth_refresh_token"
 }
 
+# Basic Auth credentials for the two observability dashboards (#294/#313) — each a single
+# 1Password Login item exposing both `.username` and `.password`, rather than two separate
+# password-only items, since a username+password pair is what these actually are.
+data "onepassword_item" "personal_assistant_task_manager_bull_board" {
+  vault = "Dokku apps"
+  title = "personal_assistant_task_manager_bull_board"
+}
+
+data "onepassword_item" "personal_assistant_dashboard_basic_auth" {
+  vault = "Dokku apps"
+  title = "personal_assistant_dashboard_basic_auth"
+}
+

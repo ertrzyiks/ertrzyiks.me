@@ -97,6 +97,10 @@ resource "dokku_app" "task_manager" {
   config = {
     REDIS_URL             = data.onepassword_item.personal_assistant_task_manager_redis_url.password
     JOBS_API_BEARER_TOKEN = data.onepassword_item.personal_assistant_jobs_api_bearer_token.password
+    # Optional: Bull Board's Basic Auth guard only activates once both are set (#296/#311) —
+    # provisioned here so it's always active in production.
+    TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME = data.onepassword_item.personal_assistant_task_manager_bull_board.username
+    TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD = data.onepassword_item.personal_assistant_task_manager_bull_board.password
   }
 
   domains = ["task-manager.ertrzyiks.me"]
@@ -112,6 +116,9 @@ resource "dokku_app" "personal_assistant" {
     GMAIL_REFRESH_TOKEN   = data.onepassword_item.personal_assistant_gcloud_oauth_refresh_token.password
     JOBS_API_BEARER_TOKEN = data.onepassword_item.personal_assistant_jobs_api_bearer_token.password
     JOBS_API_BASE_URL     = "https://task-manager.ertrzyiks.me"
+    # Required: the snapshot dashboard (#297/#312) won't start without both set.
+    PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME = data.onepassword_item.personal_assistant_dashboard_basic_auth.username
+    PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD = data.onepassword_item.personal_assistant_dashboard_basic_auth.password
   }
 
   domains = ["personal-assistant.ertrzyiks.me"]
