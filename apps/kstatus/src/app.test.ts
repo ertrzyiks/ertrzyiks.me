@@ -21,8 +21,32 @@ describe("app", () => {
     store.close();
   });
 
-  describe("GET / (public status page)", () => {
-    it("renders events with no Authorization header required, even when admin auth is configured", async () => {
+  describe("GET / (status page)", () => {
+    it("renders events with no Authorization header required when adminBasicAuth is null (dev)", async () => {
+      store.createEvent({
+        type: "warning",
+        title: "Elevated latency",
+        startsAt: "2026-08-09T09:00",
+      });
+      const app = createApp(store, null, () => NOW);
+
+      const response = await app.inject({ method: "GET", url: "/" });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["content-type"]).toContain("text/html");
+      expect(response.body).toContain("Elevated latency");
+    });
+
+    it("rejects / with 401 + WWW-Authenticate when configured and no header is sent", async () => {
+      const app = createApp(store, CREDS, () => NOW);
+
+      const response = await app.inject({ method: "GET", url: "/" });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers["www-authenticate"]).toContain("Basic");
+    });
+
+    it("allows / with correct credentials", async () => {
       store.createEvent({
         type: "warning",
         title: "Elevated latency",
@@ -30,10 +54,13 @@ describe("app", () => {
       });
       const app = createApp(store, CREDS, () => NOW);
 
-      const response = await app.inject({ method: "GET", url: "/" });
+      const response = await app.inject({
+        method: "GET",
+        url: "/",
+        headers: { authorization: basicHeader("admin", "secret") },
+      });
 
       expect(response.statusCode).toBe(200);
-      expect(response.headers["content-type"]).toContain("text/html");
       expect(response.body).toContain("Elevated latency");
     });
   });

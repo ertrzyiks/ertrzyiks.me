@@ -89,6 +89,22 @@ export function createApp(
 
   app.register(formbody);
 
+  // Added on `app` directly (rather than scoped to the /admin plugin below) so the Basic Auth
+  // hook guards every route, including the public status page.
+  if (adminBasicAuth) {
+    app.addHook("onRequest", async (request, reply) => {
+      if (!isValidBasicAuth(request.headers.authorization, adminBasicAuth)) {
+        reply
+          .code(401)
+          .header("WWW-Authenticate", 'Basic realm="kstatus"')
+          .send("Unauthorized");
+      }
+    });
+  }
+  // adminBasicAuth is null whenever either env var is unset (see config.ts) — in that case no
+  // hook is registered at all, so the whole app is reachable with no auth prompt, as intended in
+  // dev.
+
   app.get("/", async (_request, reply) => {
     reply.header("Content-Type", HTML_CONTENT_TYPE);
     const events = store.listEvents();
@@ -96,22 +112,7 @@ export function createApp(
     return renderStatusPage(events, buildDayBar(events, todayKey));
   });
 
-  // Scoped to this encapsulated plugin (rather than added on `app` directly) so the Basic Auth
-  // hook only ever guards these routes, never the public status page above.
   app.register(async (admin) => {
-    if (adminBasicAuth) {
-      admin.addHook("onRequest", async (request, reply) => {
-        if (!isValidBasicAuth(request.headers.authorization, adminBasicAuth)) {
-          reply
-            .code(401)
-            .header("WWW-Authenticate", 'Basic realm="kstatus admin"')
-            .send("Unauthorized");
-        }
-      });
-    }
-    // adminBasicAuth is null whenever either env var is unset (see config.ts) — in that case no
-    // hook is registered at all, so /admin is reachable with no auth prompt, as intended in dev.
-
     admin.get("/admin", async (_request, reply) => {
       reply.header("Content-Type", HTML_CONTENT_TYPE);
       return renderAdminPage({ events: store.listAdminEvents(now()) });
