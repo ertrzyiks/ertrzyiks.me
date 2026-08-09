@@ -11,6 +11,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",
+    "eval": "vitest run --config eval/vitest.config.ts",
+    "eval:watch": "vitest --config eval/vitest.config.ts",
     "release:worker": "node scripts/release-worker.mjs"
   },
   "dependencies": {

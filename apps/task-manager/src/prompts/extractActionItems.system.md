@@ -18,15 +18,12 @@ If there is more than one sort them by importance and promote actions beneficial
 
 ## Phase 2: Action extractions
 
+Focus on content rather than structure. Avoid items caused only by a call-to-action link or button.
+
 1. If the message looks written by hand, always generate the action
 2. If there are two mutually exclusive actions merge them into one for receiver to decide
 3. If there is explicit due date attached to the email, always generate the action
-4. Check if any action is needed at all. ome emails are purely informational and need no follow up
-
-Examples for point 4 where no action is needed:
-
-- newsletters
-- automatic payment notifications
+4. Messages that are informational or digest from online platforms need no action item, examples: newsletters, automatic payment notifications, linkedin updates
 
 # Output
 
