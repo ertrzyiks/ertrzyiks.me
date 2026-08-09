@@ -8,21 +8,30 @@
 // Keychain, see keychain.ts), extracts action items via a local LM Studio server
 // (see lmStudio.ts), and returns `{ emailId, actionItems }` as the job result — or
 // lets the error propagate so BullMQ marks the job `failed`.
+//
+// In production this file isn't run directly — scripts/release-worker.mjs bundles
+// and packages it into a standalone executable (dist-bin/task-manager-worker) so the
+// Keychain ACL granted to it (see that script) can be scoped to this one program
+// instead of to every script the machine's shared `node` binary ever runs. Startup
+// is wrapped in `main()` rather than a top-level `await` for that bundler's sake —
+// esbuild/pkg's module loader has spottier support for top-level await than plain
+// `node dist/worker.js` (still how this file runs in local/CI dev, see README) does.
 import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
 import { createGmailFetcher, type EmailFetcher } from "./gmail.js";
-import { macKeychainReader } from "./keychain.js";
+import { macKeychainReader, resolveSecret } from "./keychain.js";
 import { createLmStudioExtractor, type ActionItemExtractor } from "./lmStudio.js";
 import { processEmailJob } from "./jobProcessor.js";
 import { QUEUE_NAME } from "./queue.js";
 
-const redisUrl = process.env.REDIS_URL;
-if (!redisUrl) throw new Error("REDIS_URL is required");
+// Shared Keychain service for every secret this worker reads (refresh token, Redis
+// URL, Gmail OAuth client id/secret) — all provisioned under the same service by
+// scripts/release-worker.mjs, see its SECRETS manifest for the per-item account names.
+const keychainService = process.env.GMAIL_KEYCHAIN_SERVICE ?? "task-manager-worker";
+const gmailKeychainAccount = process.env.GMAIL_KEYCHAIN_ACCOUNT ?? "gmail-refresh-token";
 
 const lmStudioBaseUrl = process.env.LM_STUDIO_BASE_URL ?? "http://localhost:1234";
-const keychainAccount = process.env.GMAIL_KEYCHAIN_ACCOUNT ?? "task-manager-worker";
-const keychainService = process.env.GMAIL_KEYCHAIN_SERVICE ?? "gmail-refresh-token";
 
 // Escape hatch for manual smoke-testing against a real Redis/BullMQ queue in
 // environments without macOS Keychain or a running LM Studio (e.g. this repo's
@@ -67,12 +76,24 @@ async function buildDependencies(): Promise<{
     };
   }
 
-  const gmailClientId = process.env.GMAIL_CLIENT_ID;
-  const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
-  if (!gmailClientId) throw new Error("GMAIL_CLIENT_ID is required");
-  if (!gmailClientSecret) throw new Error("GMAIL_CLIENT_SECRET is required");
-
-  const refreshToken = await macKeychainReader.read(keychainAccount, keychainService);
+  const gmailClientId = await resolveSecret(
+    macKeychainReader,
+    "gmail-client-id",
+    keychainService,
+    "GMAIL_CLIENT_ID",
+  );
+  const gmailClientSecret = await resolveSecret(
+    macKeychainReader,
+    "gmail-client-secret",
+    keychainService,
+    "GMAIL_CLIENT_SECRET",
+  );
+  const refreshToken = await resolveSecret(
+    macKeychainReader,
+    gmailKeychainAccount,
+    keychainService,
+    "GMAIL_REFRESH_TOKEN",
+  );
 
   return {
     emailFetcher: createGmailFetcher({
@@ -84,20 +105,33 @@ async function buildDependencies(): Promise<{
   };
 }
 
-const { emailFetcher, actionItemExtractor } = await buildDependencies();
+async function main() {
+  // Real Redis is required regardless of WORKER_FAKE_DEPS — only the Gmail/LM Studio
+  // integrations get faked, BullMQ always needs somewhere real to consume jobs from.
+  const redisUrl = await resolveSecret(macKeychainReader, "redis-url", keychainService, "REDIS_URL");
 
-const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  const { emailFetcher, actionItemExtractor } = await buildDependencies();
 
-const worker = new Worker<EmailJobPayload, EmailJobResult>(
-  QUEUE_NAME,
-  async (job) => processEmailJob(job.data.emailId, { emailFetcher, actionItemExtractor }),
-  { connection },
-);
+  const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
-worker.on("ready", () => {
-  console.log(`task-manager worker ready, consuming queue "${QUEUE_NAME}"`);
-});
+  const worker = new Worker<EmailJobPayload, EmailJobResult>(
+    QUEUE_NAME,
+    async (job) => processEmailJob(job.data.emailId, { emailFetcher, actionItemExtractor }),
+    { connection },
+  );
 
-worker.on("failed", (job, error) => {
-  console.error(`Job ${job?.id ?? "<unknown>"} failed:`, error);
+  worker.on("ready", () => {
+    console.log(`task-manager worker ready, consuming queue "${QUEUE_NAME}"`);
+  });
+
+  worker.on("failed", (job, error) => {
+    console.error(`Job ${job?.id ?? "<unknown>"} failed:`, error);
+  });
+}
+
+main().catch((error) => {
+  // A non-zero exit here is what makes launchd's KeepAlive restart the worker
+  // (subject to its default crash-loop throttling) instead of it silently dying.
+  console.error("task-manager worker failed to start:", error);
+  process.exit(1);
 });
