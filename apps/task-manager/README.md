@@ -181,6 +181,40 @@ pnpm --filter task-manager worker
 REDIS_URL=redis://localhost:6379 WORKER_FAKE_DEPS=true pnpm --filter task-manager worker
 ```
 
+### Evaluating the extraction prompt (`eval/`)
+
+`eval/run.ts` is a local-only eval harness for `src/prompts/extractActionItems.system.md` — a set
+of fixture emails (`eval/fixtures.ts`) run through a real local LM Studio server (via the same
+`createLmStudioExtractor(...)` the worker uses), each checked against expectations on how many
+action items should come back and what they should say. It's for iterating on the prompt by hand:
+change the wording, rerun, see which fixtures moved.
+
+It **never runs in CI** — it's outside `vitest`'s `src/**/*.{test,spec}.ts` include glob and outside
+`tsc`'s `include` (`src` only), and it needs a real LM Studio server, same reason the real LM Studio
+call is excluded from `lmStudio.test.ts`. Run it by hand, with LM Studio running locally and a model
+loaded:
+
+```bash
+pnpm --filter task-manager eval
+
+# Only fixtures whose name contains this substring
+pnpm --filter task-manager eval -- --filter due-date
+
+# Against a non-default LM Studio instance
+LM_STUDIO_BASE_URL=http://localhost:1234 pnpm --filter task-manager eval
+```
+
+Each fixture asserts on the number of action items returned (exact, or a `{min, max}` range for
+cases where the model has legitimate latitude) and, per item, substring/regex checks on
+`title`/`description` and whether a `dueDate` is present/absent/an exact value. Assertions are
+loose on purpose — the model's wording varies run to run — so failures should point at the
+*substance* of an extraction going wrong, not phrasing drift. Local models are non-deterministic,
+so a fixture or two flipping between runs is expected; treat it as a trend to watch across a prompt
+change, not a hard CI-style gate. Exits non-zero if any fixture had a failing assertion.
+
+Add a fixture whenever `extractActionItems.system.md` gains a new rule, or whenever a real email
+turns out to trick it into misclassifying something.
+
 ## macOS LaunchAgent (#251)
 
 In normal use the worker isn't run by hand (`pnpm --filter task-manager worker`) — it runs as a

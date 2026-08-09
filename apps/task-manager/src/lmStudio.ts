@@ -54,7 +54,13 @@ const actionItemsJsonSchema = {
         properties: {
           title: { type: "string" },
           description: { type: "string" },
-          dueDate: { type: ["string", "null"] },
+          // Constrains the model to ISO 8601 (`yyyy-mm-dd`) when it does emit a due date, so
+          // downstream `toGoogleTasksDue` in googleTasksClient.ts (which parses via `new
+          // Date(...)`, and only reliably understands this format — bare `dd-mm-yyyy` is either
+          // rejected or silently misread as `mm-dd-yyyy`) gets something it can actually use.
+          // `pattern` is a no-op on `null` values — JSON Schema string keywords only apply to
+          // string instances — so "no due date" is still expressed as `null`, not a magic string.
+          dueDate: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
         },
         required: ["title", "description", "dueDate"],
         additionalProperties: false,
