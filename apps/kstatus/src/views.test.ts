@@ -105,6 +105,21 @@ describe("renderStatusPage", () => {
     expect(html).toContain(`class="event event--warning"`);
   });
 
+  it("links to the admin area", () => {
+    const html = renderStatusPage([], buildDayBar([], TODAY));
+    expect(html).toContain(`class="button-link" href="/admin"`);
+  });
+
+  it("gives event boxes an explicit text color, not left to the color-scheme UA default", () => {
+    // Regression guard: li.event's background is a fixed light severity tint in both color
+    // schemes, so its text must never be left to inherit color-scheme's UA default — that
+    // flips to a near-white foreground under a dark preference and becomes unreadable against
+    // these always-light backgrounds (the "very bright text on light background" bug).
+    const html = renderStatusPage([], buildDayBar([], TODAY));
+    expect(html).toMatch(/li\.event\s*\{[^}]*color:\s*#111827/);
+    expect(html).toMatch(/\.event-title\s*\{[^}]*color:\s*#111827/);
+  });
+
   it("renders the title before the time/description (prominent heading)", () => {
     const events = [
       makeEvent({

@@ -77,9 +77,20 @@ function layout(title: string, bodyHtml: string): string {
     padding: 1.5rem 1rem 4rem;
     line-height: 1.5;
   }
-  header { margin-bottom: 2rem; }
+  header { margin-bottom: 2rem; display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
   header p { color: #6b7280; margin-top: 0.25rem; }
   h1 { margin: 0; }
+  .button-link {
+    flex-shrink: 0;
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.25rem;
+    background: #111827;
+    color: white;
+    text-decoration: none;
+    white-space: nowrap;
+  }
   h2.day-heading {
     font-size: 1rem;
     font-weight: 600;
@@ -95,10 +106,16 @@ function layout(title: string, bodyHtml: string): string {
     padding: 0.6rem 0.85rem;
     margin-bottom: 0.75rem;
     background: #f9fafb;
+    /* This background is a deliberately light severity tint in both color schemes — it never
+       inverts for dark mode — so its text can't be left to inherit color-scheme's UA default,
+       which flips to a near-white foreground under a dark preference and becomes close to
+       unreadable against these light backgrounds. Set explicitly here so every child (title,
+       meta, description) starts from a color guaranteed to contrast against this box. */
+    color: #111827;
   }
   li.event--warning { border-color: #eab308; background: #fefce8; }
   li.event--downtime { border-color: #dc2626; background: #fef2f2; }
-  .event-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+  .event-title { font-size: 1.05rem; font-weight: 700; margin: 0; color: #111827; }
   .event-meta { font-size: 0.8rem; color: #6b7280; margin: 0.15rem 0 0; }
   .event-description { margin: 0.35rem 0 0; color: #374151; }
   .empty { color: #6b7280; }
@@ -230,8 +247,11 @@ function dayBarHtml(entries: DayBarEntry[]): string {
 export function renderStatusPage(events: Event[], dayBar: DayBarEntry[]): string {
   const body = `
 <header>
-  <h1>kstatus</h1>
-  <p>Service status, updated as incidents happen.</p>
+  <div>
+    <h1>kstatus</h1>
+    <p>Service status, updated as incidents happen.</p>
+  </div>
+  <a class="button-link" href="/admin">Admin</a>
 </header>
 <main>
   ${dayBarHtml(dayBar)}
