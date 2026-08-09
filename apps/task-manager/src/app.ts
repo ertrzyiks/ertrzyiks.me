@@ -1,5 +1,8 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { isValidBearerToken } from "./auth.js";
+import type { GoogleTaskJobPayload } from "./googleTask.js";
+import { GOOGLE_TASKS_QUEUE_NAME } from "./googleTasksQueue.js";
+import type { GoogleTasksJobsQueue } from "./googleTasksJobsQueue.js";
 import { toSimplifiedStatus, type SimplifiedStatus } from "./jobStatus.js";
 import type { JobsQueue } from "./jobsQueue.js";
 import { QUEUE_NAME } from "./queue.js";
@@ -11,8 +14,17 @@ interface JobStatusResponse {
   error?: string;
 }
 
+// Minimal shape both JobsQueue and GoogleTasksJobsQueue's `getJob` satisfy — lets the two queues
+// share this lookup instead of duplicating it per queue (their JobLike/GoogleTaskJobLike types
+// differ only in an unused `id` field).
+interface JobLookupQueue {
+  getJob(jobId: string): Promise<
+    { getState(): Promise<string>; returnvalue: unknown; failedReason?: string } | undefined
+  >;
+}
+
 async function buildJobStatusResponse(
-  queue: JobsQueue,
+  queue: JobLookupQueue,
   jobId: string,
 ): Promise<JobStatusResponse | null> {
   const job = await queue.getJob(jobId);
@@ -27,7 +39,11 @@ async function buildJobStatusResponse(
   return response;
 }
 
-export function createApp(queue: JobsQueue, bearerToken: string): FastifyInstance {
+export function createApp(
+  queue: JobsQueue,
+  googleTasksQueue: GoogleTasksJobsQueue,
+  bearerToken: string,
+): FastifyInstance {
   // Fastify's logger defaults to disabled (a silent no-op `app.log`), which
   // made server startup/errors invisible — enable it outside tests, where
   // vitest sets NODE_ENV=test and per-request logs would just be noise.
@@ -73,6 +89,40 @@ export function createApp(queue: JobsQueue, bearerToken: string): FastifyInstanc
       // per-item error shape in the #241 spec.
       const results = (
         await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(queue, jobId)))
+      ).filter((result): result is JobStatusResponse => result !== null);
+
+      return reply.send({ results });
+    });
+
+    api.post<{ Body: Partial<GoogleTaskJobPayload> }>("/google-tasks-jobs", async (request, reply) => {
+      const { actionItemId, title, description, dueDate } = request.body ?? {};
+      if (typeof actionItemId !== "number" || typeof title !== "string" || title.length === 0) {
+        return reply.code(400).send({ error: "actionItemId and title are required" });
+      }
+
+      const job = await googleTasksQueue.add(GOOGLE_TASKS_QUEUE_NAME, {
+        actionItemId,
+        title,
+        description,
+        dueDate,
+      });
+      return reply.code(201).send({ jobId: job.id });
+    });
+
+    api.get<{ Params: { jobId: string } }>("/google-tasks-jobs/:jobId", async (request, reply) => {
+      const response = await buildJobStatusResponse(googleTasksQueue, request.params.jobId);
+      if (!response) return reply.code(404).send();
+      return reply.send(response);
+    });
+
+    api.post<{ Body: { jobIds?: string[] } }>("/google-tasks-jobs/status", async (request, reply) => {
+      const jobIds = request.body?.jobIds;
+      if (!Array.isArray(jobIds) || jobIds.some((id) => typeof id !== "string")) {
+        return reply.code(400).send({ error: "jobIds must be an array of strings" });
+      }
+
+      const results = (
+        await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(googleTasksQueue, jobId)))
       ).filter((result): result is JobStatusResponse => result !== null);
 
       return reply.send({ results });

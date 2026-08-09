@@ -68,6 +68,57 @@ describe("store (in-memory)", () => {
     expect(store.getQueuedEmailsWithJobId()).toEqual([{ emailId: "email-2", jobId: "job-2" }]);
   });
 
+  describe("Google Tasks sync (job_id/task_id)", () => {
+    beforeEach(() => {
+      store.insertQueuedEmail("email-1");
+      store.setJobId("email-1", "job-1");
+    });
+
+    it("has no unsynced action items until one exists", () => {
+      expect(store.getUnsyncedActionItems()).toEqual([]);
+    });
+
+    it("lists a completed action item as unsynced until a sync job id is attached", () => {
+      store.markEmailCompleted("email-1", [
+        { title: "Reply to invoice", description: "Pay by Friday", dueDate: "2026-08-10" },
+      ]);
+
+      expect(store.getUnsyncedActionItems()).toEqual([
+        { id: 1, title: "Reply to invoice", description: "Pay by Friday", dueDate: "2026-08-10" },
+      ]);
+      expect(store.getActionItemsAwaitingTaskSync()).toEqual([]);
+    });
+
+    it("moves an action item from unsynced to awaiting-task-sync once a sync job id is attached", () => {
+      store.markEmailCompleted("email-1", [{ title: "Reply to invoice" }]);
+
+      store.setActionItemJobId(1, "gtask-job-1");
+
+      expect(store.getUnsyncedActionItems()).toEqual([]);
+      expect(store.getActionItemsAwaitingTaskSync()).toEqual([{ id: 1, jobId: "gtask-job-1" }]);
+    });
+
+    it("removes an action item from awaiting-task-sync once a task id is backfilled", () => {
+      store.markEmailCompleted("email-1", [{ title: "Reply to invoice" }]);
+      store.setActionItemJobId(1, "gtask-job-1");
+
+      store.setActionItemTaskId(1, "gtask-1");
+
+      expect(store.getActionItemsAwaitingTaskSync()).toEqual([]);
+      expect(store.getUnsyncedActionItems()).toEqual([]);
+    });
+
+    it("keeps unrelated action items untouched", () => {
+      store.markEmailCompleted("email-1", [{ title: "Reply to invoice" }, { title: "Schedule follow-up" }]);
+      store.setActionItemJobId(1, "gtask-job-1");
+
+      expect(store.getUnsyncedActionItems()).toEqual([
+        { id: 2, title: "Schedule follow-up", description: null, dueDate: null },
+      ]);
+      expect(store.getActionItemsAwaitingTaskSync()).toEqual([{ id: 1, jobId: "gtask-job-1" }]);
+    });
+  });
+
   describe("getStatusCounts", () => {
     it("returns no rows when there are no emails", () => {
       expect(store.getStatusCounts()).toEqual([]);
@@ -224,5 +275,43 @@ describe("store (file-backed)", () => {
       due_date: null,
       status: "open",
     });
+    // Fresh rows start unsynced — no sync job scheduled yet, per getUnsyncedActionItems above.
+    expect(actionItemRows[0]).toMatchObject({ job_id: null, task_id: null });
+  });
+
+  it("migrates an action_items table created before job_id/task_id existed", () => {
+    store.insertQueuedEmail("email-1"); // action_items.email_id references this
+    store.close();
+
+    // Recreates the pre-migration schema by hand (the shape action_items had before this
+    // feature) directly against the same file, simulating a production database that predates
+    // job_id/task_id.
+    const db = new DatabaseSync(dbPath);
+    db.exec("DROP TABLE action_items");
+    db.exec(`
+      CREATE TABLE action_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email_id TEXT NOT NULL REFERENCES emails(id),
+        title TEXT NOT NULL,
+        description TEXT,
+        due_date TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        created_at TEXT NOT NULL
+      )
+    `);
+    db.prepare(
+      "INSERT INTO action_items (email_id, title, created_at) VALUES ('email-1', 'Pre-existing item', '2026-01-01T00:00:00.000Z')",
+    ).run();
+    db.close();
+
+    // Reopening via createStore must apply the migration without losing the existing row.
+    store = createStore(dbPath);
+
+    expect(store.getUnsyncedActionItems()).toEqual([
+      { id: 1, title: "Pre-existing item", description: null, dueDate: null },
+    ]);
+
+    store.setActionItemJobId(1, "gtask-job-1");
+    expect(store.getActionItemsAwaitingTaskSync()).toEqual([{ id: 1, jobId: "gtask-job-1" }]);
   });
 });

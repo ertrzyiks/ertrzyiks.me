@@ -2,7 +2,7 @@ import { loadConfig } from "./config.js";
 import { createGmailClient } from "./gmailClient.js";
 import { startHealthServer } from "./healthServer.js";
 import { createJobsApiClient } from "./jobsApiClient.js";
-import type { Logger } from "./poller.js";
+import type { Logger } from "./logger.js";
 import { startPolling } from "./runner.js";
 import { createStore } from "./store.js";
 

@@ -1,0 +1,43 @@
+import { describe, expect, it } from "vitest";
+import { processGoogleTaskJob } from "./googleTasksJobProcessor.js";
+import type { GoogleTasksClient } from "./googleTasksClient.js";
+import type { GoogleTaskJobPayload } from "./googleTask.js";
+
+function fakeClient(id: string): GoogleTasksClient {
+  return {
+    async createTask() {
+      return { id };
+    },
+  };
+}
+
+function failingClient(error: Error): GoogleTasksClient {
+  return {
+    async createTask() {
+      throw error;
+    },
+  };
+}
+
+const PAYLOAD: GoogleTaskJobPayload = {
+  actionItemId: 1,
+  title: "Send the report",
+  description: "Send the Q3 report",
+  dueDate: "2026-08-08",
+};
+
+describe("processGoogleTaskJob", () => {
+  it("creates the Google Task and returns the job result shape", async () => {
+    const result = await processGoogleTaskJob(PAYLOAD, { googleTasksClient: fakeClient("gtask-1") });
+
+    expect(result).toEqual({ actionItemId: 1, googleTaskId: "gtask-1" });
+  });
+
+  it("propagates an error when the Google Tasks API call fails, so BullMQ can mark the job failed", async () => {
+    const error = new Error("Google Tasks API error");
+
+    await expect(
+      processGoogleTaskJob(PAYLOAD, { googleTasksClient: failingClient(error) }),
+    ).rejects.toThrow("Google Tasks API error");
+  });
+});

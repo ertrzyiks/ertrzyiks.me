@@ -78,3 +78,21 @@ data "onepassword_item" "kstatus_admin_basic_auth" {
   title = "kstatus_admin_basic_auth"
 }
 
+# `tasks` OAuth credential for task-manager's sync-google-tasks worker (see
+# scripts/google-tasks-oauth) — separate from personal_assistant_gcloud_oauth_* above, which is
+# the `gmail.readonly` credential used by personal-assistant and the Mac worker.
+data "onepassword_item" "task_manager_google_tasks_oauth_client_id" {
+  vault = "Dokku apps"
+  title = "task_manager_google_tasks_oauth_client_id"
+}
+
+data "onepassword_item" "task_manager_google_tasks_oauth_client_secret" {
+  vault = "Dokku apps"
+  title = "task_manager_google_tasks_oauth_client_secret"
+}
+
+data "onepassword_item" "task_manager_google_tasks_oauth_refresh_token" {
+  vault = "Dokku apps"
+  title = "task_manager_google_tasks_oauth_refresh_token"
+}
+

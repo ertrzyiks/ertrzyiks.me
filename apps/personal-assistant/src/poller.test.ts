@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { GmailClient } from "./gmailClient.js";
-import type { JobStatusResult, JobsApiClient } from "./jobsApiClient.js";
+import type {
+  GoogleTaskJobStatusResult,
+  GoogleTaskPayload,
+  JobStatusResult,
+  JobsApiClient,
+} from "./jobsApiClient.js";
 import { discoverAndScheduleNewEmails, pollPendingJobStatuses, runPollCycle } from "./poller.js";
 import { createStore, type Store } from "./store.js";
 
@@ -18,6 +23,10 @@ class FakeJobsApiClient implements JobsApiClient {
   private nextJobId = 1;
   scheduleShouldFailFor = new Set<string>();
 
+  scheduledGoogleTaskItems: GoogleTaskPayload[] = [];
+  googleTaskStatuses = new Map<string, GoogleTaskJobStatusResult>();
+  private nextGoogleTaskJobId = 1;
+
   async scheduleJob(emailId: string) {
     this.scheduledEmailIds.push(emailId);
     if (this.scheduleShouldFailFor.has(emailId)) {
@@ -32,6 +41,19 @@ class FakeJobsApiClient implements JobsApiClient {
     return jobIds
       .map((jobId) => this.statuses.get(jobId))
       .filter((status): status is JobStatusResult => status !== undefined);
+  }
+
+  async scheduleGoogleTaskJob(item: GoogleTaskPayload) {
+    this.scheduledGoogleTaskItems.push(item);
+    const jobId = `gtask-job-${this.nextGoogleTaskJobId++}`;
+    this.googleTaskStatuses.set(jobId, { jobId, status: "pending" });
+    return { jobId };
+  }
+
+  async getGoogleTaskJobStatuses(jobIds: string[]) {
+    return jobIds
+      .map((jobId) => this.googleTaskStatuses.get(jobId))
+      .filter((status): status is GoogleTaskJobStatusResult => status !== undefined);
   }
 }
 

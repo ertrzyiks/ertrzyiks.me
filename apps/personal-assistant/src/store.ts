@@ -13,6 +13,20 @@ export interface QueuedEmail {
   jobId: string;
 }
 
+/** One action item not yet scheduled for a Google Tasks sync job (job_id IS NULL). */
+export interface UnsyncedActionItem {
+  id: number;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+}
+
+/** One action item with a sync job scheduled but not yet backfilled (job_id set, task_id NULL). */
+export interface QueuedActionItem {
+  id: number;
+  jobId: string;
+}
+
 /** One row of the snapshot dashboard's status breakdown (#297/#312). */
 export interface StatusCount {
   status: string;
@@ -26,7 +40,9 @@ export interface FailedEmail {
   updatedAt: string;
 }
 
-// Schema exactly as specified in #250/#242.
+// Schema exactly as specified in #250/#242, plus job_id/task_id on action_items for the Google
+// Tasks sync loop (googleTasksSyncer.ts): job_id is set once a sync job has been scheduled,
+// task_id is backfilled with the Google Tasks task ID once that job completes.
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS emails (
   id TEXT PRIMARY KEY,
@@ -44,9 +60,28 @@ CREATE TABLE IF NOT EXISTS action_items (
   description TEXT,
   due_date TEXT,
   status TEXT NOT NULL DEFAULT 'open',
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  job_id TEXT,
+  task_id TEXT
 );
 `;
+
+// `CREATE TABLE IF NOT EXISTS` above is a no-op against the production database file, which
+// already has an `action_items` table from before job_id/task_id existed — this backfills the
+// two columns onto it at startup. Safe to run on every startup: each ALTER only fires once the
+// column is actually missing.
+function migrateActionItemsColumns(db: DatabaseSync): void {
+  const columns = (db.prepare("PRAGMA table_info(action_items)").all() as { name: string }[]).map(
+    (row) => row.name,
+  );
+
+  if (!columns.includes("job_id")) {
+    db.exec("ALTER TABLE action_items ADD COLUMN job_id TEXT");
+  }
+  if (!columns.includes("task_id")) {
+    db.exec("ALTER TABLE action_items ADD COLUMN task_id TEXT");
+  }
+}
 
 export interface Store {
   /** Whether an email ID has already been recorded (used for dedup against Gmail polling). */
@@ -61,6 +96,14 @@ export interface Store {
   markEmailCompleted(emailId: string, actionItems: ActionItemInput[]): void;
   /** Emails still awaiting a job result (status='queued' with a job already scheduled). */
   getQueuedEmailsWithJobId(): QueuedEmail[];
+  /** Action items not yet scheduled for a Google Tasks sync job (job_id IS NULL). */
+  getUnsyncedActionItems(): UnsyncedActionItem[];
+  /** Attaches the Google Tasks sync job ID once scheduling succeeded. */
+  setActionItemJobId(id: number, jobId: string): void;
+  /** Action items with a sync job scheduled but not yet completed (job_id set, task_id NULL). */
+  getActionItemsAwaitingTaskSync(): QueuedActionItem[];
+  /** Backfills the Google Tasks task ID once the sync job completes. */
+  setActionItemTaskId(id: number, taskId: string): void;
   /** Current counts of emails grouped by status, for the snapshot dashboard (#297/#312). */
   getStatusCounts(): StatusCount[];
   /** The most recently updated failed emails, capped at `limit` (#297/#312). */
@@ -75,6 +118,7 @@ export function createStore(path: string): Store {
 
   const db = new DatabaseSync(path);
   db.exec(SCHEMA);
+  migrateActionItemsColumns(db);
 
   const existsStmt = db.prepare("SELECT 1 FROM emails WHERE id = ?");
   const insertEmailStmt = db.prepare(
@@ -93,6 +137,14 @@ export function createStore(path: string): Store {
   const queuedWithJobStmt = db.prepare(
     "SELECT id, job_id FROM emails WHERE status = 'queued' AND job_id IS NOT NULL",
   );
+  const unsyncedActionItemsStmt = db.prepare(
+    "SELECT id, title, description, due_date FROM action_items WHERE job_id IS NULL",
+  );
+  const setActionItemJobIdStmt = db.prepare("UPDATE action_items SET job_id = ? WHERE id = ?");
+  const actionItemsAwaitingTaskSyncStmt = db.prepare(
+    "SELECT id, job_id FROM action_items WHERE job_id IS NOT NULL AND task_id IS NULL",
+  );
+  const setActionItemTaskIdStmt = db.prepare("UPDATE action_items SET task_id = ? WHERE id = ?");
   const statusCountsStmt = db.prepare("SELECT status, COUNT(*) as count FROM emails GROUP BY status");
   const recentFailuresStmt = db.prepare(
     "SELECT id, error_message, updated_at FROM emails WHERE status = 'failed' ORDER BY updated_at DESC LIMIT ?",
@@ -140,6 +192,34 @@ export function createStore(path: string): Store {
     getQueuedEmailsWithJobId() {
       const rows = queuedWithJobStmt.all() as { id: string; job_id: string }[];
       return rows.map((row) => ({ emailId: row.id, jobId: row.job_id }));
+    },
+
+    getUnsyncedActionItems() {
+      const rows = unsyncedActionItemsStmt.all() as {
+        id: number;
+        title: string;
+        description: string | null;
+        due_date: string | null;
+      }[];
+      return rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        dueDate: row.due_date,
+      }));
+    },
+
+    setActionItemJobId(id, jobId) {
+      setActionItemJobIdStmt.run(jobId, id);
+    },
+
+    getActionItemsAwaitingTaskSync() {
+      const rows = actionItemsAwaitingTaskSyncStmt.all() as { id: number; job_id: string }[];
+      return rows.map((row) => ({ id: row.id, jobId: row.job_id }));
+    },
+
+    setActionItemTaskId(id, taskId) {
+      setActionItemTaskIdStmt.run(taskId, id);
     },
 
     getStatusCounts() {

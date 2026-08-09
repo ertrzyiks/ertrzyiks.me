@@ -24,11 +24,20 @@ For each poll cycle:
    check progress. On `completed`, the returned action items are inserted into `action_items` and
    the email is marked `status='completed'`. On `failed`, the email is marked `status='failed'`
    with `error_message` set. `pending`/`active` jobs are left alone until the next cycle.
+5. Google Tasks sync (`src/googleTasksSyncer.ts`), same cycle: for every action item with no
+   `job_id` yet, `POST /google-tasks-jobs` against the Jobs API's `sync-google-tasks` queue and
+   record the returned job ID. For every action item with a `job_id` but no `task_id` yet,
+   `POST /google-tasks-jobs/status` (batched) and, on `completed`, backfill `task_id` with the
+   Google Tasks task ID. A scheduling failure leaves `job_id` unset (retried next cycle); a job
+   failure is logged and left stuck (`job_id` set, `task_id` never filled) — this feature has no
+   per-item error column, unlike `emails.error_message`, so both are best-effort rather than a
+   real retry/alerting policy (same "explicitly deferred" stance as step 3 above).
 
 ## SQLite schema
 
-Exactly as specified in [#242](https://github.com/ertrzyiks/ertrzyiks.me/issues/242), created at
-startup if missing:
+Exactly as specified in [#242](https://github.com/ertrzyiks/ertrzyiks.me/issues/242), plus
+`job_id`/`task_id` on `action_items` for the Google Tasks sync loop above. Created (and migrated,
+for `job_id`/`task_id` on a database file that predates them) at startup:
 
 ```sql
 CREATE TABLE emails (
@@ -47,7 +56,9 @@ CREATE TABLE action_items (
   description TEXT,
   due_date TEXT,
   status TEXT NOT NULL DEFAULT 'open',    -- open | done
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  job_id TEXT,                            -- sync-google-tasks job ID, once scheduled
+  task_id TEXT                            -- Google Tasks task ID, once the job completes
 );
 ```
 
@@ -120,3 +131,8 @@ pnpm --filter personal-assistant test
 - The SQLite store (`src/store.ts`) uses Node's built-in `node:sqlite` rather than a native-addon
   driver, and is tested directly against a real (in-memory or temp-file) database rather than a
   fake, since it's fast, synchronous, and local.
+- `src/googleTasksSyncer.ts` (schedule-unsynced / poll-pending / run-cycle) structurally mirrors
+  `src/poller.ts`'s email flow, reusing the same `JobsApiClient`/`Store` — `runPollCycle` just
+  calls both. `src/logger.ts` holds the shared `Logger`/`noopLogger` (split out of `poller.ts`)
+  so `googleTasksSyncer.ts` can use them without poller.ts/googleTasksSyncer.ts importing each
+  other.

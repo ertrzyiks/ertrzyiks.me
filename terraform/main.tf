@@ -101,6 +101,11 @@ resource "dokku_app" "task_manager" {
     # provisioned here so it's always active in production.
     TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME = data.onepassword_item.personal_assistant_task_manager_bull_board.username
     TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD = data.onepassword_item.personal_assistant_task_manager_bull_board.password
+    # Optional: the sync-google-tasks worker only starts once all three are set (server.ts) — see
+    # scripts/google-tasks-oauth for how to provision the 1Password items these read from.
+    GOOGLE_TASKS_CLIENT_ID     = data.onepassword_item.task_manager_google_tasks_oauth_client_id.password
+    GOOGLE_TASKS_CLIENT_SECRET = data.onepassword_item.task_manager_google_tasks_oauth_client_secret.password
+    GOOGLE_TASKS_REFRESH_TOKEN = data.onepassword_item.task_manager_google_tasks_oauth_refresh_token.password
   }
 
   domains = ["task-manager.ertrzyiks.me"]
