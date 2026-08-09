@@ -65,6 +65,9 @@ apps/task-manager/.env
 apps/personal-assistant/dist
 apps/personal-assistant/.env
 apps/personal-assistant/data/
+apps/kstatus/dist
+apps/kstatus/.env
+apps/kstatus/data/
 .pnpm-store/
 .wrangler/
 /.idea/

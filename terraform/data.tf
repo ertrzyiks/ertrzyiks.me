@@ -71,3 +71,10 @@ data "onepassword_item" "personal_assistant_dashboard_basic_auth" {
   title = "personal_assistant_dashboard_basic_auth"
 }
 
+# Basic Auth credentials for kstatus's admin page — same shape as the two dashboard items above
+# (a Login item exposing both `.username` and `.password`).
+data "onepassword_item" "kstatus_admin_basic_auth" {
+  vault = "Dokku apps"
+  title = "kstatus_admin_basic_auth"
+}
+

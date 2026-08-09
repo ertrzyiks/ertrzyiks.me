@@ -1,0 +1,103 @@
+name: Release Kstatus
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Reference to deploy"
+        type: string
+        default: "master"
+    secrets:
+      DOKKU_DEPLOY_KEY:
+        required: true
+
+concurrency: kstatus-production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/kstatus
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || 'master' }}
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - uses: pnpm/action-setup@v6.0.10
+        with:
+          version: 11.20.0
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v6.1.0
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Test
+        run: pnpm test
+        working-directory: ./apps/kstatus
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.2.0
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+
+      # Build context is the repo root, not ./apps/kstatus — the Dockerfile needs the shared pnpm
+      # workspace lockfile to install this app's dependencies. See apps/kstatus/Dockerfile.
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          push: true
+          file: ./apps/kstatus/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=kstatus
+          cache-to: type=gha,mode=max,scope=kstatus
+
+      # No Procfile: Dokku treats a Dockerfile app's CMD as its `web` process type by default (and
+      # proxies it accordingly) — no herokuish/buildpack involved, just `git:from-image` pulling
+      # the digest built above.
+      - name: Push to dokku
+        uses: dokku/github-action@v1.10.0
+        with:
+          git_remote_url: "ssh://dokku@167.71.190.115/kstatus"
+          ssh_private_key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+          deploy_docker_image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.push.outputs.digest }}

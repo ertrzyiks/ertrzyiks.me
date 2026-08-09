@@ -12,6 +12,7 @@ jobs:
       blog: ${{ steps.filter.outputs.blog }}
       task_manager: ${{ steps.filter.outputs.task_manager }}
       personal_assistant: ${{ steps.filter.outputs.personal_assistant }}
+      kstatus: ${{ steps.filter.outputs.kstatus }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: dorny/paths-filter@v4.0.3
@@ -31,6 +32,7 @@ jobs:
             # would, instead of silently going untested until the next unrelated release.
             task_manager: [*shared, 'apps/task-manager/**', '.dockerignore', '.github/workflows/release_task_manager.yml']
             personal_assistant: [*shared, 'apps/personal-assistant/**', '.dockerignore', '.github/workflows/release_personal_assistant.yml']
+            kstatus: [*shared, 'apps/kstatus/**', '.dockerignore', '.github/workflows/release_kstatus.yml']
 
   release_home:
     needs: changes
@@ -63,6 +65,15 @@ jobs:
     needs: changes
     if: needs.changes.outputs.personal_assistant == 'true'
     uses: ./.github/workflows/release_personal_assistant.yml
+    with:
+      ref: ${{ github.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  release_kstatus:
+    needs: changes
+    if: needs.changes.outputs.kstatus == 'true'
+    uses: ./.github/workflows/release_kstatus.yml
     with:
       ref: ${{ github.ref }}
     secrets:

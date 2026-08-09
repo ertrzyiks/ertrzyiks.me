@@ -16,6 +16,7 @@ on:
           - blog
           - task-manager
           - personal-assistant
+          - kstatus
       ref:
         description: "Branch, tag, or commit SHA to deploy"
         type: string
@@ -50,6 +51,14 @@ jobs:
   deploy_personal_assistant:
     if: inputs.app == 'personal-assistant'
     uses: ./.github/workflows/release_personal_assistant.yml
+    with:
+      ref: ${{ inputs.ref }}
+    secrets:
+      DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
+
+  deploy_kstatus:
+    if: inputs.app == 'kstatus'
+    uses: ./.github/workflows/release_kstatus.yml
     with:
       ref: ${{ inputs.ref }}
     secrets:
