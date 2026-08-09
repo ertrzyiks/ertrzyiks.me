@@ -130,3 +130,24 @@ resource "dokku_app" "personal_assistant" {
   }
 }
 
+# kstatus app (manually managed status page)
+resource "dokku_app" "kstatus" {
+  app_name = "kstatus"
+
+  config = {
+    # Required: the admin Basic Auth guard only activates once both are set — see
+    # apps/kstatus/src/config.ts. Left unset (as in local dev) it's wide open, so this must always
+    # be provisioned in production.
+    KSTATUS_ADMIN_BASIC_AUTH_USERNAME = data.onepassword_item.kstatus_admin_basic_auth.username
+    KSTATUS_ADMIN_BASIC_AUTH_PASSWORD = data.onepassword_item.kstatus_admin_basic_auth.password
+  }
+
+  domains = ["kstatus.ertrzyiks.me"]
+
+  storage = {
+    kstatus = {
+      mount_path = "/app/data"
+    }
+  }
+}
+
