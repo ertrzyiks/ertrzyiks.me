@@ -2,12 +2,39 @@
 // an email (#238). Never leaves the Mac — `baseUrl` defaults to localhost, and this
 // is the only model call the worker makes. Uses the platform `fetch` (Node 22) with
 // no extra HTTP/SDK dependency, since LM Studio's API surface here is small.
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ActionItem } from "./actionItem.js";
 import type { EmailContent } from "./gmail.js";
 
 export interface ActionItemExtractor {
   extract(email: EmailContent): Promise<ActionItem[]>;
 }
+
+// `__dirname` from the CJS wrapper esbuild's output runs under, when it's defined —
+// which it never is in this file's own true-ESM form (dev via `tsx`, tests via
+// `vitest`), only once bundled to CJS for the production `pkg` binary (see
+// scripts/release-worker.mjs). That distinction matters here because esbuild does
+// NOT carry `import.meta.url` through its CJS output — it silently empties it
+// instead (a `new URL(..., import.meta.url)` call on the empty string throws
+// `ERR_INVALID_URL` at runtime, verified by hand) — so it can't be used
+// unconditionally. `typeof __dirname` is a safe check even in genuine ESM, where
+// `__dirname` is simply unbound rather than `undefined`: the `typeof` operator
+// never throws on an unresolvable reference.
+declare const __dirname: string | undefined;
+
+function resolvePromptsDir(): string {
+  return typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+}
+
+// Kept in its own file (rather than inline) so it reads and edits like prose, not a
+// string embedded in TS. Read once at module load. In the pkg-packaged production
+// binary this resolves inside pkg's own virtual snapshot filesystem, not real disk —
+// release-worker.mjs copies this prompts/ directory next to the bundle and declares
+// it as a pkg "asset" so it's actually embedded there; see that script's comments.
+const systemPromptPath = join(resolvePromptsDir(), "prompts/extractActionItems.system.md");
+const systemPrompt = readFileSync(systemPromptPath, "utf8").trim();
 
 export interface LmStudioConfig {
   baseUrl?: string;
@@ -106,8 +133,7 @@ export function createLmStudioExtractor(config: LmStudioConfig = {}): ActionItem
           messages: [
             {
               role: "system",
-              content:
-                "Extract action items from the email below. Respond only with the requested JSON shape. If there are no action items, return an empty array.",
+              content: systemPrompt,
             },
             { role: "user", content: buildPrompt(email) },
           ],

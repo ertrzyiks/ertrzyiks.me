@@ -30,7 +30,7 @@
 // provisioning and LaunchAgent reload paths have never actually run for real. See the
 // PR that introduced this file for what was and wasn't verified end-to-end.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import * as esbuild from "esbuild";
@@ -40,6 +40,14 @@ const LAUNCH_AGENT_LABEL = "com.ertrzyiks.task-manager-worker";
 const KEYCHAIN_SERVICE = "task-manager-worker";
 const BUNDLE_PATH = "dist-bin/worker.bundle.cjs";
 const BINARY_PATH = "dist-bin/task-manager-worker";
+// lmStudio.ts reads its system prompt from src/prompts/ via a path resolved relative
+// to its own file at runtime (import.meta.url). That resolution lands here once
+// bundled, so the prompts have to physically exist next to the bundle too — copied
+// by runBundle() below, and declared as a pkg "assets" glob (see package.json) so
+// @yao-pkg/pkg embeds them in the standalone executable rather than leaving them as
+// a loose file the binary can't find once it's moved off this machine.
+const PROMPTS_SRC_DIR = "src/prompts";
+const PROMPTS_DIST_DIR = "dist-bin/prompts";
 
 // Maps each Keychain "account" (see keychain.ts / worker.ts) to the key it's read
 // from in the local secrets file. Keep this in sync with worker.ts's Keychain reads.
@@ -94,6 +102,11 @@ async function runBundle() {
     format: "cjs",
     logLevel: "warning",
   });
+
+  // esbuild only bundles statically-imported JS/TS — lmStudio.ts's system prompt is
+  // read at runtime via fs, so it has to be copied alongside the bundle by hand.
+  log("bundle", `copying ${PROMPTS_SRC_DIR} -> ${PROMPTS_DIST_DIR}`);
+  cpSync(PROMPTS_SRC_DIR, PROMPTS_DIST_DIR, { recursive: true });
 }
 
 function currentPkgTarget() {
@@ -116,9 +129,15 @@ function currentPkgTarget() {
 function runPackage() {
   const target = currentPkgTarget();
   log("package", `@yao-pkg/pkg ${BUNDLE_PATH} --targets ${target} -> ${BINARY_PATH}`);
+  // --config is required here: pkg only auto-discovers package.json's "pkg" field
+  // (the source of the "assets" glob that embeds dist-bin/prompts/, see above) when
+  // given "." as the entry to follow its "bin" field. Given an explicit entry file
+  // like BUNDLE_PATH instead, it silently skips that config unless told where to
+  // find it — verified by hand; the prompt file is missing from the packaged binary
+  // without this flag, with no build-time warning.
   execFileSync(
     "node_modules/.bin/pkg",
-    [BUNDLE_PATH, "--targets", target, "--output", BINARY_PATH],
+    [BUNDLE_PATH, "--targets", target, "--output", BINARY_PATH, "--config", "package.json"],
     { stdio: "inherit" },
   );
 }
