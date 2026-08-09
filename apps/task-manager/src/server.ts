@@ -25,6 +25,8 @@ const googleTasksClientId = process.env.GOOGLE_TASKS_CLIENT_ID;
 const googleTasksClientSecret = process.env.GOOGLE_TASKS_CLIENT_SECRET;
 const googleTasksRefreshToken = process.env.GOOGLE_TASKS_REFRESH_TOKEN;
 const googleTasksListId = process.env.GOOGLE_TASKS_LIST_ID;
+const googleTasksRateLimitMax = Number(process.env.GOOGLE_TASKS_RATE_LIMIT_MAX ?? 5);
+const googleTasksRateLimitDurationMs = Number(process.env.GOOGLE_TASKS_RATE_LIMIT_DURATION_MS ?? 1000);
 
 if (!redisUrl) throw new Error("REDIS_URL is required");
 if (!bearerToken) throw new Error("JOBS_API_BEARER_TOKEN is required");
@@ -70,11 +72,20 @@ if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
     taskListId: googleTasksListId,
   });
 
+  // `limiter` throttles how fast this worker drains the queue — BullMQ just holds jobs back
+  // rather than dropping/retrying them, so a burst of scheduled jobs (e.g. many action items
+  // completing in one personal-assistant poll cycle) gets smoothed out over time instead of
+  // firing at Google Tasks all at once. Added after a real "quota exceeded" error from the Tasks
+  // API; 5/sec is a conservative starting point, not a measured ceiling — tune via the env vars
+  // if it turns out to be too slow (a deep backlog) or still too fast (still hitting quota).
   const googleTasksConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const googleTasksWorker = new Worker<GoogleTaskJobPayload, GoogleTaskJobResult>(
     GOOGLE_TASKS_QUEUE_NAME,
     async (job) => processGoogleTaskJob(job.data, { googleTasksClient }),
-    { connection: googleTasksConnection },
+    {
+      connection: googleTasksConnection,
+      limiter: { max: googleTasksRateLimitMax, duration: googleTasksRateLimitDurationMs },
+    },
   );
 
   googleTasksWorker.on("ready", () => {

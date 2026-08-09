@@ -62,6 +62,17 @@ CREATE TABLE action_items (
 );
 ```
 
+The `job_id`/`task_id` migration (`migrateActionItemsColumns` in `store.ts`) stamps every
+pre-existing row (anything that existed before the two columns did) with a `"pre-existing-skip-sync"`
+sentinel in both columns, rather than leaving them genuinely `NULL`. Without that, the very first
+startup after this feature shipped would read the *entire* historical backlog as unsynced and
+schedule a sync job for all of it at once — which is both semantically wrong (nobody asked for
+months of old action items to show up in Google Tasks) and what actually tripped a Google Tasks
+API "quota exceeded" error in production. The sentinel value is never a real job/task ID; it just
+permanently excludes the row from both `getUnsyncedActionItems` and `getActionItemsAwaitingTaskSync`.
+A genuinely new action item's `job_id`/`task_id` stay `NULL` until the sync loop actually touches
+them, so this only affects rows that predate the migration.
+
 ## Environment variables
 
 | Variable                | Required | Description                                                                 |

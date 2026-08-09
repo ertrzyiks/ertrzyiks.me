@@ -304,14 +304,29 @@ describe("store (file-backed)", () => {
     ).run();
     db.close();
 
-    // Reopening via createStore must apply the migration without losing the existing row.
+    // Reopening via createStore must apply the migration without losing the existing row — but
+    // the pre-existing row must NOT come back as unsynced (see migrateActionItemsColumns's
+    // comment): retroactively scheduling the entire historical backlog the moment job_id first
+    // exists is exactly what triggered Google Tasks API quota errors in production.
     store = createStore(dbPath);
 
-    expect(store.getUnsyncedActionItems()).toEqual([
-      { id: 1, title: "Pre-existing item", description: null, dueDate: null },
-    ]);
+    expect(store.getUnsyncedActionItems()).toEqual([]);
+    expect(store.getActionItemsAwaitingTaskSync()).toEqual([]);
 
-    store.setActionItemJobId(1, "gtask-job-1");
-    expect(store.getActionItemsAwaitingTaskSync()).toEqual([{ id: 1, jobId: "gtask-job-1" }]);
+    const inspectDb = new DatabaseSync(dbPath);
+    const rawRow = inspectDb.prepare("SELECT job_id, task_id FROM action_items WHERE id = 1").get() as {
+      job_id: string;
+      task_id: string;
+    };
+    inspectDb.close();
+    expect(rawRow.job_id).toBe(rawRow.task_id); // both stamped with the same skip-sync sentinel
+
+    // A genuinely new item added after the migration must still sync normally.
+    store.insertQueuedEmail("email-2");
+    store.markEmailCompleted("email-2", [{ title: "New item" }]);
+
+    expect(store.getUnsyncedActionItems()).toEqual([
+      { id: 2, title: "New item", description: null, dueDate: null },
+    ]);
   });
 });

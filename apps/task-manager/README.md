@@ -28,6 +28,8 @@ processing" constraints that keep the Mac worker on the Mac. See "Google Tasks s
 | `GOOGLE_TASKS_CLIENT_SECRET`                      | no\*\*   | OAuth client secret for the same credential                 |
 | `GOOGLE_TASKS_REFRESH_TOKEN`                      | no\*\*   | Refresh token for the same credential (from `scripts/google-tasks-oauth`) |
 | `GOOGLE_TASKS_LIST_ID`                            | no       | Google Tasks list to create tasks in (default `@default`, the user's default list) |
+| `GOOGLE_TASKS_RATE_LIMIT_MAX`                     | no       | Max `sync-google-tasks` jobs processed per `GOOGLE_TASKS_RATE_LIMIT_DURATION_MS` window (default `5`) |
+| `GOOGLE_TASKS_RATE_LIMIT_DURATION_MS`             | no       | Window length in ms for the rate limit above (default `1000`)|
 
 \* Bull Board is always mounted, but the Basic Auth check only applies when **both** vars are set —
 unset (the default locally) leaves it open. Production always sets both via Terraform (#313).
@@ -49,6 +51,14 @@ the full loop.
 This worker's credential is separate from the Mac worker's `gmail.readonly` one — provisioned via
 `scripts/google-tasks-oauth`, read from plain env vars (not the macOS Keychain, since this worker
 runs in the cloud) via Terraform/1Password in production.
+
+The worker's `Worker` is configured with a `limiter` (`GOOGLE_TASKS_RATE_LIMIT_MAX`/`_DURATION_MS`
+above) so a burst of scheduled jobs drains onto the Tasks API gradually instead of all at once —
+added after hitting a real "quota exceeded" error from a burst of jobs. A malformed `due` date
+(the extracted action item's `dueDate` has no enforced format — see `lmStudio.ts`) no longer fails
+task creation outright either: `googleTasksClient.ts` drops it rather than sending Google a value
+it'll reject with "Request contains an invalid argument", so the task is still created, just
+without a due date.
 
 ### Mac worker (`worker.ts`)
 

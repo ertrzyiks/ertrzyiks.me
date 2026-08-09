@@ -18,11 +18,17 @@ function buildTasksApi(config: GoogleTasksClientConfig): tasks_v1.Tasks {
   return google.tasks({ version: "v1", auth });
 }
 
-// The Tasks API's `due` field wants a full RFC3339 timestamp (it only honours the date part,
-// but rejects a bare `YYYY-MM-DD`) — action items only ever carry a date, so this pins the time
-// to midnight UTC rather than asking every caller to do the conversion.
-function toGoogleTasksDue(dueDate: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(dueDate) ? `${dueDate}T00:00:00.000Z` : dueDate;
+// The Tasks API's `due` field wants a full RFC3339 timestamp (it only honours the date part, but
+// rejects a bare `YYYY-MM-DD`) — but dueDate here comes straight from an LLM extraction with no
+// format guarantee (the extraction JSON schema only constrains it to `string | null`, not a date
+// format, see lmStudio.ts), so free-form values like "next Friday" or "ASAP" used to be sent
+// through unchanged and Google rejected the whole task with "Request contains an invalid
+// argument". Parsing via `Date` accepts both a bare `YYYY-MM-DD` and an already-RFC3339
+// timestamp; anything genuinely unparseable is dropped rather than failing task creation over a
+// decorative due date.
+function toGoogleTasksDue(dueDate: string): string | undefined {
+  const parsed = new Date(dueDate);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
 /**

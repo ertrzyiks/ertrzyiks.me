@@ -101,6 +101,19 @@ describe("createGoogleTasksClient", () => {
     );
   });
 
+  it("drops an unparseable due date instead of sending it to the API", async () => {
+    let capturedParams: unknown;
+    const tasksApi = fakeTasksApi(async (params) => {
+      capturedParams = params;
+      return { data: { id: "gtask-1" } };
+    });
+    const client = createGoogleTasksClient(CONFIG, tasksApi);
+
+    await client.createTask({ title: "Send the report", due: "next Friday" });
+
+    expect((capturedParams as { requestBody: tasks_v1.Schema$Task }).requestBody.due).toBeUndefined();
+  });
+
   it("throws when the API doesn't return an id", async () => {
     const tasksApi = fakeTasksApi(async () => ({ data: {} }));
     const client = createGoogleTasksClient(CONFIG, tasksApi);
