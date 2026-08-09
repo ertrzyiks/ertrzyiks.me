@@ -1,18 +1,8 @@
 import type { GmailClient } from "./gmailClient.js";
+import { runGoogleTasksSyncCycle } from "./googleTasksSyncer.js";
 import type { JobsApiClient } from "./jobsApiClient.js";
+import { noopLogger, type Logger } from "./logger.js";
 import type { Store } from "./store.js";
-
-export interface Logger {
-  info(message: string): void;
-  warn(message: string): void;
-  error(message: string): void;
-}
-
-export const noopLogger: Logger = {
-  info: () => {},
-  warn: () => {},
-  error: () => {},
-};
 
 export interface PollDeps {
   gmail: GmailClient;
@@ -85,4 +75,9 @@ export async function pollPendingJobStatuses(deps: PollDeps): Promise<void> {
 export async function runPollCycle(deps: PollDeps): Promise<void> {
   await discoverAndScheduleNewEmails(deps);
   await pollPendingJobStatuses(deps);
+  // Keeps action_items in sync with Google Tasks — schedules a sync job for anything not yet
+  // scheduled, then backfills task_id for anything that's finished (googleTasksSyncer.ts). Runs
+  // on this same cycle/interval (runner.ts) rather than its own, since it shares this cycle's
+  // `store`/`jobsApi` deps and there's no reason for a separate timer yet.
+  await runGoogleTasksSyncCycle(deps);
 }

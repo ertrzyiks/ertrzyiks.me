@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { isValidBasicAuth } from "./auth.js";
-import type { Logger } from "./poller.js";
+import type { Logger } from "./logger.js";
 import type { Store } from "./store.js";
 
 export interface HealthServer {

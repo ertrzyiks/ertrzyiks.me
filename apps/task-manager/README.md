@@ -8,6 +8,11 @@ The Mac worker that actually processes jobs (`src/worker.ts`, colocated in this 
 built in #249) consumes the same queue. It never runs on Dokku/CI — it's started locally on the
 user's Mac (via a LaunchAgent, see #243) and is the only thing that ever reads email content.
 
+A second queue, `sync-google-tasks`, keeps `personal-assistant`'s `action_items` table in sync
+with Google Tasks — unlike `extract-action-items`, its worker runs right here in `server.ts`
+(cloud), since pushing an already-extracted action item has none of the "must never leave local
+processing" constraints that keep the Mac worker on the Mac. See "Google Tasks sync" below.
+
 ## Environment variables
 
 ### Jobs API server (`server.ts`)
@@ -19,9 +24,31 @@ user's Mac (via a LaunchAgent, see #243) and is the only thing that ever reads e
 | `PORT`                                            | no       | HTTP port to listen on (default `3000`)                    |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME`     | no\*     | Basic Auth username guarding the Bull Board UI (`/admin/queues`) |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD`     | no\*     | Basic Auth password guarding the Bull Board UI              |
+| `GOOGLE_TASKS_CLIENT_ID`                          | no\*\*   | OAuth client id for the `sync-google-tasks` worker's `tasks` credential |
+| `GOOGLE_TASKS_CLIENT_SECRET`                      | no\*\*   | OAuth client secret for the same credential                 |
+| `GOOGLE_TASKS_REFRESH_TOKEN`                      | no\*\*   | Refresh token for the same credential (from `scripts/google-tasks-oauth`) |
+| `GOOGLE_TASKS_LIST_ID`                            | no       | Google Tasks list to create tasks in (default `@default`, the user's default list) |
 
 \* Bull Board is always mounted, but the Basic Auth check only applies when **both** vars are set —
 unset (the default locally) leaves it open. Production always sets both via Terraform (#313).
+
+\*\* The `sync-google-tasks` worker (started inside this same process, see below) only starts
+once all three are set. Unset — the state before `scripts/google-tasks-oauth` has been run once —
+the Jobs API still accepts `/google-tasks-jobs` requests, they just queue up unconsumed until the
+worker starts.
+
+## Google Tasks sync
+
+`POST /google-tasks-jobs` schedules a job on the `sync-google-tasks` queue, consumed by a second
+`bullmq.Worker` started alongside the Jobs API server in `server.ts` (`src/googleTasksJobProcessor.ts`
+→ `src/googleTasksClient.ts`, wrapping the Google Tasks API). `personal-assistant`'s sync loop
+(`src/googleTasksSyncer.ts`) is the only caller: it schedules a job for each action item without
+a `job_id` yet, then polls for completion and backfills `task_id` — see that package's README for
+the full loop.
+
+This worker's credential is separate from the Mac worker's `gmail.readonly` one — provisioned via
+`scripts/google-tasks-oauth`, read from plain env vars (not the macOS Keychain, since this worker
+runs in the cloud) via Terraform/1Password in production.
 
 ### Mac worker (`worker.ts`)
 
@@ -58,11 +85,14 @@ introduced this file for what was and wasn't verified end-to-end.
 
 ## Endpoints
 
-All `/jobs*` endpoints require `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
+All `/jobs*` and `/google-tasks-jobs*` endpoints require `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
 
 - `POST /jobs` — `{ emailId }` → `201 { jobId }`
 - `GET /jobs/:jobId` — `200 { jobId, status, result?, error? }`, `404` if unknown
 - `POST /jobs/status` — `{ jobIds: [...] }` → `200 { results: [{ jobId, status, result?, error? }, ...] }` (unknown job IDs are omitted from `results`)
+- `POST /google-tasks-jobs` — `{ actionItemId, title, description?, dueDate? }` → `201 { jobId }`
+- `GET /google-tasks-jobs/:jobId` — `200 { jobId, status, result?, error? }` (`result` is `{ actionItemId, googleTaskId }` on success), `404` if unknown
+- `POST /google-tasks-jobs/status` — `{ jobIds: [...] }` → `200 { results: [...] }`, same shape as `/jobs/status`
 
 `status` is one of `pending | active | completed | failed`, collapsing BullMQ's internal states
 per the contract in #241.

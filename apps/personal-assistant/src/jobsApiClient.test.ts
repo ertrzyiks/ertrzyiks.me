@@ -88,4 +88,57 @@ describe("createJobsApiClient", () => {
       expect(fetchFn).not.toHaveBeenCalled();
     });
   });
+
+  describe("scheduleGoogleTaskJob", () => {
+    it("POSTs to /google-tasks-jobs with the item and bearer token, returning the jobId", async () => {
+      const fetchFn = fakeFetch((url) => {
+        expect(url).toBe("http://localhost:3000/google-tasks-jobs");
+        return jsonResponse({ jobId: "gtask-job-1" }, 201);
+      });
+      const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
+
+      await expect(
+        client.scheduleGoogleTaskJob({ actionItemId: 1, title: "Send the report" }),
+      ).resolves.toEqual({ jobId: "gtask-job-1" });
+
+      const [, init] = fetchFn.mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(init.body as string)).toEqual({ actionItemId: 1, title: "Send the report" });
+      expect((init.headers as Record<string, string>).Authorization).toBe("Bearer test-token");
+    });
+
+    it("throws when the response is not ok", async () => {
+      const fetchFn = fakeFetch(() => jsonResponse({ error: "Unauthorized" }, 401));
+      const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
+
+      await expect(
+        client.scheduleGoogleTaskJob({ actionItemId: 1, title: "Send the report" }),
+      ).rejects.toThrow(/status 401/);
+    });
+  });
+
+  describe("getGoogleTaskJobStatuses", () => {
+    it("POSTs to /google-tasks-jobs/status with the jobIds and returns results", async () => {
+      const fetchFn = fakeFetch((url) => {
+        expect(url).toBe("http://localhost:3000/google-tasks-jobs/status");
+        return jsonResponse({
+          results: [
+            { jobId: "gtask-job-1", status: "completed", result: { actionItemId: 1, googleTaskId: "gtask-1" } },
+          ],
+        });
+      });
+      const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
+
+      await expect(client.getGoogleTaskJobStatuses(["gtask-job-1", "gtask-job-2"])).resolves.toEqual([
+        { jobId: "gtask-job-1", status: "completed", result: { actionItemId: 1, googleTaskId: "gtask-1" } },
+      ]);
+    });
+
+    it("returns an empty array without making a request when jobIds is empty", async () => {
+      const fetchFn = fakeFetch(() => jsonResponse({ results: [] }));
+      const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
+
+      await expect(client.getGoogleTaskJobStatuses([])).resolves.toEqual([]);
+      expect(fetchFn).not.toHaveBeenCalled();
+    });
+  });
 });
