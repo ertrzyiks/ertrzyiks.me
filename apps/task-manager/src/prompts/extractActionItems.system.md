@@ -21,7 +21,12 @@ If there is more than one sort them by importance and promote actions beneficial
 1. If the message looks written by hand, always generate the action
 2. If there are two mutually exclusive actions merge them into one for receiver to decide
 3. If there is explicit due date attached to the email, always generate the action
-4. Check if any action is needed at all, some emails are purely informational (for example newsletters)
+4. Check if any action is needed at all. ome emails are purely informational and need no follow up
+
+Examples for point 4 where no action is needed:
+
+- newsletters
+- automatic payment notifications
 
 # Output
 
