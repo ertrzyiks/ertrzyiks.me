@@ -66,6 +66,12 @@ CREATE TABLE IF NOT EXISTS action_items (
 );
 `;
 
+// Stamped onto job_id/task_id for rows that predate the Google Tasks sync feature (see the
+// backfill below) — never a real BullMQ job ID or Google Tasks task ID, just a marker that
+// excludes the row from both `getUnsyncedActionItems` (job_id IS NULL) and
+// `getActionItemsAwaitingTaskSync` (job_id set, task_id IS NULL) forever.
+const PRE_EXISTING_SENTINEL = "pre-existing-skip-sync";
+
 // `CREATE TABLE IF NOT EXISTS` above is a no-op against the production database file, which
 // already has an `action_items` table from before job_id/task_id existed — this backfills the
 // two columns onto it at startup. Safe to run on every startup: each ALTER only fires once the
@@ -74,12 +80,29 @@ function migrateActionItemsColumns(db: DatabaseSync): void {
   const columns = (db.prepare("PRAGMA table_info(action_items)").all() as { name: string }[]).map(
     (row) => row.name,
   );
+  const jobIdColumnIsNew = !columns.includes("job_id");
+  const taskIdColumnIsNew = !columns.includes("task_id");
 
-  if (!columns.includes("job_id")) {
+  if (jobIdColumnIsNew) {
     db.exec("ALTER TABLE action_items ADD COLUMN job_id TEXT");
   }
-  if (!columns.includes("task_id")) {
+  if (taskIdColumnIsNew) {
     db.exec("ALTER TABLE action_items ADD COLUMN task_id TEXT");
+  }
+
+  // Without this, every row that existed before this feature shipped would read as "unsynced"
+  // the moment job_id first appears, and the very next poll cycle would schedule a sync job for
+  // the *entire* historical backlog at once — a burst large enough to trip Google Tasks API rate
+  // limits ("quota exceeded"), and each old item's free-form LLM-extracted due date is more
+  // likely to be something Google's `due` field rejects outright ("Request contains an invalid
+  // argument") than a freshly-extracted one. Only the run where job_id is actually being added
+  // needs this — a job_id that's genuinely NULL after that point means "new item, not yet
+  // attempted" and must be left alone.
+  if (jobIdColumnIsNew) {
+    db.prepare("UPDATE action_items SET job_id = ?, task_id = ? WHERE job_id IS NULL").run(
+      PRE_EXISTING_SENTINEL,
+      PRE_EXISTING_SENTINEL,
+    );
   }
 }
 
