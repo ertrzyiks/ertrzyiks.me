@@ -1,4 +1,5 @@
-import { DAY_PART_LABELS, dayKeyOf, dayPartOf } from "./dayPart.js";
+import { type DayBarEntry, type DayBarStatus } from "./dayBar.js";
+import { dayKeyOf } from "./dayPart.js";
 import type { Event, EventType } from "./store.js";
 
 const ESCAPE_MAP: Record<string, string> = {
@@ -97,22 +98,27 @@ function layout(title: string, bodyHtml: string): string {
   }
   li.event--warning { border-color: #eab308; background: #fefce8; }
   li.event--downtime { border-color: #dc2626; background: #fef2f2; }
-  .event-meta { font-size: 0.8rem; color: #6b7280; }
-  .event-title { font-weight: 600; margin: 0.15rem 0; }
-  .event-description { margin: 0.25rem 0 0; color: #374151; }
-  .event-badge {
-    display: inline-block;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 0.05rem 0.4rem;
-    border-radius: 999px;
-    margin-left: 0.4rem;
-  }
-  .event--warning .event-badge { background: #fde68a; color: #713f12; }
-  .event--downtime .event-badge { background: #fecaca; color: #7f1d1d; }
+  .event-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+  .event-meta { font-size: 0.8rem; color: #6b7280; margin: 0.15rem 0 0; }
+  .event-description { margin: 0.35rem 0 0; color: #374151; }
   .empty { color: #6b7280; }
+  .day-bar-section { margin-bottom: 2.5rem; }
+  .day-bar-heading { font-size: 0.85rem; color: #6b7280; margin: 0 0 0.5rem; }
+  .day-bar { display: flex; gap: 0.2rem; }
+  .day-bar-cell {
+    flex: 1;
+    height: 1.75rem;
+    border-radius: 0.2rem;
+    background: #22c55e;
+  }
+  .day-bar-cell--warning { background: #eab308; }
+  .day-bar-cell--downtime { background: #dc2626; }
+  .day-bar-legend { display: flex; gap: 1rem; margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280; }
+  .day-bar-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+  .day-bar-legend i { width: 0.6rem; height: 0.6rem; border-radius: 999px; display: inline-block; }
+  .day-bar-legend i.none { background: #22c55e; }
+  .day-bar-legend i.warning { background: #eab308; }
+  .day-bar-legend i.downtime { background: #dc2626; }
   form.event-form { display: grid; gap: 0.75rem; max-width: 32rem; margin-bottom: 2.5rem; }
   form.event-form label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
   form.event-form input, form.event-form select, form.event-form textarea {
@@ -165,7 +171,6 @@ function eventListHtml(events: Event[], options: { editable: boolean } = { edita
 }
 
 function eventItemHtml(event: Event, options: { editable: boolean }): string {
-  const dayPartLabel = DAY_PART_LABELS[dayPartOf(event.startsAt)];
   const timeRange =
     event.type === "downtime"
       ? event.endsAt
@@ -174,8 +179,8 @@ function eventItemHtml(event: Event, options: { editable: boolean }): string {
       : timeOf(event.startsAt);
 
   const body = `
-      <div class="event-meta">${timeRange} <span class="event-badge">${escapeHtml(dayPartLabel)}</span></div>
       <p class="event-title">${escapeHtml(event.title)}</p>
+      <div class="event-meta">${timeRange}</div>
       ${event.description ? `<p class="event-description">${escapeHtml(event.description)}</p>` : ""}`;
 
   if (!options.editable) {
@@ -192,13 +197,44 @@ function eventItemHtml(event: Event, options: { editable: boolean }): string {
     </li>`;
 }
 
-export function renderStatusPage(events: Event[]): string {
+const DAY_BAR_STATUS_LABELS: Record<DayBarStatus, string> = {
+  none: "No incidents",
+  warning: "Warning",
+  downtime: "Downtime",
+};
+
+function dayBarHtml(entries: DayBarEntry[]): string {
+  const cells = entries
+    .map((entry) => {
+      const label = DAY_BAR_STATUS_LABELS[entry.status];
+      const modifier = entry.status === "none" ? "" : ` day-bar-cell--${entry.status}`;
+      const title = `${formatDayHeading(entry.dayKey)}: ${label}`;
+      return `<div class="day-bar-cell${modifier}" title="${escapeHtml(title)}"></div>`;
+    })
+    .join("\n    ");
+
+  return `
+<section class="day-bar-section">
+  <p class="day-bar-heading">Last ${entries.length} days</p>
+  <div class="day-bar">
+    ${cells}
+  </div>
+  <div class="day-bar-legend">
+    <span><i class="none"></i> No incidents</span>
+    <span><i class="warning"></i> Warning</span>
+    <span><i class="downtime"></i> Downtime</span>
+  </div>
+</section>`;
+}
+
+export function renderStatusPage(events: Event[], dayBar: DayBarEntry[]): string {
   const body = `
 <header>
   <h1>kstatus</h1>
   <p>Service status, updated as incidents happen.</p>
 </header>
 <main>
+  ${dayBarHtml(dayBar)}
   ${eventListHtml(events)}
 </main>`;
 

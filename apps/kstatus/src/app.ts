@@ -2,7 +2,8 @@ import formbody from "@fastify/formbody";
 import Fastify, { type FastifyInstance } from "fastify";
 import { isValidBasicAuth } from "./auth.js";
 import type { AdminBasicAuth } from "./config.js";
-import { isValidTimestamp } from "./dayPart.js";
+import { buildDayBar } from "./dayBar.js";
+import { dayKeyOf, isValidTimestamp } from "./dayPart.js";
 import type { Event, EventInput, EventType, Store } from "./store.js";
 import {
   type EventFormValues,
@@ -90,7 +91,9 @@ export function createApp(
 
   app.get("/", async (_request, reply) => {
     reply.header("Content-Type", HTML_CONTENT_TYPE);
-    return renderStatusPage(store.listEvents());
+    const events = store.listEvents();
+    const todayKey = dayKeyOf(now());
+    return renderStatusPage(events, buildDayBar(events, todayKey));
   });
 
   // Scoped to this encapsulated plugin (rather than added on `app` directly) so the Basic Auth

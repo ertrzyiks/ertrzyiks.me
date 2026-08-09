@@ -11,7 +11,9 @@ has been recorded, grouped by day.
   blank marks it as still ongoing; editing it later to set an end time closes it out.
 
 Every event also carries a **day part** — morning (00:00–10:59), afternoon (11:00–16:59), or
-evening (17:00–23:59) — derived from its start time and shown as a badge next to it.
+evening (17:00–23:59) — derived from its start time (`src/dayPart.ts`). It's not currently shown
+in the UI (dropped in favor of just the title + time), but stays available as domain vocabulary
+for future use (e.g. filtering).
 
 Timestamps are stored exactly as typed into an `<input type="datetime-local">`
 ("`YYYY-MM-DDTHH:mm`", no timezone attached) and are never reinterpreted through `Date`/timezone
@@ -20,8 +22,10 @@ as "what the clock read when the admin entered it," consistently redisplayed the
 
 ## Pages
 
-- **`GET /`** — the public status page. Shows every recorded event as a stream grouped by day
-  (newest day first), with no authentication.
+- **`GET /`** — the public status page. Shows a 14-day history bar at the top (green = no
+  incidents, yellow = a warning happened that day, red = a downtime covered that day — red wins
+  if a day had both; see `src/dayBar.ts`), followed by every recorded event as a stream grouped by
+  day (newest day first). No authentication.
 - **`GET /admin`** — the admin page. Shows events from the last 2 days (plus any still-open
   downtime regardless of age, so it's never impossible to close one out — see
   `Store.listAdminEvents`), an "Add event" form, and an **Edit** link per event.

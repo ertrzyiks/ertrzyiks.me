@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildDayBar } from "./dayBar.js";
 import type { Event } from "./store.js";
 import {
   escapeHtml,
@@ -9,6 +10,8 @@ import {
   renderEditEventPage,
   renderStatusPage,
 } from "./views.js";
+
+const TODAY = "2026-08-09";
 
 function makeEvent(overrides: Partial<Event> = {}): Event {
   return {
@@ -89,45 +92,65 @@ describe("eventToFormValues", () => {
 });
 
 describe("renderStatusPage", () => {
-  it("renders a day heading and the event title/time/day-part badge", () => {
-    const html = renderStatusPage([makeEvent({ startsAt: "2026-08-09T09:30" })]);
+  it("renders a day heading, the event title, and its time — no day-part badge", () => {
+    const events = [makeEvent({ startsAt: "2026-08-09T09:30" })];
+    const html = renderStatusPage(events, buildDayBar(events, TODAY));
 
     expect(html).toContain("Sunday, August 9, 2026");
     expect(html).toContain("09:30");
     expect(html).toContain("Elevated latency");
-    expect(html).toContain("Morning");
+    expect(html).not.toContain("Morning");
+    expect(html).not.toContain("Afternoon");
+    expect(html).not.toContain("Evening");
     expect(html).toContain(`class="event event--warning"`);
   });
 
+  it("renders the title before the time/description (prominent heading)", () => {
+    const events = [
+      makeEvent({
+        title: "Elevated latency",
+        description: "Investigating",
+        startsAt: "2026-08-09T09:30",
+      }),
+    ];
+    const html = renderStatusPage(events, buildDayBar(events, TODAY));
+
+    const titleIndex = html.indexOf("Elevated latency");
+    const descriptionIndex = html.indexOf("Investigating");
+    expect(titleIndex).toBeGreaterThan(-1);
+    expect(titleIndex).toBeLessThan(descriptionIndex);
+  });
+
   it("renders a downtime event's start–end range and downtime styling", () => {
-    const html = renderStatusPage([
+    const events = [
       makeEvent({
         type: "downtime",
         title: "Database outage",
         startsAt: "2026-08-09T10:00",
         endsAt: "2026-08-09T10:45",
       }),
-    ]);
+    ];
+    const html = renderStatusPage(events, buildDayBar(events, TODAY));
 
     expect(html).toContain("10:00–10:45");
     expect(html).toContain(`class="event event--downtime"`);
   });
 
   it("marks an ongoing downtime (no end time) rather than showing a blank end", () => {
-    const html = renderStatusPage([
-      makeEvent({ type: "downtime", startsAt: "2026-08-09T10:00", endsAt: null }),
-    ]);
+    const events = [makeEvent({ type: "downtime", startsAt: "2026-08-09T10:00", endsAt: null })];
+    const html = renderStatusPage(events, buildDayBar(events, TODAY));
 
     expect(html).toContain("10:00–ongoing");
   });
 
   it("escapes a malicious title/description instead of injecting markup", () => {
-    const html = renderStatusPage([
+    const events = [
       makeEvent({
         title: `<img src=x onerror=alert(1)>`,
         description: `</p><script>evil()</script>`,
       }),
-    ]);
+    ];
+    const html = renderStatusPage(events, buildDayBar(events, TODAY));
 
     expect(html).not.toContain("<img src=x");
     expect(html).not.toContain("<script>evil()</script>");
@@ -135,13 +158,41 @@ describe("renderStatusPage", () => {
   });
 
   it("shows an empty state when there are no events", () => {
-    const html = renderStatusPage([]);
+    const html = renderStatusPage([], buildDayBar([], TODAY));
     expect(html).toContain("No incidents reported.");
   });
 
   it("does not render an Edit link (public page)", () => {
-    const html = renderStatusPage([makeEvent()]);
+    const events = [makeEvent()];
+    const html = renderStatusPage(events, buildDayBar(events, TODAY));
     expect(html).not.toContain("/admin/events/");
+  });
+
+  describe("day bar", () => {
+    it("renders one cell per day, colored by status", () => {
+      const events = [
+        makeEvent({ id: 1, type: "warning", startsAt: "2026-08-08T09:00" }),
+        makeEvent({ id: 2, type: "downtime", startsAt: "2026-08-09T09:00", endsAt: "2026-08-09T09:30" }),
+      ];
+      const html = renderStatusPage(events, buildDayBar(events, TODAY, 3));
+
+      expect(html).toContain(`Last 3 days`);
+      expect(html).toContain(`class="day-bar-cell"`); // 2026-08-07: none
+      expect(html).toContain(`class="day-bar-cell day-bar-cell--warning"`); // 2026-08-08
+      expect(html).toContain(`class="day-bar-cell day-bar-cell--downtime"`); // 2026-08-09
+    });
+
+    it("includes a tooltip with the date and status", () => {
+      const events = [makeEvent({ type: "warning", startsAt: "2026-08-09T09:00" })];
+      const html = renderStatusPage(events, buildDayBar(events, TODAY, 1));
+
+      expect(html).toContain(`title="Sunday, August 9, 2026: Warning"`);
+    });
+
+    it("renders a green (no-incident) cell for a day with no events", () => {
+      const html = renderStatusPage([], buildDayBar([], TODAY, 1));
+      expect(html).toContain(`title="Sunday, August 9, 2026: No incidents"`);
+    });
   });
 });
 
