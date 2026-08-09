@@ -31,8 +31,8 @@ unset (the default locally) leaves it open. Production always sets both via Terr
 | `GMAIL_CLIENT_ID`         | no\*     | OAuth client id for the worker's `gmail.readonly` credential (#236)           |
 | `GMAIL_CLIENT_SECRET`     | no\*     | OAuth client secret for the same credential                                   |
 | `GMAIL_REFRESH_TOKEN`     | no\*     | Refresh token for the same credential (from `scripts/gmail-oauth`)            |
-| `GMAIL_KEYCHAIN_ACCOUNT`  | no       | macOS Keychain "account" all four secrets above are read from (default `task-manager-worker`) |
-| `GMAIL_KEYCHAIN_SERVICE`  | no       | macOS Keychain "service" the refresh token specifically is read from (default `gmail-refresh-token`) |
+| `GMAIL_KEYCHAIN_SERVICE`  | no       | macOS Keychain "service" all four secrets above are read from (default `task-manager-worker`) |
+| `GMAIL_KEYCHAIN_ACCOUNT`  | no       | macOS Keychain "account" the refresh token specifically is read from (default `gmail-refresh-token`) |
 | `LM_STUDIO_BASE_URL`      | no       | Base URL of the local LM Studio server (default `http://localhost:1234`)      |
 | `WORKER_FAKE_DEPS`        | no       | `"true"` swaps in canned fake Gmail/LM Studio implementations instead of the real ones — **manual smoke-testing only, never set in production** (see below) |
 

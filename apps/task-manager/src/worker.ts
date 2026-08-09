@@ -25,11 +25,11 @@ import { createLmStudioExtractor, type ActionItemExtractor } from "./lmStudio.js
 import { processEmailJob } from "./jobProcessor.js";
 import { QUEUE_NAME } from "./queue.js";
 
-// Shared Keychain account for every secret this worker reads (refresh token, Redis
-// URL, Gmail OAuth client id/secret) — all provisioned under the same account by
-// scripts/release-worker.mjs, see its SECRETS manifest for the service names.
-const keychainAccount = process.env.GMAIL_KEYCHAIN_ACCOUNT ?? "task-manager-worker";
-const gmailKeychainService = process.env.GMAIL_KEYCHAIN_SERVICE ?? "gmail-refresh-token";
+// Shared Keychain service for every secret this worker reads (refresh token, Redis
+// URL, Gmail OAuth client id/secret) — all provisioned under the same service by
+// scripts/release-worker.mjs, see its SECRETS manifest for the per-item account names.
+const keychainService = process.env.GMAIL_KEYCHAIN_SERVICE ?? "task-manager-worker";
+const gmailKeychainAccount = process.env.GMAIL_KEYCHAIN_ACCOUNT ?? "gmail-refresh-token";
 
 const lmStudioBaseUrl = process.env.LM_STUDIO_BASE_URL ?? "http://localhost:1234";
 
@@ -78,20 +78,20 @@ async function buildDependencies(): Promise<{
 
   const gmailClientId = await resolveSecret(
     macKeychainReader,
-    keychainAccount,
     "gmail-client-id",
+    keychainService,
     "GMAIL_CLIENT_ID",
   );
   const gmailClientSecret = await resolveSecret(
     macKeychainReader,
-    keychainAccount,
     "gmail-client-secret",
+    keychainService,
     "GMAIL_CLIENT_SECRET",
   );
   const refreshToken = await resolveSecret(
     macKeychainReader,
-    keychainAccount,
-    gmailKeychainService,
+    gmailKeychainAccount,
+    keychainService,
     "GMAIL_REFRESH_TOKEN",
   );
 
@@ -108,7 +108,7 @@ async function buildDependencies(): Promise<{
 async function main() {
   // Real Redis is required regardless of WORKER_FAKE_DEPS — only the Gmail/LM Studio
   // integrations get faked, BullMQ always needs somewhere real to consume jobs from.
-  const redisUrl = await resolveSecret(macKeychainReader, keychainAccount, "redis-url", "REDIS_URL");
+  const redisUrl = await resolveSecret(macKeychainReader, "redis-url", keychainService, "REDIS_URL");
 
   const { emailFetcher, actionItemExtractor } = await buildDependencies();
 

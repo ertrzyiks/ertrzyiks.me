@@ -37,17 +37,17 @@ import * as esbuild from "esbuild";
 import { parse as parseDotenv } from "dotenv";
 
 const LAUNCH_AGENT_LABEL = "com.ertrzyiks.task-manager-worker";
-const KEYCHAIN_ACCOUNT = "task-manager-worker";
+const KEYCHAIN_SERVICE = "task-manager-worker";
 const BUNDLE_PATH = "dist-bin/worker.bundle.cjs";
 const BINARY_PATH = "dist-bin/task-manager-worker";
 
-// Maps each Keychain "service" (see keychain.ts / worker.ts) to the key it's read
+// Maps each Keychain "account" (see keychain.ts / worker.ts) to the key it's read
 // from in the local secrets file. Keep this in sync with worker.ts's Keychain reads.
 const SECRETS = [
-  { service: "gmail-refresh-token", secretsFileKey: "GMAIL_REFRESH_TOKEN" },
-  { service: "redis-url", secretsFileKey: "REDIS_URL" },
-  { service: "gmail-client-id", secretsFileKey: "GMAIL_CLIENT_ID" },
-  { service: "gmail-client-secret", secretsFileKey: "GMAIL_CLIENT_SECRET" },
+  { account: "gmail-refresh-token", secretsFileKey: "GMAIL_REFRESH_TOKEN" },
+  { account: "redis-url", secretsFileKey: "REDIS_URL" },
+  { account: "gmail-client-id", secretsFileKey: "GMAIL_CLIENT_ID" },
+  { account: "gmail-client-secret", secretsFileKey: "GMAIL_CLIENT_SECRET" },
 ];
 
 // Deliberately outside the repo checkout (never gitignored-but-present, genuinely not
@@ -141,8 +141,8 @@ function provisionKeychain(secrets) {
     return;
   }
   const binaryPath = join(process.cwd(), BINARY_PATH);
-  for (const { service, secretsFileKey } of SECRETS) {
-    log("keychain", `(re-)provisioning "${service}", trusting ${binaryPath}`);
+  for (const { account, secretsFileKey } of SECRETS) {
+    log("keychain", `(re-)provisioning "${account}", trusting ${binaryPath}`);
     // -U: update in place if the item already exists, equivalent to delete-then-add —
     // this is what actually refreshes the ACL to trust the newly built binary.
     execFileSync(
@@ -151,9 +151,9 @@ function provisionKeychain(secrets) {
         "add-generic-password",
         "-U",
         "-a",
-        KEYCHAIN_ACCOUNT,
+        account,
         "-s",
-        service,
+        KEYCHAIN_SERVICE,
         "-w",
         secrets[secretsFileKey],
         "-T",
