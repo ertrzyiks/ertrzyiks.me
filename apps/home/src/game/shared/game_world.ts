@@ -310,7 +310,10 @@ export class GameWorld extends Container {
 
     const coords = hex.cube();
 
-    const sprite = new Tile(this.sheet.textures[hex.textureName], coords);
+    const sprite = new Tile(this.sheet.textures[hex.textureName], coords, {
+      width: hex.width,
+      height: hex.height,
+    });
 
     sprite.position.set(x, y);
     sprite.eventMode = "dynamic";

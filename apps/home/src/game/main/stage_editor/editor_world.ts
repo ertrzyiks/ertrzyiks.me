@@ -418,7 +418,10 @@ export class StageEditorWorld extends Container {
 
   protected createWorldTile(hex: GameTileHex) {
     const { x, y } = hex.toPoint();
-    const sprite = new Tile(this.sheet.textures[hex.textureName], hex.cube());
+    const sprite = new Tile(this.sheet.textures[hex.textureName], hex.cube(), {
+      width: hex.width,
+      height: hex.height,
+    });
     sprite.position.set(x, y);
     sprite.eventMode = "dynamic";
     return sprite;
