@@ -8,8 +8,6 @@
     "dev:redis:down": "docker compose down",
     "worker": "tsx watch src/worker.ts",
     "worker:start": "node dist/worker.js",
-    "library-worker": "tsx watch src/librarySyncWorker.ts",
-    "library-worker:start": "node dist/librarySyncWorker.js",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",

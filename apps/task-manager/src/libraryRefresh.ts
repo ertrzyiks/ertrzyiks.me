@@ -1,7 +1,7 @@
 // The actual "check WBPG, update local state, fan out per-loan sync jobs" logic, independent of
-// BullMQ — same split as jobProcessor.ts/loanCalendarSync.ts. Runs on a schedule (see
-// librarySyncWorker.ts's repeatable job), not once per loan — it's what *produces* the one
-// `sync-loan-calendar` job per current loan that loanCalendarSync.ts then handles individually.
+// BullMQ — same split as jobProcessor.ts/loanCalendarSync.ts. Runs on a schedule (see server.ts's
+// repeatable job), not once per loan — it's what *produces* the one `sync-loan-calendar` job per
+// current loan that loanCalendarSync.ts then handles individually.
 import type { LibraryClient } from "./library.js";
 import type { LoanSyncQueue } from "./librarySyncQueue.js";
 import type { LoansStore } from "./loansStore.js";

@@ -96,9 +96,9 @@ data "onepassword_item" "task_manager_google_tasks_oauth_refresh_token" {
   title = "task_manager_google_tasks_oauth_refresh_token"
 }
 
-# WBPG library card login for the library-loan -> Google Calendar sync worker (task-manager's
-# "worker" process type, apps/task-manager/src/librarySyncWorker.ts) — a Login item exposing both
-# `.username` and `.password`, since that's literally what this credential is.
+# WBPG library card login for the library-loan -> Google Calendar sync workers (started inside
+# apps/task-manager/src/server.ts, same as the Google Tasks ones above) — a Login item exposing
+# both `.username` and `.password`, since that's literally what this credential is.
 data "onepassword_item" "task_manager_wbpg_login" {
   vault = "Dokku apps"
   title = "task_manager_wbpg_login"

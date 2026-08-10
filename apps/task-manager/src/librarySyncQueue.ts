@@ -1,10 +1,10 @@
 // Two BullMQ queues for the library-loan sync job, separate from queue.ts's
 // `extract-action-items` queue (a different job entirely, consumed by the Mac worker — see
-// worker.ts). Both of these are consumed by librarySyncWorker.ts, which runs on Dokku, not the
-// Mac, since neither WBPG login nor Google Calendar needs anything Mac-local.
+// worker.ts). Both of these are consumed by `Worker`s started inside server.ts, same as the
+// sync-google-tasks queue, since neither WBPG login nor Google Calendar needs anything Mac-local.
 //
-// - `refresh-library-loans`: a single repeatable job (see librarySyncWorker.ts) that logs into
-//   WBPG, refreshes the `loans` table, and fans out one `sync-loan-calendar` job per current loan.
+// - `refresh-library-loans`: a single repeatable job (see server.ts) that logs into WBPG,
+//   refreshes the `loans` table, and fans out one `sync-loan-calendar` job per current loan.
 // - `sync-loan-calendar`: one job per current loan, processed by loanCalendarSync.ts.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";

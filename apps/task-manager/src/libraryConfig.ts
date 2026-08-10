@@ -1,6 +1,9 @@
-// Config for librarySyncWorker.ts. Unlike worker.ts (Mac-only, secrets from the Keychain — see
-// keychain.ts), this worker runs on Dokku, so secrets come from plain env vars (Dokku config
-// vars), the same convention server.ts and kstatus/personal-assistant's config.ts use.
+// Config for the library sync workers started inside server.ts. Unlike worker.ts (Mac-only,
+// secrets from the Keychain — see keychain.ts), these run on Dokku, so secrets come from plain
+// env vars (Dokku config vars), the same convention server.ts and kstatus/personal-assistant's
+// config.ts use. `redisUrl` here is somewhat redundant with server.ts's own separately-validated
+// `REDIS_URL` read — kept for this type's own completeness/testability rather than threading an
+// extra parameter through, but server.ts uses its own copy for the actual Redis connections.
 export interface LibraryWorkerConfig {
   redisUrl: string;
   databasePath: string;
