@@ -93,6 +93,26 @@ that isn't running in CI/sandbox either. Both are built behind small seams (`Ema
 unit-tested with fakes, independent of Keychain/Gmail/LM Studio availability. See the PR that
 introduced this file for what was and wasn't verified end-to-end.
 
+### Library sync worker (`librarySyncWorker.ts`)
+
+Unlike `worker.ts` above, this one runs on **Dokku**, not the Mac — see the "Library loan ->
+Google Calendar sync worker" section below for why. Secrets are plain env vars (Dokku config
+vars), not Keychain items.
+
+| Variable                        | Required | Description                                                                 |
+| -------------------------------- | -------- | ----------------------------------------------------------------------------- |
+| `REDIS_URL`                      | yes      | Same Redis instance as the Jobs API server                                    |
+| `WBPG_USERNAME`                  | yes      | WBPG library card number / login                                              |
+| `WBPG_PASSWORD`                  | yes      | WBPG password                                                                 |
+| `GOOGLE_CALENDAR_CLIENT_ID`      | yes      | OAuth client id for the `calendar.events` credential (from `scripts/calendar-oauth`) |
+| `GOOGLE_CALENDAR_CLIENT_SECRET`  | yes      | OAuth client secret for the same credential                                   |
+| `GOOGLE_CALENDAR_REFRESH_TOKEN`  | yes      | Refresh token for the same credential                                         |
+| `DATABASE_PATH`                  | no       | Where the sqlite loans DB lives (default `/app/data/library.sqlite`, matching the Dokku storage mount — see terraform/main.tf) |
+| `WBPG_BASE_URL`                  | no       | Overrides the WBPG catalog base URL (default `https://katalog.wbpg.org.pl`)   |
+| `GOOGLE_CALENDAR_ID`             | no       | Which calendar to write to (default `primary`, i.e. the refresh token's own account's main calendar) |
+| `GOOGLE_CALENDAR_TIMEZONE`       | no       | IANA zone events are created in (default `Europe/Warsaw`)                     |
+| `LIBRARY_REFRESH_CRON_PATTERN`   | no       | Cron pattern for how often to re-check WBPG (default `0 7 * * *`, daily 07:00 Europe/Warsaw) |
+
 ## Endpoints
 
 All `/jobs*` and `/google-tasks-jobs*` endpoints require `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
@@ -341,3 +361,99 @@ This repo's CI/sandbox is Linux, so several pieces here have never run for real:
   bootstrap/reload) — none of those tools exist in this sandbox. Same verification gap as
   `src/keychain.ts`'s real Keychain read always had (see the PR that introduced this file for what
   was and wasn't checked).
+
+## Library loan -> Google Calendar sync worker
+
+A second job, unrelated to the email/Gmail one above: keeps a Google Calendar event in sync with
+every currently-borrowed library book (WBPG, https://katalog.wbpg.org.pl/), so a return date shows
+up on the calendar instead of only in the library's own app. Built from a feasibility spike — see
+`scripts/wbpg-library-spike/README.md` for how the WBPG API was reverse-engineered (no public docs
+exist for it) and what was confirmed against a real account.
+
+Runs as `librarySyncWorker.ts`, a **second Dokku process type** on this same app (see the
+`Procfile`) — not the Mac worker, and not a new Dokku app. Neither WBPG login (username/password,
+not OAuth) nor Google Calendar needs anything Mac-local, so there was no reason to tie this to
+`worker.ts`'s Keychain-bound lifecycle; see `librarySyncWorker.ts`'s header comment.
+
+### How it fits together
+
+- `src/library.ts` — the WBPG client (login, walk every linked sub-account via
+  `/api/auth/user/subusers` + `/api/auth/user/change`, collect current loans; also resolves branch
+  ("filia") id -> name from the public `/api/setting/all`).
+- `src/loansStore.ts` — sqlite (`node:sqlite`, no native dependency, unlike `better-sqlite3` —
+  matters here because `worker.ts` gets bundled into a standalone binary elsewhere in this
+  package). Two tables: the current-loans snapshot, and one row per (filia, return-date day)
+  group that's ever gotten a calendar event — see that file's header comment for why the event is
+  keyed by *group*, not by individual loan (a prolongation can move a loan into a different
+  group, and a per-loan pointer would go stale in a way that's easy to apply to the wrong event).
+- `src/googleCalendar.ts` — thin Google Calendar client (create/update/delete/check an event).
+- `src/loanCalendarSync.ts` — the actual "sync one loan's event" decision logic, independent of
+  BullMQ (mirrors `jobProcessor.ts`'s split) — one book due back at a filia joins whatever event
+  already covers that filia+day, creating one if none exists yet; every run recomputes the whole
+  group's description so it converges regardless of which loan's job happens to run first.
+- `src/libraryRefresh.ts` — the periodic "check WBPG, replace the loans snapshot, fan out one
+  `sync-loan-calendar` job per current loan, garbage-collect calendar events for groups no loan
+  belongs to any more" logic (also independent of BullMQ).
+- `src/librarySyncQueue.ts` — the two BullMQ queues (`refresh-library-loans`,
+  `sync-loan-calendar`), separate from `queue.ts`'s `extract-action-items`.
+- `src/librarySyncWorker.ts` — wires it all together: registers `refresh-library-loans` as a
+  BullMQ repeatable job (`upsertJobScheduler`, cron pattern `LIBRARY_REFRESH_CRON_PATTERN`) and
+  runs two `Worker`s, one per queue.
+
+### Setup
+
+1. **WBPG credentials**: just your library card number/login and password — set
+   `WBPG_USERNAME`/`WBPG_PASSWORD` (see the env var table above).
+2. **Google Calendar credential**: run `scripts/calendar-oauth/` — see that folder's README. This
+   is a separate refresh token from the existing Gmail one; a Google refresh token is scoped to
+   whatever was consented to, and the Gmail one was only ever consented for `gmail.readonly`.
+3. **Local dev**: with Redis up (`pnpm --filter task-manager dev:redis`) and `.env` filled in (see
+   `.env.example`):
+   ```bash
+   pnpm --filter task-manager library-worker
+   ```
+   This runs against the *real* WBPG and Google Calendar — there's no fake-deps mode here (unlike
+   `worker.ts`'s `WORKER_FAKE_DEPS`); the pure sync/refresh logic is what `loanCalendarSync.test.ts`
+   and `libraryRefresh.test.ts` exist to cover without needing either.
+4. **Deploying**: no separate release workflow needed — `release_task_manager.yml` already builds
+   and ships this app's whole `dist/`, `librarySyncWorker.js` included, to the same Dokku app the
+   Jobs API server deploys to. The `Procfile` is what tells Dokku it exists as a second process
+   type ("worker", alongside "web") — but Dokku doesn't start a process type just because a
+   Procfile mentions it; after the *first* deploy that ships this Procfile, scale it up by hand
+   once:
+   ```bash
+   dokku ps:scale task-manager web=1 worker=1
+   ```
+   `terraform/main.tf`'s `dokku_app.task_manager` needs the six required env vars above added to
+   its `config` block (sourced from new 1Password items — this repo's convention, see e.g. how
+   `GMAIL_REFRESH_TOKEN` is wired for `personal_assistant` in that file) and a `storage` mount at
+   `/app/data` (matching `DATABASE_PATH`'s default, same pattern as `kstatus`/`personal_assistant`
+   in that file) for the sqlite file to survive redeploys. That terraform change, the 1Password
+   items themselves, and the one-time `ps:scale` above are **manual follow-up steps**, not done as
+   part of this worker's code — same division of labor as `scripts/gmail-oauth/`'s manual 1Password
+   step for the Mac worker.
+
+### What's verified vs. not
+
+- **Verified**: the WBPG login/cookie/endpoint flow (`scripts/wbpg-library-spike/`, run against a
+  real account); `library.ts`'s request/response handling and pagination (`library.test.ts`, via
+  an injected fake `fetch`, mirroring `lmStudio.test.ts`); the sqlite store, the per-loan sync
+  decision logic (including grouping, rescheduling on a prolonged return date, and recovering from
+  an event deleted out from under it), and the refresh/fan-out/garbage-collection logic — all
+  fully unit-tested with fakes or a real in-memory sqlite db (`loansStore.test.ts`,
+  `loanCalendarSync.test.ts`, `libraryRefresh.test.ts`); `tsc`/`vitest`/`pnpm --filter task-manager
+  build` all pass clean with this worker included.
+- **Also verified**: `librarySyncWorker.ts` itself, run against a real local Redis (`docker
+  compose up`, dummy WBPG/Calendar credentials) — it connects, calls `upsertJobScheduler`
+  without error, creates `DATABASE_PATH`'s sqlite file with the real schema, and both `Worker`s
+  log `ready`. That confirms the BullMQ/Redis/sqlite wiring genuinely works; it doesn't touch
+  WBPG or Google Calendar themselves, since no job was enqueued to trigger either.
+- **Not verified**: `googleCalendar.ts`'s actual calls against real Google Calendar infrastructure
+  (same situation `gmail.ts`'s `createGmailFetcher` has always been in — nothing to talk to in
+  CI/sandbox); the full pipeline end-to-end against a real WBPG account and real Google Calendar
+  together; the Dokku deployment mechanics (Procfile-driven multi-process `git:from-image`
+  deploy, `ps:scale`) beyond what `release_task_manager.yml`'s existing, already-working
+  build/push/deploy steps cover; the terraform/1Password wiring above, which references six new
+  1Password items and a storage mount that don't exist yet — `terraform plan`/`apply` will fail
+  until they're created by hand (same manual step this repo's other integrations have always
+  needed, e.g. `scripts/gmail-oauth/README.md`'s own 1Password step).

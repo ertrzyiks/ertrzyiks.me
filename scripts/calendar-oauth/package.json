@@ -1,0 +1,13 @@
+{
+  "name": "calendar-oauth-bootstrap",
+  "version": "0.0.0",
+  "private": true,
+  "description": "One-time local script to obtain the calendar.events refresh token for the library-loan sync worker",
+  "type": "module",
+  "scripts": {
+    "get-refresh-token": "node get-refresh-token.mjs"
+  },
+  "dependencies": {
+    "google-auth-library": "11.0.0"
+  }
+}
