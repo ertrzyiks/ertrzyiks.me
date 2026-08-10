@@ -10,11 +10,24 @@ import { Redis } from "ioredis";
 import { createApp } from "./app.js";
 import { isValidBasicAuth } from "./auth.js";
 import { BULL_BOARD_BASE_PATH, registerBullBoard } from "./bullBoard.js";
+import { createGoogleCalendarClient } from "./googleCalendar.js";
 import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js";
 import { createGoogleTasksClient } from "./googleTasksClient.js";
 import { processGoogleTaskJob } from "./googleTasksJobProcessor.js";
 import { GOOGLE_TASKS_QUEUE_NAME } from "./googleTasksQueue.js";
-import { createLibraryRefreshQueue, createLibrarySyncQueue } from "./librarySyncQueue.js";
+import { createLibraryClient } from "./library.js";
+import { loadLibraryWorkerConfig } from "./libraryConfig.js";
+import { refreshLibraryLoans } from "./libraryRefresh.js";
+import {
+  createLibraryRefreshQueue,
+  createLibrarySyncQueue,
+  createLoanSyncQueueAdapter,
+  LIBRARY_REFRESH_QUEUE_NAME,
+  LIBRARY_SYNC_QUEUE_NAME,
+  type LoanSyncJobPayload,
+} from "./librarySyncQueue.js";
+import { syncLoanCalendarEvent } from "./loanCalendarSync.js";
+import { createStore } from "./loansStore.js";
 import { createQueue, QUEUE_NAME } from "./queue.js";
 
 const redisUrl = process.env.REDIS_URL;
@@ -28,6 +41,11 @@ const googleTasksRefreshToken = process.env.GOOGLE_TASKS_REFRESH_TOKEN;
 const googleTasksListId = process.env.GOOGLE_TASKS_LIST_ID;
 const googleTasksRateLimitMax = Number(process.env.GOOGLE_TASKS_RATE_LIMIT_MAX ?? 5);
 const googleTasksRateLimitDurationMs = Number(process.env.GOOGLE_TASKS_RATE_LIMIT_DURATION_MS ?? 1000);
+const wbpgUsername = process.env.WBPG_USERNAME;
+const wbpgPassword = process.env.WBPG_PASSWORD;
+const googleCalendarClientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
+const googleCalendarClientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
+const googleCalendarRefreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
 
 if (!redisUrl) throw new Error("REDIS_URL is required");
 if (!bearerToken) throw new Error("JOBS_API_BEARER_TOKEN is required");
@@ -36,12 +54,11 @@ const queue = createQueue(redisUrl, QUEUE_NAME);
 const googleTasksQueue = createQueue(redisUrl, GOOGLE_TASKS_QUEUE_NAME);
 const app = createApp(queue, googleTasksQueue, bearerToken);
 
-// These two are consumed by librarySyncWorker.ts (a separate Dokku process type — see its header
-// comment), not anything in this process. Registered here purely so Bull Board below gives
-// visibility into them and — since Bull Board isn't read-only — a manual "Add Job" button to
-// trigger an out-of-schedule library refresh without waiting for LIBRARY_REFRESH_CRON_PATTERN's
-// next run; librarySyncWorker.ts's refreshWorker processes any job on this queue identically
-// regardless of which job name/data added it, scheduled or manual.
+// Registered here (rather than only inside the "library sync workers" block below) so Bull
+// Board below always shows these two queues and — since Bull Board isn't read-only — offers an
+// "Add Job" button to trigger an out-of-schedule refresh, even before/without the library sync
+// env vars being set. Whichever Worker actually consumes them (see below) processes any job on
+// the queue identically regardless of which job name/data added it, scheduled or manual.
 const libraryRefreshQueue = createLibraryRefreshQueue(redisUrl);
 const librarySyncQueue = createLibrarySyncQueue(redisUrl);
 
@@ -109,6 +126,71 @@ if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
   app.log.warn(
     "GOOGLE_TASKS_CLIENT_ID/GOOGLE_TASKS_CLIENT_SECRET/GOOGLE_TASKS_REFRESH_TOKEN not fully set — " +
       "sync-google-tasks worker not started, jobs will queue up unconsumed",
+  );
+}
+
+// The library-loan -> Google Calendar sync workers run right here too, same reasoning as
+// sync-google-tasks above: neither WBPG login nor Google Calendar needs anything Mac-local, so
+// there's no reason to isolate them the way the Gmail-reading worker.ts has to be. (This used to
+// be a separate Dokku process type, librarySyncWorker.ts, requiring a manual `dokku ps:scale`
+// step that's easy to forget — folding it in here means it just comes up with "web", no scaling
+// step needed, matching the one existing precedent instead of being the odd one out.)
+//
+// Optional at startup like Google Tasks above: the Jobs API and Bull Board still come up fine
+// before these five vars are provisioned, the two queues just sit unconsumed until they are.
+if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefreshToken) {
+  // Safe to call without an env override — all five vars this checks for were just confirmed
+  // present above, so none of loadLibraryWorkerConfig's required(...) checks can throw here.
+  const libraryConfig = loadLibraryWorkerConfig();
+
+  const store = createStore(libraryConfig.databasePath);
+  const libraryClient = createLibraryClient(libraryConfig.wbpg);
+  const calendar = createGoogleCalendarClient(libraryConfig.googleCalendar);
+  const librarySyncQueueAdapter = createLoanSyncQueueAdapter(librarySyncQueue);
+
+  // Re-registering the same scheduler id on every startup updates its schedule in place rather
+  // than piling up duplicates, so it's safe to call unconditionally on every boot.
+  await libraryRefreshQueue.upsertJobScheduler(
+    "refresh-library-loans-schedule",
+    { pattern: libraryConfig.refreshCronPattern, tz: "Europe/Warsaw" },
+    { name: "refresh" },
+  );
+
+  const libraryRefreshWorker = new Worker(
+    LIBRARY_REFRESH_QUEUE_NAME,
+    async () => {
+      const result = await refreshLibraryLoans({
+        libraryClient,
+        store,
+        syncQueue: librarySyncQueueAdapter,
+        calendar,
+      });
+      app.log.info(
+        `library refresh: ${result.loanCount} current loan(s), ` +
+          `${result.removedCalendarEventGroups} stale calendar event group(s) removed`,
+      );
+    },
+    { connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) },
+  );
+
+  const librarySyncWorker = new Worker<LoanSyncJobPayload>(
+    LIBRARY_SYNC_QUEUE_NAME,
+    async (job) => {
+      await syncLoanCalendarEvent(job.data.holdingId, { store, calendar });
+    },
+    { connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) },
+  );
+
+  for (const worker of [libraryRefreshWorker, librarySyncWorker]) {
+    worker.on("ready", () => app.log.info(`library sync worker ready, consuming "${worker.name}"`));
+    worker.on("failed", (job, error) =>
+      app.log.error(`Library sync job ${job?.id ?? "<unknown>"} on "${worker.name}" failed: ${error}`),
+    );
+  }
+} else {
+  app.log.warn(
+    "WBPG_USERNAME/WBPG_PASSWORD/GOOGLE_CALENDAR_CLIENT_ID/GOOGLE_CALENDAR_CLIENT_SECRET/" +
+      "GOOGLE_CALENDAR_REFRESH_TOKEN not fully set — library sync workers not started, jobs will queue up unconsumed",
   );
 }
 
