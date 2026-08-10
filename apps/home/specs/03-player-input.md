@@ -45,9 +45,15 @@ The player input system translates a human player's hex-click gestures into game
 
 ### End Turn
 
-- The player explicitly ends their turn via a dedicated UI control (button or key).
+- The player may end their turn early via a dedicated UI control (button or key), before every unit has spent its budget.
 - End turn is only available during the human player's turn.
 - After end turn, input is locked until the human player's next turn starts.
+
+### Auto End Turn
+
+- Once every one of the player's units has exhausted both its move and attack budget for the turn, the turn ends automatically — the same as if the player had clicked End Turn.
+- Checked after every move and every attack; a unit that still has budget left keeps the turn open, however many other units are already drained.
+- A roster with no units left (e.g. all dead) counts as fully drained.
 
 ### Visual Feedback
 
@@ -68,3 +74,4 @@ The player input system translates a human player's hex-click gestures into game
 - A move that lands next to two or more eligible enemies does not auto-attack; a follow-up click on one of them does.
 - Clicking during enemy turn has no effect.
 - End turn locks input until the human player's next turn.
+- Draining the last budget across the whole roster ends the turn without a click on End Turn.

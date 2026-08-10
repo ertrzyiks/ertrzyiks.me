@@ -137,6 +137,13 @@ if (!import.meta.env.DEV) {
           destroyWorld: () => {
             world.destroy({ children: true });
           },
+          // The turn counter (core/reducers's StartTurn case increments it)
+          // — for auto-end-turn.spec.ts (issue #329): draining every unit's
+          // budget should start a new turn without an explicit End Turn
+          // click, and this is the plain-data signal that actually happened
+          // (a single-player harness's next turn is its own turn again per
+          // spec 01 "Notable Behavior", so currentPlayer alone can't tell).
+          getTurn: (): number => world.getState().turn,
         };
       }
 
