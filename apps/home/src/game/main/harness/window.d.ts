@@ -11,6 +11,7 @@ declare global {
       getUnitSectionByOwner: (ownerId: string) => string | null;
       isSectionOccupied: (sectionName: string) => boolean;
       destroyWorld: () => void;
+      getTurn: () => number;
     };
   }
 }

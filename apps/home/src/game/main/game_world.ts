@@ -20,7 +20,7 @@ import { CompletionScreen } from "../shared/completion_screen";
 import { GAME_FONT_FAMILY } from "../shared/fonts";
 import type { StageDefinition } from "./stages/stage";
 import type { Unit } from "../core/units/unit";
-import { isDamaging } from "../core/units";
+import { isDamaging, isMovable } from "../core/units";
 import type { Direction } from "../core/direction";
 
 // How long the attack-target frame is visible before an auto-attack's damage
@@ -67,8 +67,12 @@ export class MainWorld extends GameWorld {
   // Lives in the viewport so highlights pan/zoom with the board.
   protected highlightContainer: Container = new Container();
 
-  // Screen-space "End Turn" control (spec 03): the human turn ends only when the
-  // player asks, never automatically. Shown only during the human's turn.
+  // Screen-space "End Turn" control (spec 03): lets the player end their turn
+  // early, before every unit has spent its budget. Shown only during the
+  // human's turn. Once every unit is out of both movement and attack budget,
+  // maybeAutoEndTurn() below ends the turn on the player's behalf instead of
+  // waiting for this button (issue #329) — the button then hides itself as
+  // part of that same turn-end.
   protected endTurnButton: Container | null = null;
   protected onEndTurnButtonResize: (() => void) | null = null;
 
@@ -448,7 +452,12 @@ export class MainWorld extends GameWorld {
       }
 
       const attacked = this.handleManualAttack(unitOnTile, state);
-      if (!attacked) {
+      if (attacked) {
+        // A bare click-to-attack never goes through reselectAfterMove (no
+        // move happened), so it's the one action path that has to check for
+        // auto-end-turn itself (issue #329).
+        this.maybeAutoEndTurn();
+      } else {
         // Not adjacent yet: if the selected unit can still reach a hex next
         // to this enemy and attack this turn, walk it there and attack in
         // the same click (spec 03 "Click on an Enemy Unit") — mirrors "Click
@@ -669,8 +678,8 @@ export class MainWorld extends GameWorld {
   // After moving (and any auto-attack), keep the same unit selected if it
   // still has movement budget (so the player can spend further remaining
   // budget); otherwise fall back to the next unit that has not moved yet.
-  // The turn no longer ends on its own — the player ends it explicitly via
-  // the End Turn button (spec 03).
+  // If nothing is left to spend across the whole roster, the turn ends on
+  // its own (issue #329) instead of waiting for the End Turn button.
   protected reselectAfterMove(movedUnitId: number) {
     const finalState = this.game.world.getState();
     const finalUnit = this.findUnitById(finalState, movedUnitId);
@@ -683,6 +692,34 @@ export class MainWorld extends GameWorld {
       this.selectedUnit = nextUnit || null;
     }
     this.updateHighlights();
+    this.maybeAutoEndTurn();
+  }
+
+  // Issue #329: once every one of the human's units has spent both its move
+  // and attack budget, there is nothing left to act on this turn — end it
+  // automatically rather than making the player click End Turn on an empty
+  // roster. A dead/removed unit counts as drained too (nothing left of it to
+  // act with). Mirrors onEndTurnClicked's own canAcceptInput/isPlayerTurn
+  // guard so this is a no-op outside the human's turn or while a dialog/
+  // animation holds input.
+  protected maybeAutoEndTurn() {
+    if (!this.canAcceptInput()) {
+      return;
+    }
+
+    const state = this.game.world.getState();
+    const allDrained = this.playerUnits.every((u) => {
+      const live = this.findUnitById(state, u.unit.id);
+      if (!live) return true;
+      const unit = live.unit;
+      const canStillMove = isMovable(unit) && unit.canMove();
+      const canStillAttack = isDamaging(unit) && unit.canAttack();
+      return !canStillMove && !canStillAttack;
+    });
+
+    if (allDrained) {
+      this.onEndTurnClicked();
+    }
   }
 
   // Draws a single hex-shaped highlight (move-range marker or attack-target
