@@ -90,7 +90,12 @@ resource "dokku_app" "yummy_next" {
   domains = ["kuchnia-yummy.pl"]
 }
 
-# Task Manager app (Jobs API server, see #248)
+# Task Manager app (Jobs API server, see #248). Also runs a second Dokku process type, "worker"
+# (apps/task-manager/src/librarySyncWorker.ts, the library-loan -> Google Calendar sync job) —
+# see that app's Procfile and README.md's "Library loan -> Google Calendar sync worker" section.
+# Scaling that process type up (`dokku ps:scale task-manager web=1 worker=1`) is a manual,
+# one-time step outside Terraform's remit here, same as the rest of this repo's Dokku apps only
+# ever get their config/domains/storage managed here, not their process scale.
 resource "dokku_app" "task_manager" {
   app_name = "task-manager"
 
@@ -106,9 +111,25 @@ resource "dokku_app" "task_manager" {
     GOOGLE_TASKS_CLIENT_ID     = data.onepassword_item.task_manager_google_tasks_oauth_client_id.password
     GOOGLE_TASKS_CLIENT_SECRET = data.onepassword_item.task_manager_google_tasks_oauth_client_secret.password
     GOOGLE_TASKS_REFRESH_TOKEN = data.onepassword_item.task_manager_google_tasks_oauth_refresh_token.password
+
+    # "worker" process type only (librarySyncWorker.ts) — unused by "web" (server.ts).
+    WBPG_USERNAME                 = data.onepassword_item.task_manager_wbpg_login.username
+    WBPG_PASSWORD                 = data.onepassword_item.task_manager_wbpg_login.password
+    GOOGLE_CALENDAR_CLIENT_ID     = data.onepassword_item.task_manager_google_calendar_client_id.password
+    GOOGLE_CALENDAR_CLIENT_SECRET = data.onepassword_item.task_manager_google_calendar_client_secret.password
+    GOOGLE_CALENDAR_REFRESH_TOKEN = data.onepassword_item.task_manager_google_calendar_refresh_token.password
   }
 
   domains = ["task-manager.ertrzyiks.me"]
+
+  # `DATABASE_PATH` defaults to /app/data/library.sqlite (see libraryConfig.ts) — this is where
+  # the "worker" process type's loans snapshot lives across redeploys. "web" (server.ts) doesn't
+  # use this mount at all.
+  storage = {
+    task-manager = {
+      mount_path = "/app/data"
+    }
+  }
 }
 
 # Personal Assistant app (email orchestration service, see #250)

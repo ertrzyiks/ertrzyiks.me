@@ -96,3 +96,29 @@ data "onepassword_item" "task_manager_google_tasks_oauth_refresh_token" {
   title = "task_manager_google_tasks_oauth_refresh_token"
 }
 
+# WBPG library card login for the library-loan -> Google Calendar sync worker (task-manager's
+# "worker" process type, apps/task-manager/src/librarySyncWorker.ts) — a Login item exposing both
+# `.username` and `.password`, since that's literally what this credential is.
+data "onepassword_item" "task_manager_wbpg_login" {
+  vault = "Dokku apps"
+  title = "task_manager_wbpg_login"
+}
+
+# calendar.events OAuth credential for that same worker (see scripts/calendar-oauth/README.md) —
+# a separate refresh token from personal_assistant's gmail.readonly one above, since a Google
+# refresh token is scoped to whatever was consented to.
+data "onepassword_item" "task_manager_google_calendar_client_id" {
+  vault = "Dokku apps"
+  title = "task_manager_google_calendar_client_id"
+}
+
+data "onepassword_item" "task_manager_google_calendar_client_secret" {
+  vault = "Dokku apps"
+  title = "task_manager_google_calendar_client_secret"
+}
+
+data "onepassword_item" "task_manager_google_calendar_refresh_token" {
+  vault = "Dokku apps"
+  title = "task_manager_google_calendar_refresh_token"
+}
+

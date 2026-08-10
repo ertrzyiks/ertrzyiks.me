@@ -2,8 +2,11 @@
 # member and needs the shared lockfile/workspace manifest to install correctly.
 #
 # `apps/task-manager` also contains `src/worker.ts`, the Mac-only worker that reads email content
-# via the local Keychain/LM Studio (see README.md). It never runs on Dokku — only the Jobs API
-# server (`server.ts`) is deployed here, so this image builds and ships `dist/server.js` only.
+# via the local Keychain/LM Studio (see README.md) — that one never runs on Dokku. This image
+# ships the whole compiled `dist/` (every other entry point, `worker.js` included but unused
+# here) and lets the Procfile below tell Dokku which of those to actually run: the Jobs API
+# server (`server.ts`, "web") and the library-loan sync worker (`librarySyncWorker.ts`,
+# "worker" — see that file's header comment for why *it*, unlike worker.ts, does run on Dokku).
 
 FROM node:24.19.0-slim AS build
 WORKDIR /repo
@@ -56,6 +59,10 @@ RUN pnpm install --prod --ignore-workspace --ignore-scripts
 FROM node:24.19.0-slim AS runtime
 WORKDIR /app
 COPY --from=build /repo/apps/task-manager/dist ./
+# Dokku reads this from the deployed image's WORKDIR to run "web"/"worker" as separate process
+# types even though this is a plain `git:from-image` deploy, not a herokuish/buildpack build —
+# see release_task_manager.yml's "Push to dokku" step.
+COPY apps/task-manager/Procfile ./
 
 ENV NODE_ENV=production
 EXPOSE 3000
