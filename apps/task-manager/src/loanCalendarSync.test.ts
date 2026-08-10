@@ -142,6 +142,44 @@ describe("syncLoanCalendarEvent", () => {
     expect(calendar.events.get(newGroup!.googleEventId)?.start).toBe("2026-09-03T18:00:00");
   });
 
+  it("when one book in a shared event is prolonged out of the group, the remaining book's own sync drops it from the description instead of the event staying stale", async () => {
+    // Two books due the same day/filia share one event.
+    store.replaceCurrentLoans([
+      loanInput({ holdingId: 1, title: "Book A", dateReturn: "2026-08-17T00:00:00" }),
+      loanInput({ holdingId: 2, title: "Book B", dateReturn: "2026-08-17T00:00:00" }),
+    ]);
+    await syncLoanCalendarEvent(1, { store, calendar });
+    await syncLoanCalendarEvent(2, { store, calendar });
+    const sharedEventId = store.getCalendarEventGroup(144, "2026-08-17")!.googleEventId;
+    expect(calendar.events.get(sharedEventId)?.description).toContain("Book A");
+    expect(calendar.events.get(sharedEventId)?.description).toContain("Book B");
+
+    // Book A gets prolonged to a later date (a refresh would update the loans table like this);
+    // book B's return date is untouched. Both still get a sync job — that's libraryRefresh.ts's
+    // job, not this test's concern, so both are simulated here directly.
+    store.replaceCurrentLoans([
+      loanInput({ holdingId: 1, title: "Book A", dateReturn: "2026-09-03T00:00:00" }),
+      loanInput({ holdingId: 2, title: "Book B", dateReturn: "2026-08-17T00:00:00" }),
+    ]);
+
+    // Book B's sync runs first: no merge step needed — it recomputes the *whole* group fresh
+    // from the store, and book A is no longer in it.
+    await syncLoanCalendarEvent(2, { store, calendar });
+    expect(calendar.events.get(sharedEventId)?.description).toBe("Book B — Witek, Rafał (1971- ).");
+
+    // Book A's sync runs after: its new group (144, 2026-09-03) has no event yet, so it creates
+    // its own — it never touches the old shared event.
+    await syncLoanCalendarEvent(1, { store, calendar });
+    const newGroup = store.getCalendarEventGroup(144, "2026-09-03");
+    expect(newGroup?.googleEventId).not.toBe(sharedEventId);
+    expect(calendar.events.get(newGroup!.googleEventId)?.description).toBe("Book A — Witek, Rafał (1971- ).");
+
+    // The old event still exists (deleting it if it's now empty is libraryRefresh.ts's
+    // garbage-collection sweep, not this per-loan sync's job) — here it isn't empty, it still
+    // correctly holds book B alone.
+    expect(await calendar.eventExists(sharedEventId)).toBe(true);
+  });
+
   it("creates a fresh event if the previously-tracked one was deleted out from under it", async () => {
     store.replaceCurrentLoans([loanInput()]);
     await syncLoanCalendarEvent(1, { store, calendar });
