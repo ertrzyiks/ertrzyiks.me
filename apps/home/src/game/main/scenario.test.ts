@@ -9,13 +9,13 @@ import { createStage3Definition } from "./stages/stage3";
 import { makeBoard, flush } from "./test_helpers";
 
 describe("Scenario (Stage 1 definition)", () => {
-  test("spawns Whirley's two heroes, the wolf pack, and the Wanderer at their sections", () => {
+  test("spawns Whirley's hero, the wolf pack, and the Wanderer at their sections", () => {
     const game = new Game(makeBoard());
     new Scenario(game, createStage1Definition()).start();
 
     const units = game.world.getState().units;
     const byOwner = (id: string) => units.filter((u) => u.owner.id === id);
-    expect(byOwner("human")).toHaveLength(2);
+    expect(byOwner("human")).toHaveLength(1);
     expect(byOwner("wolves")).toHaveLength(3);
     expect(byOwner("wanderer")).toHaveLength(1);
   });
@@ -86,7 +86,7 @@ describe("Scenario.reload", () => {
     const state = game.world.getState();
     const units = state.units;
     const byOwner = (id: string) => units.filter((u) => u.owner.id === id);
-    expect(byOwner("human")).toHaveLength(2);
+    expect(byOwner("human")).toHaveLength(1);
     expect(byOwner("wolves")).toHaveLength(3);
     expect(byOwner("wanderer")).toHaveLength(1);
     expect(state.turn).toBe(1);
@@ -121,7 +121,7 @@ describe("Scenario.reload", () => {
 
     const units = game.world.getState().units;
     const byOwner = (id: string) => units.filter((u) => u.owner.id === id);
-    // Stage 2 spawns one Hero (not Stage 1's two) and bandits, not wolves.
+    // Stage 2 spawns bandits, not wolves.
     expect(byOwner("human")).toHaveLength(1);
     expect(byOwner("bandits")).toHaveLength(3);
     expect(byOwner("wolves")).toHaveLength(0);
