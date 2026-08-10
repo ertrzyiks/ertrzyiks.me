@@ -5,9 +5,9 @@ import { FleeBehavior } from "../../core/player/flee_behavior";
 import type { StageDefinition } from "./stage";
 
 /**
- * Stage 1 — The Wreck (specs/09-stage-1.md). Whirley (two Hero units) crosses
- * the beach; a wolf pack roams, and the neutral Wanderer flees on sight. Win:
- * reach the village.
+ * Stage 1 — The Wreck (specs/09-stage-1.md). Whirley (a single Hero unit)
+ * crosses the beach; a wolf pack roams, and the neutral Wanderer flees on
+ * sight. Win: reach the village.
  *
  * A factory, not a static object: pack memory is per-playthrough state (the
  * leader's no-backtrack history), so each call — i.e. each stage load —
@@ -25,10 +25,11 @@ export function createStage1Definition(): StageDefinition {
 
   return {
     player,
-    playerSpawns: [
-      { section: "spawn_a", createUnit: () => new Hero() },
-      { section: "spawn_b", createUnit: () => new Hero() },
-    ],
+    // Issue #330: a single Hero, matching specs/09-stage-1.md's "Starting
+    // Conditions" ("Whirley spawns...", singular) and Stage 2/3's own
+    // one-Hero rosters — a second Hero at "spawn_b" (board1.json) had drifted
+    // in without ever being reflected in the spec.
+    playerSpawns: [{ section: "spawn_a", createUnit: () => new Hero() }],
     enemies: [
       {
         player: wolfPlayer,

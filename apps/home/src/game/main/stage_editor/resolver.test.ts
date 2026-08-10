@@ -11,10 +11,7 @@ import type { StageRosterData } from "./stage_roster";
 // Equivalent to createStage1Definition() (main/stages/stage1.ts), expressed
 // as editor-authored data instead of hand-written factories.
 const stage1Roster: StageRosterData = {
-  playerSpawns: [
-    { section: "spawn_a", unitKey: "Hero" },
-    { section: "spawn_b", unitKey: "Hero" },
-  ],
+  playerSpawns: [{ section: "spawn_a", unitKey: "Hero" }],
   enemies: [
     {
       factionKey: "wolves",
@@ -87,13 +84,13 @@ const stage3Roster: StageRosterData = {
 };
 
 describe("resolveStageDefinition (Stage 1-equivalent roster)", () => {
-  test("spawns Whirley's two heroes, the wolf pack, and the Wanderer at their sections", () => {
+  test("spawns Whirley's hero, the wolf pack, and the Wanderer at their sections", () => {
     const game = new Game(makeBoard());
     new Scenario(game, resolveStageDefinition(stage1Roster)).start();
 
     const units = game.world.getState().units;
     const byOwner = (id: string) => units.filter((u) => u.owner.id === id);
-    expect(byOwner("human")).toHaveLength(2);
+    expect(byOwner("human")).toHaveLength(1);
     expect(byOwner("wolves")).toHaveLength(3);
     expect(byOwner("wanderer")).toHaveLength(1);
   });
