@@ -118,6 +118,10 @@ resource "dokku_app" "task_manager" {
     GOOGLE_CALENDAR_CLIENT_ID     = data.onepassword_item.task_manager_google_calendar_client_id.password
     GOOGLE_CALENDAR_CLIENT_SECRET = data.onepassword_item.task_manager_google_calendar_client_secret.password
     GOOGLE_CALENDAR_REFRESH_TOKEN = data.onepassword_item.task_manager_google_calendar_refresh_token.password
+    # Not a secret (a Calendar ID doesn't grant access on its own — the refresh token above is
+    # what does), so it's a plain literal here rather than a 1Password item. The "Dom" calendar,
+    # not the refresh token account's primary one — see googleCalendar.ts's GOOGLE_CALENDAR_ID.
+    GOOGLE_CALENDAR_ID = "beff7d227de04ef6e92cec0deea77b7ef9e1a89346af7d76b047d90fff377d1c@group.calendar.google.com"
   }
 
   domains = ["task-manager.ertrzyiks.me"]
