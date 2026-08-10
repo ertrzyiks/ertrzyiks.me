@@ -34,19 +34,26 @@ function isRenderable(unit: Unit): unit is Unit & IRenderable {
 }
 
 const FOG_HEX_SIZE = 50;
-const FOG_HEX_Y_OFFSET = 4;
 
 // Above the unit's hex background (its top edge sits around y = -46, see
 // createHexPoints' size/yOffset), clear of the sprite itself.
 const HEALTH_BAR_Y_OFFSET = -60;
 
+// Issue #332: this used to reuse createHexPoints' yOffset=4 (tuned for the
+// unit-hex/highlight outlines drawn around a *sprite*, whose own anchor
+// point sits a few pixels above true hex-center). The terrain Tile fog is
+// meant to cover has no such offset — it's a Sprite stretched to the hex's
+// real width/height with anchor (0.5, 0.5), centered exactly on the hex
+// (see renderable/tile.ts). Carrying the +4 into the fog polygon shifted
+// every fogged hex 4px down from the terrain tile underneath it, leaving a
+// sliver of terrain visible at the top and over-covering the tile below.
 function buildFogGraphic(): Graphics {
   const g = new Graphics();
   const points: number[] = [];
   for (let side = 0; side < 7; side++) {
     points.push(
       FOG_HEX_SIZE * Math.cos((side * 2 * Math.PI) / 6),
-      FOG_HEX_Y_OFFSET + FOG_HEX_SIZE * Math.sin((side * 2 * Math.PI) / 6)
+      FOG_HEX_SIZE * Math.sin((side * 2 * Math.PI) / 6)
     );
   }
   g.poly(points);
