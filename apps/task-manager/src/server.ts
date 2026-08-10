@@ -14,6 +14,7 @@ import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js"
 import { createGoogleTasksClient } from "./googleTasksClient.js";
 import { processGoogleTaskJob } from "./googleTasksJobProcessor.js";
 import { GOOGLE_TASKS_QUEUE_NAME } from "./googleTasksQueue.js";
+import { createLibraryRefreshQueue, createLibrarySyncQueue } from "./librarySyncQueue.js";
 import { createQueue, QUEUE_NAME } from "./queue.js";
 
 const redisUrl = process.env.REDIS_URL;
@@ -35,6 +36,15 @@ const queue = createQueue(redisUrl, QUEUE_NAME);
 const googleTasksQueue = createQueue(redisUrl, GOOGLE_TASKS_QUEUE_NAME);
 const app = createApp(queue, googleTasksQueue, bearerToken);
 
+// These two are consumed by librarySyncWorker.ts (a separate Dokku process type — see its header
+// comment), not anything in this process. Registered here purely so Bull Board below gives
+// visibility into them and — since Bull Board isn't read-only — a manual "Add Job" button to
+// trigger an out-of-schedule library refresh without waiting for LIBRARY_REFRESH_CRON_PATTERN's
+// next run; librarySyncWorker.ts's refreshWorker processes any job on this queue identically
+// regardless of which job name/data added it, scheduled or manual.
+const libraryRefreshQueue = createLibraryRefreshQueue(redisUrl);
+const librarySyncQueue = createLibrarySyncQueue(redisUrl);
+
 // Bull Board is always mounted. Basic Auth guards it only when both credentials are configured:
 // unset — the normal local dev state, nothing in .env by default — leaves it open, matching the
 // low-friction workflow this had before merging out of devServer.ts. Production always sets both
@@ -49,10 +59,10 @@ if (bullBoardUsername && bullBoardPassword) {
       }
     });
 
-    await registerBullBoard(bullBoardApp, [queue, googleTasksQueue]);
+    await registerBullBoard(bullBoardApp, [queue, googleTasksQueue, libraryRefreshQueue, librarySyncQueue]);
   });
 } else {
-  await registerBullBoard(app, [queue, googleTasksQueue]);
+  await registerBullBoard(app, [queue, googleTasksQueue, libraryRefreshQueue, librarySyncQueue]);
 }
 
 // The `sync-google-tasks` worker runs right here, in the same cloud process as the Jobs API —
