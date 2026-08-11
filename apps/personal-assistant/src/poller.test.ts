@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { EventEmitter, TrendEvent } from "./axiomEvents.js";
 import type { GmailClient } from "./gmailClient.js";
 import type {
   GoogleTaskJobStatusResult,
@@ -57,6 +58,11 @@ class FakeJobsApiClient implements JobsApiClient {
   }
 }
 
+function recordingEmitter(): EventEmitter & { events: TrendEvent[] } {
+  const events: TrendEvent[] = [];
+  return { events, emit: (event) => events.push(event) };
+}
+
 describe("poller", () => {
   let store: Store;
 
@@ -107,6 +113,38 @@ describe("poller", () => {
       expect(store.emailExists("email-1")).toBe(true);
       expect(store.getQueuedEmailsWithJobId()).toEqual([]);
     });
+
+    it("emits a queued trend event for each newly-discovered email (#315)", async () => {
+      const gmail = new FakeGmailClient(["email-1", "email-2"]);
+      const jobsApi = new FakeJobsApiClient();
+      const events = recordingEmitter();
+
+      await discoverAndScheduleNewEmails({ gmail, jobsApi, store, events });
+
+      expect(events.events).toEqual([
+        { entity: "email", entityId: "email-1", status: "queued" },
+        { entity: "email", entityId: "email-2", status: "queued" },
+      ]);
+    });
+
+    it("emits a failed trend event (with the error message) when scheduling fails", async () => {
+      const gmail = new FakeGmailClient(["email-1"]);
+      const jobsApi = new FakeJobsApiClient();
+      jobsApi.scheduleShouldFailFor.add("email-1");
+      const events = recordingEmitter();
+
+      await discoverAndScheduleNewEmails({ gmail, jobsApi, store, events });
+
+      expect(events.events).toEqual([
+        { entity: "email", entityId: "email-1", status: "queued" },
+        {
+          entity: "email",
+          entityId: "email-1",
+          status: "failed",
+          error: "refused to schedule email-1",
+        },
+      ]);
+    });
   });
 
   describe("pollPendingJobStatuses", () => {
@@ -151,6 +189,48 @@ describe("poller", () => {
       await pollPendingJobStatuses({ gmail: new FakeGmailClient([]), jobsApi, store });
 
       expect(store.getQueuedEmailsWithJobId()).toEqual([]);
+    });
+
+    it("emits a completed trend event once the job completes (#315)", async () => {
+      store.insertQueuedEmail("email-1");
+      store.setJobId("email-1", "job-1");
+      const jobsApi = new FakeJobsApiClient();
+      jobsApi.statuses.set("job-1", {
+        jobId: "job-1",
+        status: "completed",
+        result: { emailId: "email-1", actionItems: [] },
+      });
+      const events = recordingEmitter();
+
+      await pollPendingJobStatuses({ gmail: new FakeGmailClient([]), jobsApi, store, events });
+
+      expect(events.events).toEqual([{ entity: "email", entityId: "email-1", status: "completed" }]);
+    });
+
+    it("emits a failed trend event (with the error message) once the job fails", async () => {
+      store.insertQueuedEmail("email-1");
+      store.setJobId("email-1", "job-1");
+      const jobsApi = new FakeJobsApiClient();
+      jobsApi.statuses.set("job-1", { jobId: "job-1", status: "failed", error: "extraction blew up" });
+      const events = recordingEmitter();
+
+      await pollPendingJobStatuses({ gmail: new FakeGmailClient([]), jobsApi, store, events });
+
+      expect(events.events).toEqual([
+        { entity: "email", entityId: "email-1", status: "failed", error: "extraction blew up" },
+      ]);
+    });
+
+    it("emits nothing for pending/active jobs", async () => {
+      store.insertQueuedEmail("email-1");
+      store.setJobId("email-1", "job-1");
+      const jobsApi = new FakeJobsApiClient();
+      jobsApi.statuses.set("job-1", { jobId: "job-1", status: "active" });
+      const events = recordingEmitter();
+
+      await pollPendingJobStatuses({ gmail: new FakeGmailClient([]), jobsApi, store, events });
+
+      expect(events.events).toEqual([]);
     });
 
     it("leaves pending/active jobs queued", async () => {

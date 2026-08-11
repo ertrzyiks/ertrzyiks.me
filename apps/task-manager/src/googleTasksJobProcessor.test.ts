@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { EventEmitter, TrendEvent } from "./axiomEvents.js";
 import { processGoogleTaskJob } from "./googleTasksJobProcessor.js";
 import type { GoogleTasksClient } from "./googleTasksClient.js";
 import type { GoogleTaskJobPayload } from "./googleTask.js";
+
+function recordingEmitter(): EventEmitter & { events: TrendEvent[] } {
+  const events: TrendEvent[] = [];
+  return { events, emit: (event) => events.push(event) };
+}
 
 function fakeClient(id: string): GoogleTasksClient {
   return {
@@ -39,5 +45,35 @@ describe("processGoogleTaskJob", () => {
     await expect(
       processGoogleTaskJob(PAYLOAD, { googleTasksClient: failingClient(error) }),
     ).rejects.toThrow("Google Tasks API error");
+  });
+
+  it("emits active then completed trend events, keyed by actionItemId (#315)", async () => {
+    const events = recordingEmitter();
+
+    await processGoogleTaskJob(PAYLOAD, { googleTasksClient: fakeClient("gtask-1"), events });
+
+    expect(events.events).toEqual([
+      { entity: "sync-google-tasks", entityId: "1", status: "active" },
+      { entity: "sync-google-tasks", entityId: "1", status: "completed" },
+    ]);
+  });
+
+  it("emits active then failed (with the error message) when the Google Tasks API call fails", async () => {
+    const events = recordingEmitter();
+
+    await expect(
+      processGoogleTaskJob(PAYLOAD, { googleTasksClient: failingClient(new Error("boom")), events }),
+    ).rejects.toThrow();
+
+    expect(events.events).toEqual([
+      { entity: "sync-google-tasks", entityId: "1", status: "active" },
+      { entity: "sync-google-tasks", entityId: "1", status: "failed", error: "boom" },
+    ]);
+  });
+
+  it("doesn't throw when no events dep is given — defaults to a no-op", async () => {
+    await expect(
+      processGoogleTaskJob(PAYLOAD, { googleTasksClient: fakeClient("gtask-1") }),
+    ).resolves.toBeDefined();
   });
 });

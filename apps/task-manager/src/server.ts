@@ -9,6 +9,7 @@ import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { createApp } from "./app.js";
 import { isValidBasicAuth } from "./auth.js";
+import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { BULL_BOARD_BASE_PATH, registerBullBoard } from "./bullBoard.js";
 import { createGoogleCalendarClient } from "./googleCalendar.js";
 import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js";
@@ -46,9 +47,20 @@ const wbpgPassword = process.env.WBPG_PASSWORD;
 const googleCalendarClientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
 const googleCalendarClientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
 const googleCalendarRefreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
+const axiomToken = process.env.AXIOM_TOKEN;
+const axiomDataset = process.env.AXIOM_DATASET;
 
 if (!redisUrl) throw new Error("REDIS_URL is required");
 if (!bearerToken) throw new Error("JOBS_API_BEARER_TOKEN is required");
+
+// Trend-event emission (#315) — plain, optional env vars like the other credentials in this
+// file; see axiomEvents.ts's header comment for why this one credential doesn't need Keychain
+// treatment on the Mac worker side. Unset, sync-google-tasks jobs just don't emit events —
+// everything else about the worker is unaffected (see jobProcessor.ts/googleTasksJobProcessor.ts).
+const events: EventEmitter =
+  axiomToken && axiomDataset
+    ? createAxiomEventEmitter({ token: axiomToken, dataset: axiomDataset, service: "task-manager" })
+    : noopEventEmitter;
 
 const queue = createQueue(redisUrl, QUEUE_NAME);
 const googleTasksQueue = createQueue(redisUrl, GOOGLE_TASKS_QUEUE_NAME);
@@ -108,7 +120,7 @@ if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
   const googleTasksConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const googleTasksWorker = new Worker<GoogleTaskJobPayload, GoogleTaskJobResult>(
     GOOGLE_TASKS_QUEUE_NAME,
-    async (job) => processGoogleTaskJob(job.data, { googleTasksClient }),
+    async (job) => processGoogleTaskJob(job.data, { googleTasksClient, events }),
     {
       connection: googleTasksConnection,
       limiter: { max: googleTasksRateLimitMax, duration: googleTasksRateLimitDurationMs },

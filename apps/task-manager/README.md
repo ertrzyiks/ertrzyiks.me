@@ -44,6 +44,8 @@ the "must never leave local processing" constraint that keeps the Mac worker on 
 | `GOOGLE_CALENDAR_ID`                              | no       | Which calendar to write to (default `primary`, i.e. the refresh token's own account's main calendar) |
 | `GOOGLE_CALENDAR_TIMEZONE`                        | no       | IANA zone events are created in (default `Europe/Warsaw`)                     |
 | `LIBRARY_REFRESH_CRON_PATTERN`                    | no       | Cron pattern for how often to re-check WBPG (default `0 7 * * *`, daily 07:00 Europe/Warsaw) |
+| `AXIOM_TOKEN`                                     | no       | Axiom API token for trend-event ingestion (#315), used by the `sync-google-tasks` worker here |
+| `AXIOM_DATASET`                                   | no       | Axiom dataset to ingest into (e.g. `task-manager-events`)                     |
 
 \* Bull Board is always mounted, but the Basic Auth check only applies when **both** vars are set —
 unset (the default locally) leaves it open. Production always sets both via Terraform (#313).
@@ -57,6 +59,9 @@ worker starts.
 process) only start once all five are set — same optional-at-startup pattern as the Google Tasks
 vars above. Unset, Bull Board still shows both queues (registered unconditionally so its "Add Job"
 button always works — see `bullBoard.ts`), jobs just queue up unconsumed until the workers start.
+
+`AXIOM_TOKEN`/`AXIOM_DATASET` are independent of each other and of everything above — see
+"Historical/trend observability" below.
 
 ## Google Tasks sync
 
@@ -91,6 +96,8 @@ without a due date.
 | `GMAIL_KEYCHAIN_ACCOUNT`  | no       | macOS Keychain "account" the refresh token specifically is read from (default `gmail-refresh-token`) |
 | `LM_STUDIO_BASE_URL`      | no       | Base URL of the local LM Studio server (default `http://localhost:1234`)      |
 | `WORKER_FAKE_DEPS`        | no       | `"true"` swaps in canned fake Gmail/LM Studio implementations instead of the real ones — **manual smoke-testing only, never set in production** (see below) |
+| `AXIOM_TOKEN`             | no\*\*   | Axiom API token for trend-event ingestion (#315), used by `extract-action-items` jobs here |
+| `AXIOM_DATASET`           | no\*\*   | Axiom dataset to ingest into (e.g. `task-manager-events`, same dataset the cloud side uses) |
 
 \* All four secrets are read from the macOS Keychain if not set as env vars (see `resolveSecret`
 in `src/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
@@ -100,6 +107,14 @@ them back in plaintext. This includes `GMAIL_REFRESH_TOKEN` — the most sensiti
 only set it locally when you actually need to exercise a real Gmail credential outside the
 Keychain; `WORKER_FAKE_DEPS=true` is the lower-stakes option when you just need to prove the queue
 wiring works.
+
+\*\* Deliberately *not* Keychain-backed like the four above, despite also being a credential — an
+Axiom ingest token only grants write access to one dataset, a meaningfully lower blast radius than
+this worker's other secrets, so the extra Keychain rotation machinery isn't worth it here (see
+`axiomEvents.ts`'s header comment). Plain, optional env vars; the LaunchAgent plist sets no
+`EnvironmentVariables` at all today, so wiring these into production would mean adding that block —
+not done, since this is additive and the Mac side isn't the primary way this gets exercised (see
+"Historical/trend observability" below).
 
 The worker reads all four secrets — the Gmail refresh token, `REDIS_URL`, `GMAIL_CLIENT_ID`, and
 `GMAIL_CLIENT_SECRET` — from the **macOS Keychain** at startup by shelling out to the `security`
@@ -111,6 +126,27 @@ that isn't running in CI/sandbox either. Both are built behind small seams (`Ema
 `ActionItemExtractor`) so `src/jobProcessor.ts` — the actual "handle one job" logic — is
 unit-tested with fakes, independent of Keychain/Gmail/LM Studio availability. See the PR that
 introduced this file for what was and wasn't verified end-to-end.
+
+## Historical/trend observability (#315)
+
+Bull Board (above) is a **live/snapshot** view — current queue state, right now, plus retry/
+inspect. It deliberately doesn't show trends over time (a failure spike an hour ago, a stalled
+queue overnight). That's what [Axiom](https://axiom.co) is for: `src/axiomEvents.ts`
+fire-and-forget POSTs a `{ service: "task-manager", entity, entityId, status, _time, error? }`
+event to Axiom's ingest API at each job's `active`/`completed`/`failed` transition — emitted
+inline in `jobProcessor.ts` (`entity: "extract-action-items"`, `entityId` = the email id) and
+`googleTasksJobProcessor.ts` (`entity: "sync-google-tasks"`, `entityId` = the action item id),
+right where each transition already happens, rather than a separate BullMQ `QueueEvents`
+Redis-pubsub listener — simpler, no new listener lifecycle to manage.
+
+Fully best-effort: `emit()` never throws or awaits into the job pipeline it's describing (fire the
+request, log-and-swallow any failure via `console.error` — this package has no logger abstraction
+today) — a dropped event from a brief Axiom outage is an acceptable gap in a 30-day trends view,
+not a job failure. A no-op (`noopEventEmitter`) until both `AXIOM_TOKEN`/`AXIOM_DATASET` are set
+(see the env var tables above) — this is purely additive on both the Mac worker and cloud sides.
+Both processes share the same `task-manager-events` Axiom dataset (`personal-assistant` has its
+own separate one, `personal-assistant-events` — see that package's README); the `entity` field is
+what distinguishes `extract-action-items` from `sync-google-tasks` jobs within it.
 
 ## Endpoints
 

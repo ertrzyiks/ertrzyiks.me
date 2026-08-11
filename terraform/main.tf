@@ -121,6 +121,12 @@ resource "dokku_app" "task_manager" {
     # what does), so it's a plain literal here rather than a 1Password item. The "Dom" calendar,
     # not the refresh token account's primary one — see googleCalendar.ts's GOOGLE_CALENDAR_ID.
     GOOGLE_CALENDAR_ID = "beff7d227de04ef6e92cec0deea77b7ef9e1a89346af7d76b047d90fff377d1c@group.calendar.google.com"
+
+    # Optional: trend-event emission to Axiom (#315) — a no-op in both jobProcessor.ts and
+    # googleTasksJobProcessor.ts until both are set. Separate dataset/token from
+    # personal_assistant's own below, per #315's resolution (one dataset per service).
+    AXIOM_TOKEN   = data.onepassword_item.task_manager_axiom.password
+    AXIOM_DATASET = data.onepassword_item.task_manager_axiom.username
   }
 
   domains = ["task-manager.ertrzyiks.me"]
@@ -147,6 +153,12 @@ resource "dokku_app" "personal_assistant" {
     # Required: the snapshot dashboard (#297/#312) won't start without both set.
     PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME = data.onepassword_item.personal_assistant_dashboard_basic_auth.username
     PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD = data.onepassword_item.personal_assistant_dashboard_basic_auth.password
+
+    # Optional: trend-event emission to Axiom (#315) — a no-op in poller.ts until both are set.
+    # Separate dataset/token from task_manager's own above, per #315's resolution (one dataset
+    # per service).
+    AXIOM_TOKEN   = data.onepassword_item.personal_assistant_axiom.password
+    AXIOM_DATASET = data.onepassword_item.personal_assistant_axiom.username
   }
 
   domains = ["personal-assistant.ertrzyiks.me"]

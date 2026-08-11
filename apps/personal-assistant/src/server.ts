@@ -1,3 +1,4 @@
+import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { loadConfig } from "./config.js";
 import { createGmailClient } from "./gmailClient.js";
 import { startHealthServer } from "./healthServer.js";
@@ -19,11 +20,18 @@ const store = createStore(config.databasePath);
 const gmail = createGmailClient(config.gmail);
 const jobsApi = createJobsApiClient(config.jobsApi);
 
+// Trend-event emission (#315) — a no-op until both AXIOM_TOKEN/AXIOM_DATASET are provisioned
+// (config.axiom is null until then, same optional-at-startup treatment task-manager gives its
+// own Google Tasks/library sync credentials).
+const events: EventEmitter = config.axiom
+  ? createAxiomEventEmitter({ ...config.axiom, service: "personal-assistant", logger })
+  : noopEventEmitter;
+
 logger.info(
   `starting: db=${config.databasePath} pollIntervalMs=${config.pollIntervalMs} jobsApiBaseUrl=${config.jobsApi.baseUrl}`,
 );
 
-const runner = startPolling({ gmail, jobsApi, store, logger }, config.pollIntervalMs);
+const runner = startPolling({ gmail, jobsApi, store, logger, events }, config.pollIntervalMs);
 const health = startHealthServer(port, store, config.dashboardBasicAuth, logger);
 
 function shutdown() {

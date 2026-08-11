@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
+import type { EventEmitter, TrendEvent } from "./axiomEvents.js";
 import { processEmailJob } from "./jobProcessor.js";
 import type { EmailContent, EmailFetcher } from "./gmail.js";
 import type { ActionItemExtractor } from "./lmStudio.js";
 import type { ActionItem } from "./actionItem.js";
+
+function recordingEmitter(): EventEmitter & { events: TrendEvent[] } {
+  const events: TrendEvent[] = [];
+  return { events, emit: (event) => events.push(event) };
+}
 
 function fakeFetcher(email: EmailContent): EmailFetcher {
   return {
@@ -87,5 +93,46 @@ describe("processEmailJob", () => {
         actionItemExtractor: failingExtractor(error),
       }),
     ).rejects.toThrow("LM Studio error");
+  });
+
+  it("emits active then completed trend events, keyed by emailId (#315)", async () => {
+    const events = recordingEmitter();
+
+    await processEmailJob("email-1", {
+      emailFetcher: fakeFetcher(EMAIL),
+      actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+      events,
+    });
+
+    expect(events.events).toEqual([
+      { entity: "extract-action-items", entityId: "email-1", status: "active" },
+      { entity: "extract-action-items", entityId: "email-1", status: "completed" },
+    ]);
+  });
+
+  it("emits active then failed (with the error message) when the email fetch fails", async () => {
+    const events = recordingEmitter();
+
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: failingFetcher(new Error("boom")),
+        actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+        events,
+      }),
+    ).rejects.toThrow();
+
+    expect(events.events).toEqual([
+      { entity: "extract-action-items", entityId: "email-1", status: "active" },
+      { entity: "extract-action-items", entityId: "email-1", status: "failed", error: "boom" },
+    ]);
+  });
+
+  it("doesn't throw when no events dep is given — defaults to a no-op", async () => {
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: fakeFetcher(EMAIL),
+        actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+      }),
+    ).resolves.toBeDefined();
   });
 });

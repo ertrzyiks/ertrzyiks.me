@@ -32,6 +32,7 @@ describe("loadConfig", () => {
         username: "admin",
         password: "dashboard-secret",
       },
+      axiom: null,
     });
   });
 
@@ -47,6 +48,25 @@ describe("loadConfig", () => {
     expect(config.pollIntervalMs).toBe(1000);
     expect(config.gmail.maxResults).toBe(10);
   });
+
+  it("builds axiom config once both AXIOM_TOKEN and AXIOM_DATASET are set (#315)", () => {
+    const config = loadConfig({
+      ...VALID_ENV,
+      AXIOM_TOKEN: "axiom-token",
+      AXIOM_DATASET: "personal-assistant-events",
+    });
+
+    expect(config.axiom).toEqual({ token: "axiom-token", dataset: "personal-assistant-events" });
+  });
+
+  it.each(["AXIOM_TOKEN", "AXIOM_DATASET"] as const)(
+    "leaves axiom null when only %s is set — not required, unlike dashboardBasicAuth",
+    (key) => {
+      const config = loadConfig({ ...VALID_ENV, [key]: "only-one" });
+
+      expect(config.axiom).toBeNull();
+    },
+  );
 
   it.each([
     "GMAIL_CLIENT_ID",
