@@ -42,22 +42,31 @@ for this client before; revoke access at https://myaccount.google.com/permission
 
 ## 3. Store the values
 
-**1Password** (vault `Dokku apps`, item names as expected by the Terraform in #252):
+**1Password** (vault `Dokku apps`, item names as expected by the Terraform). `personal_assistant_google_oauth_client`
+is a **Login** item shared with `scripts/google-tasks-oauth`/`scripts/calendar-oauth` (#343) —
+if you bootstrapped Tasks or Calendar first, it already exists; reuse its existing client
+id/secret instead of minting a new OAuth client here, since a single OAuth client can hold
+refresh tokens for multiple scopes.
 
-| 1Password item                                    | Value                       |
-| ---------------------------------------------------- | ---------------------------- |
-| `personal_assistant_gcloud_oauth_client_id`          | `GMAIL_OAUTH_CLIENT_ID`      |
-| `personal_assistant_gcloud_oauth_client_secret`      | `GMAIL_OAUTH_CLIENT_SECRET`  |
-| `personal_assistant_gcloud_oauth_refresh_token`      | `GMAIL_REFRESH_TOKEN`        |
+| 1Password item                                    | Field      | Value                       |
+| ---------------------------------------------------- | ---------- | ---------------------------- |
+| `personal_assistant_google_oauth_client`             | `username` | `GMAIL_OAUTH_CLIENT_ID`      |
+| `personal_assistant_google_oauth_client`             | `password` | `GMAIL_OAUTH_CLIENT_SECRET`  |
+| `personal_assistant_gcloud_oauth_refresh_token`      | `password` | `GMAIL_REFRESH_TOKEN`        |
 
-Either create these by hand in the 1Password app/GUI, or with the `op` CLI if you have it set up, e.g.:
+If `personal_assistant_google_oauth_client` doesn't exist yet, create it as a **Login** item (not
+a password item — it needs both a username and a password field). Either create these by hand in
+the 1Password app/GUI, or with the `op` CLI, e.g.:
 
 ```bash
+op item create --category=login --vault="Dokku apps" \
+  --title="personal_assistant_google_oauth_client" \
+  "username=<GMAIL_OAUTH_CLIENT_ID value>" "password=<GMAIL_OAUTH_CLIENT_SECRET value>"
+
 op item create --category=password --vault="Dokku apps" \
   --title="personal_assistant_gcloud_oauth_refresh_token" \
   "password=<GMAIL_REFRESH_TOKEN value>"
 ```
-(repeat for the other two items)
 
 **macOS Keychain** (read by the Mac worker at startup — see `apps/task-manager/src/keychain.ts`
 and the "macOS LaunchAgent" section of `apps/task-manager/README.md`, #251):

@@ -77,7 +77,7 @@ them, so this only affects rows that predate the migration.
 
 | Variable                | Required | Description                                                                 |
 | ------------------------ | -------- | ----------------------------------------------------------------------------- |
-| `GMAIL_CLIENT_ID`         | yes      | OAuth client ID for the shared `gmail.readonly` credential                    |
+| `GMAIL_CLIENT_ID`         | yes      | OAuth client ID for the `gmail.readonly` credential (shared across gmail/tasks/calendar, #343) |
 | `GMAIL_CLIENT_SECRET`     | yes      | OAuth client secret                                                           |
 | `GMAIL_REFRESH_TOKEN`     | yes      | OAuth refresh token                                                           |
 | `JOBS_API_BASE_URL`       | yes      | Base URL of the task-manager Jobs API                                         |

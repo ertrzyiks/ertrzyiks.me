@@ -28,7 +28,7 @@ the "must never leave local processing" constraint that keeps the Mac worker on 
 | `PORT`                                            | no       | HTTP port to listen on (default `3000`)                    |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME`     | no\*     | Basic Auth username guarding the Bull Board UI (`/admin/queues`) |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD`     | no\*     | Basic Auth password guarding the Bull Board UI              |
-| `GOOGLE_TASKS_CLIENT_ID`                          | no\*\*   | OAuth client id for the `sync-google-tasks` worker's `tasks` credential |
+| `GOOGLE_TASKS_CLIENT_ID`                          | no\*\*   | OAuth client id for the `sync-google-tasks` worker's `tasks` credential (shared across gmail/tasks/calendar, #343) |
 | `GOOGLE_TASKS_CLIENT_SECRET`                      | no\*\*   | OAuth client secret for the same credential                 |
 | `GOOGLE_TASKS_REFRESH_TOKEN`                      | no\*\*   | Refresh token for the same credential (from `scripts/google-tasks-oauth`) |
 | `GOOGLE_TASKS_LIST_ID`                            | no       | Google Tasks list to create tasks in (default `@default`, the user's default list) |
@@ -36,7 +36,7 @@ the "must never leave local processing" constraint that keeps the Mac worker on 
 | `GOOGLE_TASKS_RATE_LIMIT_DURATION_MS`             | no       | Window length in ms for the rate limit above (default `1000`)|
 | `WBPG_USERNAME`                                   | no\*\*\* | WBPG library card number / login, for the library sync workers                |
 | `WBPG_PASSWORD`                                   | no\*\*\* | WBPG password                                                                 |
-| `GOOGLE_CALENDAR_CLIENT_ID`                       | no\*\*\* | OAuth client id for the `calendar.events` credential (from `scripts/calendar-oauth`) |
+| `GOOGLE_CALENDAR_CLIENT_ID`                       | no\*\*\* | OAuth client id for the `calendar.events` credential (shared across gmail/tasks/calendar, #343) |
 | `GOOGLE_CALENDAR_CLIENT_SECRET`                   | no\*\*\* | OAuth client secret for the same credential                                   |
 | `GOOGLE_CALENDAR_REFRESH_TOKEN`                   | no\*\*\* | Refresh token for the same credential                                         |
 | `DATABASE_PATH`                                   | no       | Where the sqlite loans DB lives (default `/app/data/library.sqlite`, matching the Dokku storage mount — see terraform/main.tf) |
@@ -72,9 +72,14 @@ button always works — see `bullBoard.ts`), jobs just queue up unconsumed until
 a `job_id` yet, then polls for completion and backfills `task_id` — see that package's README for
 the full loop.
 
-This worker's credential is separate from the Mac worker's `gmail.readonly` one — provisioned via
-`scripts/google-tasks-oauth`, read from plain env vars (not the macOS Keychain, since this worker
-runs in the cloud) via Terraform/1Password in production.
+This worker's refresh token is separate from the Mac worker's `gmail.readonly` one — provisioned
+via `scripts/google-tasks-oauth`, read from plain env vars (not the macOS Keychain, since this
+worker runs in the cloud) via Terraform/1Password in production. The OAuth client id/secret
+(`GOOGLE_TASKS_CLIENT_ID`/`_SECRET`), however, are the same shared Google Cloud OAuth client used
+by `GMAIL_CLIENT_ID`/`_SECRET` and `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET` — one client can mint
+refresh tokens for multiple scopes, so all three flows share one 1Password item
+(`personal_assistant_google_oauth_client`, #343) instead of each keeping a duplicate copy of the
+same value.
 
 The worker's `Worker` is configured with a `limiter` (`GOOGLE_TASKS_RATE_LIMIT_MAX`/`_DURATION_MS`
 above) so a burst of scheduled jobs drains onto the Tasks API gradually instead of all at once —
@@ -89,7 +94,7 @@ without a due date.
 | Variable                 | Required | Description                                                                 |
 | ------------------------- | -------- | ----------------------------------------------------------------------------- |
 | `REDIS_URL`               | no\*     | Same Redis instance as the Jobs API server                                    |
-| `GMAIL_CLIENT_ID`         | no\*     | OAuth client id for the worker's `gmail.readonly` credential (#236)           |
+| `GMAIL_CLIENT_ID`         | no\*     | OAuth client id for the worker's `gmail.readonly` credential (#236; shared across gmail/tasks/calendar, #343) |
 | `GMAIL_CLIENT_SECRET`     | no\*     | OAuth client secret for the same credential                                   |
 | `GMAIL_REFRESH_TOKEN`     | no\*     | Refresh token for the same credential (from `scripts/gmail-oauth`)            |
 | `GMAIL_KEYCHAIN_SERVICE`  | no       | macOS Keychain "service" all four secrets above are read from (default `task-manager-worker`) |

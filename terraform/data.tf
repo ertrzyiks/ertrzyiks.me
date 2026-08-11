@@ -43,16 +43,6 @@ data "onepassword_item" "personal_assistant_jobs_api_bearer_token" {
   title = "personal_assistant_jobs_api_bearer_token"
 }
 
-data "onepassword_item" "personal_assistant_gcloud_oauth_client_id" {
-  vault = "Dokku apps"
-  title = "personal_assistant_gcloud_oauth_client_id"
-}
-
-data "onepassword_item" "personal_assistant_gcloud_oauth_client_secret" {
-  vault = "Dokku apps"
-  title = "personal_assistant_gcloud_oauth_client_secret"
-}
-
 data "onepassword_item" "personal_assistant_gcloud_oauth_refresh_token" {
   vault = "Dokku apps"
   title = "personal_assistant_gcloud_oauth_refresh_token"
@@ -78,19 +68,10 @@ data "onepassword_item" "kstatus_admin_basic_auth" {
   title = "kstatus_admin_basic_auth"
 }
 
-# `tasks` OAuth credential for task-manager's sync-google-tasks worker (see
-# scripts/google-tasks-oauth) — separate from personal_assistant_gcloud_oauth_* above, which is
-# the `gmail.readonly` credential used by personal-assistant and the Mac worker.
-data "onepassword_item" "task_manager_google_tasks_oauth_client_id" {
-  vault = "Dokku apps"
-  title = "task_manager_google_tasks_oauth_client_id"
-}
-
-data "onepassword_item" "task_manager_google_tasks_oauth_client_secret" {
-  vault = "Dokku apps"
-  title = "task_manager_google_tasks_oauth_client_secret"
-}
-
+# `tasks` refresh token for task-manager's sync-google-tasks worker (see
+# scripts/google-tasks-oauth) — a separate refresh token from personal_assistant_gcloud_oauth's
+# above (a Google refresh token is scoped to whatever was consented to), but minted from the same
+# shared OAuth client (see personal_assistant_google_oauth_client below, #343).
 data "onepassword_item" "task_manager_google_tasks_oauth_refresh_token" {
   vault = "Dokku apps"
   title = "task_manager_google_tasks_oauth_refresh_token"
@@ -104,19 +85,8 @@ data "onepassword_item" "task_manager_wbpg_login" {
   title = "task_manager_wbpg_login"
 }
 
-# calendar.events OAuth credential for that same worker (see scripts/calendar-oauth/README.md) —
-# a separate refresh token from personal_assistant's gmail.readonly one above, since a Google
-# refresh token is scoped to whatever was consented to.
-data "onepassword_item" "task_manager_google_calendar_client_id" {
-  vault = "Dokku apps"
-  title = "task_manager_google_calendar_client_id"
-}
-
-data "onepassword_item" "task_manager_google_calendar_client_secret" {
-  vault = "Dokku apps"
-  title = "task_manager_google_calendar_client_secret"
-}
-
+# calendar.events refresh token for that same worker (see scripts/calendar-oauth/README.md) —
+# again its own refresh token, minted from the same shared OAuth client below (#343).
 data "onepassword_item" "task_manager_google_calendar_refresh_token" {
   vault = "Dokku apps"
   title = "task_manager_google_calendar_refresh_token"
@@ -134,5 +104,17 @@ data "onepassword_item" "task_manager_axiom" {
 data "onepassword_item" "personal_assistant_axiom" {
   vault = "Dokku apps"
   title = "personal_assistant_axiom"
+}
+
+# Shared Google Cloud OAuth client id/secret (#343), used for all three Google API scopes this
+# repo integrates with — gmail.readonly (personal_assistant + the Mac worker), tasks, and
+# calendar.events. A Google OAuth client isn't scope-bound, only the refresh tokens minted from
+# it are (each flow keeps its own, see the *_refresh_token items above), so one client/secret
+# pair covers all three rather than three duplicated copies of the same value. A Login item
+# exposing both `.username` (client id) and `.password` (client secret), same shape as the Basic
+# Auth items above.
+data "onepassword_item" "personal_assistant_google_oauth_client" {
+  vault = "Dokku apps"
+  title = "personal_assistant_google_oauth_client"
 }
 
