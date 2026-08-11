@@ -33,6 +33,7 @@ describe("loadConfig", () => {
         password: "dashboard-secret",
       },
       axiom: null,
+      sentryDsn: undefined,
     });
   });
 
@@ -67,6 +68,12 @@ describe("loadConfig", () => {
       expect(config.axiom).toBeNull();
     },
   );
+
+  it("reads SENTRY_DSN when set", () => {
+    const config = loadConfig({ ...VALID_ENV, SENTRY_DSN: "https://example@o0.ingest.sentry.io/1" });
+
+    expect(config.sentryDsn).toBe("https://example@o0.ingest.sentry.io/1");
+  });
 
   it.each([
     "GMAIL_CLIENT_ID",

@@ -112,6 +112,26 @@ describe("task-manager app", () => {
     });
   });
 
+  describe("error handling", () => {
+    it("still returns a 500 (instead of crashing) when a route handler throws unexpectedly", async () => {
+      // Regression check for Sentry's setupFastifyErrorHandler hook (app.ts) — pins that it
+      // only *reports* an unhandled route exception, without changing Fastify's own error
+      // response. No DSN is configured in this test, so nothing is actually sent anywhere.
+      queue.add = async () => {
+        throw new Error("unexpected queue failure");
+      };
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/jobs",
+        headers: authHeader(),
+        payload: { emailId: "email-1" },
+      });
+
+      expect(response.statusCode).toBe(500);
+    });
+  });
+
   describe("POST /jobs", () => {
     it("schedules a job and returns its id", async () => {
       const response = await app.inject({

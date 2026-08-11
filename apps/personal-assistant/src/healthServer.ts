@@ -1,6 +1,7 @@
 import { createServer, type Server } from "node:http";
 import { isValidBasicAuth } from "./auth.js";
 import type { Logger } from "./logger.js";
+import { Sentry } from "./sentry.js";
 import type { Store } from "./store.js";
 
 export interface HealthServer {
@@ -81,7 +82,7 @@ function renderStatusPage(store: Store): string {
  * snapshot dashboard (`GET /admin/status`, #297/#312) on the same process/port rather than
  * standing up a second listener.
  */
-export function createHealthServer(store: Store, auth: DashboardAuth): Server {
+export function createHealthServer(store: Store, auth: DashboardAuth, logger?: Logger): Server {
   return createServer((req, res) => {
     if (req.method === "GET" && req.url === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -96,8 +97,25 @@ export function createHealthServer(store: Store, auth: DashboardAuth): Server {
         return;
       }
 
+      // Rendered into a variable — not streamed straight into writeHead/end — so a store query
+      // failure (renderStatusPage reads from Store) is caught *before* any response headers go
+      // out, letting this reply 500 instead of a half-sent 200. Previously an uncaught throw
+      // here (this is a plain node:http listener callback, not a framework with its own error
+      // handling) would have taken down the whole process; now it's reported and this request
+      // alone fails.
+      let body: string;
+      try {
+        body = renderStatusPage(store);
+      } catch (error) {
+        logger?.error(`/admin/status failed to render: ${error instanceof Error ? error.message : String(error)}`);
+        Sentry.captureException(error);
+        res.writeHead(500, { "Content-Type": "text/plain" });
+        res.end("Internal Server Error");
+        return;
+      }
+
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(renderStatusPage(store));
+      res.end(body);
       return;
     }
 
@@ -112,7 +130,7 @@ export function startHealthServer(
   auth: DashboardAuth,
   logger?: Logger,
 ): HealthServer {
-  const server = createHealthServer(store, auth);
+  const server = createHealthServer(store, auth, logger);
 
   server.listen(port, () => {
     logger?.info(`health server listening on port ${port}`);

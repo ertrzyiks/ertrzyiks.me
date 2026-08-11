@@ -5,10 +5,17 @@ import { startHealthServer } from "./healthServer.js";
 import { createJobsApiClient } from "./jobsApiClient.js";
 import type { Logger } from "./logger.js";
 import { startPolling } from "./runner.js";
+import { initSentry } from "./sentry.js";
 import { createStore } from "./store.js";
 
 const config = loadConfig();
 const port = Number(process.env.PORT ?? 3000);
+
+// A no-op until SENTRY_DSN is provisioned (see sentry.ts and config.ts's `sentryDsn`). Called as
+// early as the rest of this module's own wiring allows — after loadConfig() (whose own required-
+// var checks aren't caught here, so a startup misconfiguration crash-loops visibly in Dokku's
+// logs rather than going to Sentry) but before anything below that could itself throw.
+initSentry(config.sentryDsn);
 
 const logger: Logger = {
   info: (message) => console.log(`[personal-assistant] ${message}`),

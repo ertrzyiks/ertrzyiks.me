@@ -25,6 +25,7 @@ import { macKeychainReader, resolveSecret } from "./keychain.js";
 import { createLmStudioExtractor, type ActionItemExtractor } from "./lmStudio.js";
 import { processEmailJob } from "./jobProcessor.js";
 import { QUEUE_NAME } from "./queue.js";
+import { initSentry, Sentry } from "./sentry.js";
 
 // Shared Keychain service for every secret this worker reads (refresh token, Redis
 // URL, Gmail OAuth client id/secret) — all provisioned under the same service by
@@ -44,6 +45,11 @@ const events: EventEmitter =
   axiomToken && axiomDataset
     ? createAxiomEventEmitter({ token: axiomToken, dataset: axiomDataset, service: "task-manager" })
     : noopEventEmitter;
+
+// Same plain-env-var, no-op-when-unset treatment as Axiom above (see sentry.ts's header
+// comment for why a Sentry DSN doesn't need Keychain treatment either) — also not wired into
+// the LaunchAgent plist's `EnvironmentVariables` today, same as Axiom.
+initSentry(process.env.SENTRY_DSN);
 
 // Escape hatch for manual smoke-testing against a real Redis/BullMQ queue in
 // environments without macOS Keychain or a running LM Studio (e.g. this repo's
@@ -138,6 +144,7 @@ async function main() {
 
   worker.on("failed", (job, error) => {
     console.error(`Job ${job?.id ?? "<unknown>"} failed:`, error);
+    Sentry.captureException(error, { tags: { queue: QUEUE_NAME, jobId: job?.id } });
   });
 }
 
@@ -145,5 +152,6 @@ main().catch((error) => {
   // A non-zero exit here is what makes launchd's KeepAlive restart the worker
   // (subject to its default crash-loop throttling) instead of it silently dying.
   console.error("task-manager worker failed to start:", error);
+  Sentry.captureException(error);
   process.exit(1);
 });

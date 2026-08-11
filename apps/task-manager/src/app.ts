@@ -6,6 +6,7 @@ import type { GoogleTasksJobsQueue } from "./googleTasksJobsQueue.js";
 import { toSimplifiedStatus, type SimplifiedStatus } from "./jobStatus.js";
 import type { JobsQueue } from "./jobsQueue.js";
 import { QUEUE_NAME } from "./queue.js";
+import { Sentry } from "./sentry.js";
 
 interface JobStatusResponse {
   jobId: string;
@@ -48,6 +49,14 @@ export function createApp(
   // made server startup/errors invisible — enable it outside tests, where
   // vitest sets NODE_ENV=test and per-request logs would just be noise.
   const app = Fastify({ logger: process.env.NODE_ENV !== "test" });
+
+  // Reports any route handler exception that reaches Fastify's own error handling to Sentry
+  // (`initSentry`/env docs live in sentry.ts) before Fastify serializes its usual 500 response —
+  // doesn't change that response, just adds reporting. Every route below already returns its own
+  // 400/401/404 explicitly rather than throwing, so this only ever fires on a genuine bug. Safe
+  // to register unconditionally, including in tests: with no DSN configured (initSentry never
+  // called), Sentry's own client is a no-op, so this hook is inert.
+  Sentry.setupFastifyErrorHandler(app);
 
   // The bearer-auth hook is scoped to this encapsulated plugin rather than
   // added on `app` directly, so it only covers the routes below. Fastify

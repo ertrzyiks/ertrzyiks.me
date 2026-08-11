@@ -46,6 +46,8 @@ the "must never leave local processing" constraint that keeps the Mac worker on 
 | `LIBRARY_REFRESH_CRON_PATTERN`                    | no       | Cron pattern for how often to re-check WBPG (default `0 7 * * *`, daily 07:00 Europe/Warsaw) |
 | `AXIOM_TOKEN`                                     | no       | Axiom API token for trend-event ingestion (#315), used by the `sync-google-tasks` worker here |
 | `AXIOM_DATASET`                                   | no       | Axiom dataset to ingest into (e.g. `task-manager-events`)                     |
+| `SENTRY_DSN`                                      | no       | Sentry DSN for error monitoring (see "Error monitoring" below), shared with `worker.ts` below |
+| `SENTRY_ENVIRONMENT`                              | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
 
 \* Bull Board is always mounted, but the Basic Auth check only applies when **both** vars are set —
 unset (the default locally) leaves it open. Production always sets both via Terraform (#313).
@@ -103,6 +105,8 @@ without a due date.
 | `WORKER_FAKE_DEPS`        | no       | `"true"` swaps in canned fake Gmail/LM Studio implementations instead of the real ones — **manual smoke-testing only, never set in production** (see below) |
 | `AXIOM_TOKEN`             | no\*\*   | Axiom API token for trend-event ingestion (#315), used by `extract-action-items` jobs here |
 | `AXIOM_DATASET`           | no\*\*   | Axiom dataset to ingest into (e.g. `task-manager-events`, same dataset the cloud side uses) |
+| `SENTRY_DSN`              | no\*\*   | Sentry DSN for error monitoring (see "Error monitoring" below), same value as the Jobs API server's above |
+| `SENTRY_ENVIRONMENT`      | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
 
 \* All four secrets are read from the macOS Keychain if not set as env vars (see `resolveSecret`
 in `src/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
@@ -152,6 +156,38 @@ not a job failure. A no-op (`noopEventEmitter`) until both `AXIOM_TOKEN`/`AXIOM_
 Both processes share the same `task-manager-events` Axiom dataset (`personal-assistant` has its
 own separate one, `personal-assistant-events` — see that package's README); the `entity` field is
 what distinguishes `extract-action-items` from `sync-google-tasks` jobs within it.
+
+## Error monitoring (Sentry)
+
+Axiom above answers "how many jobs failed, and when" — a trend, not a stack trace. `src/sentry.ts`
+wires up [Sentry](https://sentry.io) to answer the complementary question, "what broke and why":
+`initSentry()` is called once at the top of both `server.ts` and `worker.ts` (they're separate
+processes, so each needs its own `Sentry.init` call, but both read the same `SENTRY_DSN` — one
+Sentry project covers this whole package, the same way one Bull Board/one set of tests does).
+
+Wired at process/queue boundaries, not into every internal try/catch:
+
+- Both entrypoints' global uncaught-exception/unhandled-rejection handlers — installed
+  automatically by `Sentry.init` itself, no extra code here.
+- Every `bullmq.Worker`'s `"failed"` event (`sync-google-tasks`, the two library sync queues in
+  `server.ts`, and `extract-action-items` in `worker.ts`) — alongside the `app.log.error`/
+  `console.error` call already there, `Sentry.captureException(error, { tags: { queue, jobId } })`.
+- `server.ts`'s Fastify app: `Sentry.setupFastifyErrorHandler(app)` (in `app.ts`) reports any
+  route handler exception that reaches Fastify's own error handling — every route already returns
+  its own 400/401/404 explicitly rather than throwing, so this only ever fires on a genuine bug.
+- Both entrypoints' own startup-failure catch blocks (`app.listen()` in `server.ts`,
+  `main().catch()` in `worker.ts`).
+
+Deliberately *not* duplicated into `jobProcessor.ts`/`googleTasksJobProcessor.ts`'s own catch
+blocks — those already rethrow into the `Worker` that's running them, so the `"failed"` handlers
+above already see the same error once, not once per internal failure site. This keeps one Sentry
+event per job failure rather than multiplying against Sentry's free-tier event quota.
+
+Same no-op-until-configured treatment as Axiom: `Sentry.init`/`Sentry.captureException` are safe
+no-ops with no `SENTRY_DSN` set (see `sentry.ts`'s header comment) — this is purely additive, and
+(like `AXIOM_TOKEN`/`AXIOM_DATASET` on the Mac worker side, see the env var table above) isn't
+wired into the LaunchAgent plist's `EnvironmentVariables` today, so `worker.ts`'s own Sentry
+reporting is opt-in via a local env var, not active in the production LaunchAgent yet.
 
 ## Endpoints
 

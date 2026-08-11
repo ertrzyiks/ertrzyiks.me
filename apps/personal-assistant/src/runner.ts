@@ -1,4 +1,5 @@
 import { runPollCycle, type PollDeps } from "./poller.js";
+import { Sentry } from "./sentry.js";
 
 export interface Runner {
   stop(): void;
@@ -23,6 +24,10 @@ export function startPolling(deps: PollDeps, intervalMs: number): Runner {
       await runPollCycle(deps);
     } catch (err) {
       logger?.error(`poll cycle failed: ${err instanceof Error ? err.message : String(err)}`);
+      // Unlike the per-email/per-action-item failures runPollCycle already swallows internally
+      // (tracked via SQLite status + Axiom, not a bug signal) — reaching this catch means
+      // something broke the whole cycle unexpectedly, which is exactly what Sentry should see.
+      Sentry.captureException(err);
     } finally {
       running = false;
     }
