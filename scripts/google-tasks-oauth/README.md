@@ -15,10 +15,11 @@ its output is a live credential.
 1. Enable the **Google Tasks API** on the same Google Cloud project used for
    `scripts/gmail-oauth` (or a different one — the client id/secret aren't scope-bound).
 2. Reuse the existing **Desktop app** OAuth client from `scripts/gmail-oauth` — its id/secret are
-   stored in the shared `google_oauth_client` 1Password item (#343). A single OAuth client can
-   mint refresh tokens for multiple distinct scopes, and this script asks for its own `tasks`
-   scope independently of the `gmail.readonly` one. If that item doesn't exist yet (this is the
-   first of the three OAuth bootstraps you're running), create a new Desktop app client instead.
+   stored in the shared `personal_assistant_google_oauth_client` 1Password item (#343). A single
+   OAuth client can mint refresh tokens for multiple distinct scopes, and this script asks for
+   its own `tasks` scope independently of the `gmail.readonly` one. If that item doesn't exist
+   yet (this is the first of the three OAuth bootstraps you're running), create a new Desktop app
+   client instead.
 3. Note the **Client ID** and **Client secret**.
 
 ## 2. Run the script
@@ -45,17 +46,18 @@ revoke access at https://myaccount.google.com/permissions and re-run.
 ## 3. Store the values
 
 **1Password** (vault `Dokku apps`, item names matching the Terraform `onepassword_item` data
-sources in `terraform/data.tf`):
+sources in `terraform/data.tf`). `personal_assistant_google_oauth_client` is the same shared
+item `scripts/gmail-oauth`/`scripts/calendar-oauth` use (#343) — if you reused the existing OAuth
+client in step 1, it already exists with the right id/secret and you only need to create the
+refresh token item below.
 
 | 1Password item                                       | Field      | Value                              |
 | ------------------------------------------------------ | ---------- | ------------------------------------ |
-| `google_oauth_client` (shared, #343 — same item `scripts/gmail-oauth`/`scripts/calendar-oauth` use) | `username` | `GOOGLE_TASKS_OAUTH_CLIENT_ID`       |
-| `google_oauth_client`                                  | `password` | `GOOGLE_TASKS_OAUTH_CLIENT_SECRET`   |
+| `personal_assistant_google_oauth_client`               | `username` | `GOOGLE_TASKS_OAUTH_CLIENT_ID`       |
+| `personal_assistant_google_oauth_client`               | `password` | `GOOGLE_TASKS_OAUTH_CLIENT_SECRET`   |
 | `task_manager_google_tasks_oauth_refresh_token`        | `password` | `GOOGLE_TASKS_REFRESH_TOKEN`         |
 
-If you reused the existing OAuth client in step 1, `google_oauth_client` already exists with the
-right id/secret — you only need to create the refresh token item. Either create these by hand in
-the 1Password app/GUI, or with the `op` CLI, e.g.:
+Either create these by hand in the 1Password app/GUI, or with the `op` CLI, e.g.:
 
 ```bash
 op item create --category=password --vault="Dokku apps" \
@@ -63,12 +65,12 @@ op item create --category=password --vault="Dokku apps" \
   "password=<GOOGLE_TASKS_REFRESH_TOKEN value>"
 ```
 
-Once `google_oauth_client` and the refresh token item both exist, `terraform apply` will pick them
-up via the `dokku_app.task_manager` resource in `terraform/main.tf` and provision them as
-`GOOGLE_TASKS_CLIENT_ID` / `GOOGLE_TASKS_CLIENT_SECRET` / `GOOGLE_TASKS_REFRESH_TOKEN` on Dokku —
-until then, `terraform apply` fails on the missing 1Password items, and the deployed
-`sync-google-tasks` worker stays unstarted (see `apps/task-manager/README.md`'s "Google Tasks
-sync" section).
+Once `personal_assistant_google_oauth_client` and the refresh token item both exist, `terraform
+apply` will pick them up via the `dokku_app.task_manager` resource in `terraform/main.tf` and
+provision them as `GOOGLE_TASKS_CLIENT_ID` / `GOOGLE_TASKS_CLIENT_SECRET` /
+`GOOGLE_TASKS_REFRESH_TOKEN` on Dokku — until then, `terraform apply` fails on the missing
+1Password items, and the deployed `sync-google-tasks` worker stays unstarted (see
+`apps/task-manager/README.md`'s "Google Tasks sync" section).
 
 ## Notes
 

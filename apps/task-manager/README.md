@@ -77,8 +77,9 @@ via `scripts/google-tasks-oauth`, read from plain env vars (not the macOS Keycha
 worker runs in the cloud) via Terraform/1Password in production. The OAuth client id/secret
 (`GOOGLE_TASKS_CLIENT_ID`/`_SECRET`), however, are the same shared Google Cloud OAuth client used
 by `GMAIL_CLIENT_ID`/`_SECRET` and `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET` — one client can mint
-refresh tokens for multiple scopes, so all three flows share one 1Password item (`google_oauth_client`,
-#343) instead of each keeping a duplicate copy of the same value.
+refresh tokens for multiple scopes, so all three flows share one 1Password item
+(`personal_assistant_google_oauth_client`, #343) instead of each keeping a duplicate copy of the
+same value.
 
 The worker's `Worker` is configured with a `limiter` (`GOOGLE_TASKS_RATE_LIMIT_MAX`/`_DURATION_MS`
 above) so a burst of scheduled jobs drains onto the Tasks API gradually instead of all at once —

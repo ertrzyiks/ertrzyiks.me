@@ -12,16 +12,17 @@ Google refresh tokens are scoped to whatever was granted at consent time, and th
 token was only ever consented for `gmail.readonly` — it doesn't carry Calendar access, and
 re-consenting it would mean redoing that integration's bootstrap too. The OAuth **client**
 id/secret, however, are shared across all three flows (gmail, tasks, calendar) via the
-`google_oauth_client` 1Password item (#343) — only the refresh tokens are kept independent.
+`personal_assistant_google_oauth_client` 1Password item (#343) — only the refresh tokens are kept
+independent.
 
 ## 1. Create (or reuse) the Google Cloud OAuth client
 
 1. Create/select a Google Cloud project (reusing the same one as `scripts/gmail-oauth/` is fine).
 2. Enable the **Google Calendar API** for it.
-3. Reuse the existing **Desktop app** OAuth client from `scripts/gmail-oauth`/`scripts/google-tasks-oauth`
-   — its id/secret are stored in the shared `google_oauth_client` 1Password item (#343). If that
-   item doesn't exist yet (this is the first of the three OAuth bootstraps you're running), create
-   a new one instead:
+3. Reuse the existing **Desktop app** OAuth client from
+   `scripts/gmail-oauth`/`scripts/google-tasks-oauth` — its id/secret are stored in the shared
+   `personal_assistant_google_oauth_client` 1Password item (#343). If that item doesn't exist yet
+   (this is the first of the three OAuth bootstraps you're running), create a new one instead:
    - OAuth consent screen: add yourself as a **test user** (stays in "Testing" publishing status —
      this is a single-user personal tool, not worth full verification).
    - Create an OAuth client of type **Desktop app**. Desktop clients accept any
@@ -63,9 +64,9 @@ GOOGLE_CALENDAR_REFRESH_TOKEN=...
 
 For production (Dokku), these become `dokku_app.task_manager` config vars in
 `terraform/main.tf`, sourced from 1Password — `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET` from the
-shared `google_oauth_client` item (#343, same one used by `scripts/gmail-oauth` and
-`scripts/google-tasks-oauth`), `GOOGLE_CALENDAR_REFRESH_TOKEN` from its own
-`task_manager_google_calendar_refresh_token` item. See that file's comments and
+shared `personal_assistant_google_oauth_client` item (#343, same one used by
+`scripts/gmail-oauth` and `scripts/google-tasks-oauth`), `GOOGLE_CALENDAR_REFRESH_TOKEN` from its
+own `task_manager_google_calendar_refresh_token` item. See that file's comments and
 `apps/task-manager/README.md`'s "Library loan -> Google Calendar sync worker" section for details.
 
 ## Notes

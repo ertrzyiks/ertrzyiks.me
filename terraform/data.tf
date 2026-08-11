@@ -71,7 +71,7 @@ data "onepassword_item" "kstatus_admin_basic_auth" {
 # `tasks` refresh token for task-manager's sync-google-tasks worker (see
 # scripts/google-tasks-oauth) — a separate refresh token from personal_assistant_gcloud_oauth's
 # above (a Google refresh token is scoped to whatever was consented to), but minted from the same
-# shared OAuth client (see google_oauth_client below, #343).
+# shared OAuth client (see personal_assistant_google_oauth_client below, #343).
 data "onepassword_item" "task_manager_google_tasks_oauth_refresh_token" {
   vault = "Dokku apps"
   title = "task_manager_google_tasks_oauth_refresh_token"
@@ -113,8 +113,8 @@ data "onepassword_item" "personal_assistant_axiom" {
 # pair covers all three rather than three duplicated copies of the same value. A Login item
 # exposing both `.username` (client id) and `.password` (client secret), same shape as the Basic
 # Auth items above.
-data "onepassword_item" "google_oauth_client" {
+data "onepassword_item" "personal_assistant_google_oauth_client" {
   vault = "Dokku apps"
-  title = "google_oauth_client"
+  title = "personal_assistant_google_oauth_client"
 }
 

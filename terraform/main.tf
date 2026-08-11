@@ -106,19 +106,20 @@ resource "dokku_app" "task_manager" {
     TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD = data.onepassword_item.personal_assistant_task_manager_bull_board.password
     # Optional: the sync-google-tasks worker only starts once all three are set (server.ts) — see
     # scripts/google-tasks-oauth for how to provision the refresh token. Client id/secret come
-    # from the shared google_oauth_client item (#343), same as GOOGLE_CALENDAR_CLIENT_* and
-    # personal_assistant's GMAIL_CLIENT_* below.
-    GOOGLE_TASKS_CLIENT_ID     = data.onepassword_item.google_oauth_client.username
-    GOOGLE_TASKS_CLIENT_SECRET = data.onepassword_item.google_oauth_client.password
+    # from the shared personal_assistant_google_oauth_client item (#343), same as
+    # GOOGLE_CALENDAR_CLIENT_* and personal_assistant's GMAIL_CLIENT_* below.
+    GOOGLE_TASKS_CLIENT_ID     = data.onepassword_item.personal_assistant_google_oauth_client.username
+    GOOGLE_TASKS_CLIENT_SECRET = data.onepassword_item.personal_assistant_google_oauth_client.password
     GOOGLE_TASKS_REFRESH_TOKEN = data.onepassword_item.task_manager_google_tasks_oauth_refresh_token.password
 
     # Optional: the library sync workers only start once all five (six with the id below) are
     # set (server.ts) — see scripts/calendar-oauth for how to provision the Calendar refresh
-    # token; client id/secret again come from the shared google_oauth_client item (#343).
+    # token; client id/secret again come from the shared personal_assistant_google_oauth_client
+    # item (#343).
     WBPG_USERNAME                 = data.onepassword_item.task_manager_wbpg_login.username
     WBPG_PASSWORD                 = data.onepassword_item.task_manager_wbpg_login.password
-    GOOGLE_CALENDAR_CLIENT_ID     = data.onepassword_item.google_oauth_client.username
-    GOOGLE_CALENDAR_CLIENT_SECRET = data.onepassword_item.google_oauth_client.password
+    GOOGLE_CALENDAR_CLIENT_ID     = data.onepassword_item.personal_assistant_google_oauth_client.username
+    GOOGLE_CALENDAR_CLIENT_SECRET = data.onepassword_item.personal_assistant_google_oauth_client.password
     GOOGLE_CALENDAR_REFRESH_TOKEN = data.onepassword_item.task_manager_google_calendar_refresh_token.password
     # Not a secret (a Calendar ID doesn't grant access on its own — the refresh token above is
     # what does), so it's a plain literal here rather than a 1Password item. The "Dom" calendar,
@@ -148,10 +149,10 @@ resource "dokku_app" "personal_assistant" {
   app_name = "personal-assistant"
 
   config = {
-    # Client id/secret come from the shared google_oauth_client item (#343), same as
-    # task-manager's GOOGLE_TASKS_CLIENT_* and GOOGLE_CALENDAR_CLIENT_* above.
-    GMAIL_CLIENT_ID       = data.onepassword_item.google_oauth_client.username
-    GMAIL_CLIENT_SECRET   = data.onepassword_item.google_oauth_client.password
+    # Client id/secret come from the shared personal_assistant_google_oauth_client item (#343),
+    # same as task-manager's GOOGLE_TASKS_CLIENT_* and GOOGLE_CALENDAR_CLIENT_* above.
+    GMAIL_CLIENT_ID       = data.onepassword_item.personal_assistant_google_oauth_client.username
+    GMAIL_CLIENT_SECRET   = data.onepassword_item.personal_assistant_google_oauth_client.password
     GMAIL_REFRESH_TOKEN   = data.onepassword_item.personal_assistant_gcloud_oauth_refresh_token.password
     JOBS_API_BEARER_TOKEN = data.onepassword_item.personal_assistant_jobs_api_bearer_token.password
     JOBS_API_BASE_URL     = "https://task-manager.ertrzyiks.me"
