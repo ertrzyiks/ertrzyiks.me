@@ -23,7 +23,7 @@ describe("createAxiomEventEmitter", () => {
 
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://api.axiom.co/v1/ingest/task-manager-events");
+    expect(url).toBe("https://api.eu.axiom.co/v1/ingest/task-manager-events");
     expect(init.method).toBe("POST");
     expect(init.headers).toMatchObject({
       Authorization: "Bearer test-token",
