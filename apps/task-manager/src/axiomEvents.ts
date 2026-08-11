@@ -38,7 +38,10 @@ export interface AxiomConfig {
   fetchImpl?: typeof fetch;
 }
 
-const DEFAULT_DOMAIN = "api.axiom.co";
+// The account's dataset lives on Axiom's EU region — the default US host (api.axiom.co) 404s
+// for it, since regions are separate clusters, not just routing. Hardcoded rather than plumbed
+// through env/terraform since there's only one account and it isn't expected to change regions.
+const DEFAULT_DOMAIN = "api.eu.axiom.co";
 
 export function createAxiomEventEmitter(config: AxiomConfig): EventEmitter {
   const fetchImpl = config.fetchImpl ?? fetch;
