@@ -88,9 +88,15 @@ them, so this only affects rows that predate the migration.
 | `PORT`                    | no       | HTTP port for the health/dashboard server (default `3000`)                    |
 | `PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME` | yes | Basic Auth username guarding the snapshot dashboard (`/admin/status`) |
 | `PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD` | yes | Basic Auth password guarding the snapshot dashboard |
+| `AXIOM_TOKEN`             | no\*     | Axiom API token for trend-event ingestion (#315)                              |
+| `AXIOM_DATASET`           | no\*     | Axiom dataset to ingest into (e.g. `personal-assistant-events`)               |
 
 Polling frequency and retry/alerting policy are explicitly deferred per #250 — the above are
 reasonable starting defaults, expected to be revisited.
+
+\* Both optional, and independent of each other (unlike the dashboard Basic Auth pair above,
+which requires both-or-neither) — `poller.ts` just doesn't emit trend events until both are set;
+everything else about the poll cycle is unaffected. See "Historical/trend observability" below.
 
 ## HTTP surface
 
@@ -104,6 +110,24 @@ something to route its domain to:
   recently updated failed emails with their `error_message` (#297/#312). Guarded by Basic Auth
   (`WWW-Authenticate: Basic` challenge on a failed/missing check) — a separate scheme from the
   Jobs API's Bearer token, chosen so the dashboard is reachable from a plain browser tab.
+
+## Historical/trend observability (#315)
+
+`/admin/status` above is a **snapshot** — current counts, right now. It deliberately doesn't show
+trends over time (a failure spike an hour ago, a slow week). That's what
+[Axiom](https://axiom.co) is for: `src/axiomEvents.ts` fire-and-forget POSTs a `{ service: "personal-assistant", entity: "email", entityId, status, _time, error? }`
+event to Axiom's ingest API at each of `poller.ts`'s existing `store.ts` call sites —
+`queued` (`insertQueuedEmail`), `completed` (`markEmailCompleted`), `failed`
+(`markEmailFailed`, from either a scheduling failure or a failed Jobs API result). No new state
+machine; this rides transitions the poller already makes.
+
+Fully best-effort: `emit()` never throws or awaits into the poll cycle it's describing (fire the
+request, log-and-swallow any failure via the existing `Logger`) — a dropped event from a brief
+Axiom outage is an acceptable gap in a 30-day trends view, not a poll-cycle failure. A no-op
+(`noopEventEmitter`) until both `AXIOM_TOKEN`/`AXIOM_DATASET` are set (see the env var table
+above) — this is purely additive, task-manager's own `task-manager-events` dataset is separate
+(see its README), and Axiom's own account-login dashboard is the intended way to view this, not
+a Basic-Auth-guarded view here.
 
 ## Development
 

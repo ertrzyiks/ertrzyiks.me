@@ -122,3 +122,17 @@ data "onepassword_item" "task_manager_google_calendar_refresh_token" {
   title = "task_manager_google_calendar_refresh_token"
 }
 
+# Axiom ingest credentials for historical/trend event observability (#315) — one Login item per
+# service (per its resolution: separate datasets, least-privilege scoped tokens per service),
+# `.username` repurposed to hold the dataset name and `.password` the API token, same "two
+# related values in one Login item" pattern as personal_assistant_task_manager_bull_board above.
+data "onepassword_item" "task_manager_axiom" {
+  vault = "Dokku apps"
+  title = "task_manager_axiom"
+}
+
+data "onepassword_item" "personal_assistant_axiom" {
+  vault = "Dokku apps"
+  title = "personal_assistant_axiom"
+}
+

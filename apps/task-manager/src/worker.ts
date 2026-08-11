@@ -19,6 +19,7 @@
 import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
+import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { createGmailFetcher, type EmailFetcher } from "./gmail.js";
 import { macKeychainReader, resolveSecret } from "./keychain.js";
 import { createLmStudioExtractor, type ActionItemExtractor } from "./lmStudio.js";
@@ -32,6 +33,17 @@ const keychainService = process.env.GMAIL_KEYCHAIN_SERVICE ?? "task-manager-work
 const gmailKeychainAccount = process.env.GMAIL_KEYCHAIN_ACCOUNT ?? "gmail-refresh-token";
 
 const lmStudioBaseUrl = process.env.LM_STUDIO_BASE_URL ?? "http://localhost:1234";
+
+// Plain, optional env vars (not Keychain-backed like the secrets above) — see axiomEvents.ts's
+// header comment for why an Axiom ingest token doesn't need the same treatment. Unset (the
+// LaunchAgent plist sets no EnvironmentVariables at all, see README's "macOS LaunchAgent"
+// section), trend-event emission (#315) is just a no-op; nothing else about the worker changes.
+const axiomToken = process.env.AXIOM_TOKEN;
+const axiomDataset = process.env.AXIOM_DATASET;
+const events: EventEmitter =
+  axiomToken && axiomDataset
+    ? createAxiomEventEmitter({ token: axiomToken, dataset: axiomDataset, service: "task-manager" })
+    : noopEventEmitter;
 
 // Escape hatch for manual smoke-testing against a real Redis/BullMQ queue in
 // environments without macOS Keychain or a running LM Studio (e.g. this repo's
@@ -116,7 +128,7 @@ async function main() {
 
   const worker = new Worker<EmailJobPayload, EmailJobResult>(
     QUEUE_NAME,
-    async (job) => processEmailJob(job.data.emailId, { emailFetcher, actionItemExtractor }),
+    async (job) => processEmailJob(job.data.emailId, { emailFetcher, actionItemExtractor, events }),
     { connection },
   );
 

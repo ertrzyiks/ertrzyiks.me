@@ -1,3 +1,4 @@
+import { noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import type { GmailClient } from "./gmailClient.js";
 import { runGoogleTasksSyncCycle } from "./googleTasksSyncer.js";
 import type { JobsApiClient } from "./jobsApiClient.js";
@@ -9,6 +10,9 @@ export interface PollDeps {
   jobsApi: JobsApiClient;
   store: Store;
   logger?: Logger;
+  /** Trend-event emission (#315) — optional, defaults to a no-op so existing callers/tests are
+   * unaffected by omitting it. */
+  events?: EventEmitter;
 }
 
 function errorMessage(err: unknown): string {
@@ -21,13 +25,14 @@ function errorMessage(err: unknown): string {
  * so an email is recorded (and never re-queued) as soon as it's seen.
  */
 export async function discoverAndScheduleNewEmails(deps: PollDeps): Promise<void> {
-  const { gmail, jobsApi, store, logger = noopLogger } = deps;
+  const { gmail, jobsApi, store, logger = noopLogger, events = noopEventEmitter } = deps;
 
   const messageIds = await gmail.listNewMessageIds();
   const newIds = messageIds.filter((id) => !store.emailExists(id));
 
   for (const emailId of newIds) {
     store.insertQueuedEmail(emailId);
+    events.emit({ entity: "email", entityId: emailId, status: "queued" });
 
     try {
       const { jobId } = await jobsApi.scheduleJob(emailId);
@@ -37,8 +42,10 @@ export async function discoverAndScheduleNewEmails(deps: PollDeps): Promise<void
       // Retry/alerting policy is explicitly deferred (#250) — for now, a scheduling failure
       // just marks the email failed so it isn't retried indefinitely; revisit if that proves
       // too aggressive.
-      store.markEmailFailed(emailId, errorMessage(err));
-      logger.error(`failed to schedule job for email ${emailId}: ${errorMessage(err)}`);
+      const message = errorMessage(err);
+      store.markEmailFailed(emailId, message);
+      events.emit({ entity: "email", entityId: emailId, status: "failed", error: message });
+      logger.error(`failed to schedule job for email ${emailId}: ${message}`);
     }
   }
 }
@@ -49,7 +56,7 @@ export async function discoverAndScheduleNewEmails(deps: PollDeps): Promise<void
  * error_message on failure. Still-pending/active jobs are left untouched.
  */
 export async function pollPendingJobStatuses(deps: PollDeps): Promise<void> {
-  const { jobsApi, store, logger = noopLogger } = deps;
+  const { jobsApi, store, logger = noopLogger, events = noopEventEmitter } = deps;
 
   const queued = store.getQueuedEmailsWithJobId();
   if (queued.length === 0) return;
@@ -63,10 +70,13 @@ export async function pollPendingJobStatuses(deps: PollDeps): Promise<void> {
 
     if (status.status === "completed") {
       store.markEmailCompleted(emailId, status.result?.actionItems ?? []);
+      events.emit({ entity: "email", entityId: emailId, status: "completed" });
       logger.info(`email ${emailId} completed with ${status.result?.actionItems.length ?? 0} action item(s)`);
     } else if (status.status === "failed") {
-      store.markEmailFailed(emailId, status.error ?? "job failed with no error message");
-      logger.warn(`email ${emailId} failed: ${status.error ?? "unknown error"}`);
+      const error = status.error ?? "job failed with no error message";
+      store.markEmailFailed(emailId, error);
+      events.emit({ entity: "email", entityId: emailId, status: "failed", error });
+      logger.warn(`email ${emailId} failed: ${error}`);
     }
     // pending/active: no-op, check again next cycle.
   }

@@ -15,6 +15,13 @@ export interface Config {
     username: string;
     password: string;
   };
+  /** Trend-event emission to Axiom (#315) — null when either var is unset, same optional-at-
+   * startup treatment as task-manager's Google Tasks/library sync credentials: this service
+   * runs the same either way, events are just a no-op until both are provisioned. */
+  axiom: {
+    token: string;
+    dataset: string;
+  } | null;
 }
 
 // Matches the storage mount configured in terraform/main.tf's dokku_app.personal_assistant
@@ -30,6 +37,9 @@ function required(env: NodeJS.ProcessEnv, key: string): string {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  const axiomToken = env.AXIOM_TOKEN;
+  const axiomDataset = env.AXIOM_DATASET;
+
   return {
     gmail: {
       clientId: required(env, "GMAIL_CLIENT_ID"),
@@ -50,5 +60,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       username: required(env, "PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_USERNAME"),
       password: required(env, "PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD"),
     },
+    axiom: axiomToken && axiomDataset ? { token: axiomToken, dataset: axiomDataset } : null,
   };
 }
