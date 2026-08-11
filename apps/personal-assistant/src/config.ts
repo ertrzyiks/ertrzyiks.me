@@ -22,6 +22,9 @@ export interface Config {
     token: string;
     dataset: string;
   } | null;
+  /** Sentry DSN for error monitoring (see sentry.ts) — undefined disables it, same optional-at-
+   * startup treatment as `axiom` above; unlike `axiom` this is a single value, not a pair. */
+  sentryDsn: string | undefined;
 }
 
 // Matches the storage mount configured in terraform/main.tf's dokku_app.personal_assistant
@@ -61,5 +64,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       password: required(env, "PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD"),
     },
     axiom: axiomToken && axiomDataset ? { token: axiomToken, dataset: axiomDataset } : null,
+    sentryDsn: env.SENTRY_DSN,
   };
 }

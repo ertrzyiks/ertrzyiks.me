@@ -98,6 +98,22 @@ describe("healthServer", () => {
       expect(body).toContain("&lt;script&gt;");
     });
 
+    it("responds 500 (instead of crashing) when rendering the snapshot throws", async () => {
+      store = createStore(":memory:");
+      store.getStatusCounts = () => {
+        throw new Error("db is on fire");
+      };
+      server = createHealthServer(store, AUTH);
+      await new Promise<void>((resolve) => server?.listen(0, resolve));
+      const port = (server?.address() as AddressInfo).port;
+
+      const res = await fetch(`http://localhost:${port}/admin/status`, {
+        headers: { Authorization: basicAuthHeader("admin", "secret") },
+      });
+
+      expect(res.status).toBe(500);
+    });
+
     it("shows placeholder rows when there is no data yet", async () => {
       const port = await listen();
 

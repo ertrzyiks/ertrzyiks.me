@@ -30,6 +30,7 @@ import {
 import { syncLoanCalendarEvent } from "./loanCalendarSync.js";
 import { createStore } from "./loansStore.js";
 import { createQueue, QUEUE_NAME } from "./queue.js";
+import { initSentry, Sentry } from "./sentry.js";
 
 const redisUrl = process.env.REDIS_URL;
 const bearerToken = process.env.JOBS_API_BEARER_TOKEN;
@@ -49,6 +50,12 @@ const googleCalendarClientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
 const googleCalendarRefreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
 const axiomToken = process.env.AXIOM_TOKEN;
 const axiomDataset = process.env.AXIOM_DATASET;
+const sentryDsn = process.env.SENTRY_DSN;
+
+// Initialized before the fail-fast checks below so a misconfigured deploy (missing
+// REDIS_URL/JOBS_API_BEARER_TOKEN) also gets reported, not just a missing DSN silently no-op-ing
+// (see sentry.ts). A no-op when unset, same as everywhere else this SDK is touched.
+initSentry(sentryDsn);
 
 if (!redisUrl) throw new Error("REDIS_URL is required");
 if (!bearerToken) throw new Error("JOBS_API_BEARER_TOKEN is required");
@@ -133,6 +140,7 @@ if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
 
   googleTasksWorker.on("failed", (job, error) => {
     app.log.error(`Google Tasks sync job ${job?.id ?? "<unknown>"} failed: ${error}`);
+    Sentry.captureException(error, { tags: { queue: GOOGLE_TASKS_QUEUE_NAME, jobId: job?.id } });
   });
 } else {
   app.log.warn(
@@ -195,9 +203,10 @@ if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClie
 
   for (const worker of [libraryRefreshWorker, librarySyncWorker]) {
     worker.on("ready", () => app.log.info(`library sync worker ready, consuming "${worker.name}"`));
-    worker.on("failed", (job, error) =>
-      app.log.error(`Library sync job ${job?.id ?? "<unknown>"} on "${worker.name}" failed: ${error}`),
-    );
+    worker.on("failed", (job, error) => {
+      app.log.error(`Library sync job ${job?.id ?? "<unknown>"} on "${worker.name}" failed: ${error}`);
+      Sentry.captureException(error, { tags: { queue: worker.name, jobId: job?.id } });
+    });
   }
 } else {
   app.log.warn(
@@ -212,5 +221,6 @@ try {
   app.log.info(`Bull Board UI available at http://localhost:${port}${BULL_BOARD_BASE_PATH}`);
 } catch (error) {
   app.log.error(error);
+  Sentry.captureException(error);
   process.exit(1);
 }

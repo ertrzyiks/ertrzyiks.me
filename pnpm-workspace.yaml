@@ -10,6 +10,11 @@ minimumReleaseAgeExclude:
   - '@bull-board/fastify@8.6.0'
   - '@bull-board/ui@8.6.0'
   - bullmq@6.0.8
+  - '@sentry/core@10.70.0'
+  - '@sentry/node-core@10.70.0'
+  - '@sentry/node@10.70.0'
+  - '@sentry/opentelemetry@10.70.0'
+  - '@sentry/server-utils@10.70.0'
 overrides:
   ipaddr.js: 2.5.0
   tsx: 4.23.1

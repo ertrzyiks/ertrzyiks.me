@@ -106,6 +106,19 @@ data "onepassword_item" "personal_assistant_axiom" {
   title = "personal_assistant_axiom"
 }
 
+# Sentry DSNs for error monitoring — one Password item per service (separate Sentry projects,
+# same by-service split Axiom uses above), same shape as yummy_release_sentry_dsn (a single
+# secret value, `.password` only, no `.username` needed).
+data "onepassword_item" "task_manager_sentry_dsn" {
+  vault = "Dokku apps"
+  title = "task_manager_sentry_dsn"
+}
+
+data "onepassword_item" "personal_assistant_sentry_dsn" {
+  vault = "Dokku apps"
+  title = "personal_assistant_sentry_dsn"
+}
+
 # Shared Google Cloud OAuth client id/secret (#343), used for all three Google API scopes this
 # repo integrates with — gmail.readonly (personal_assistant + the Mac worker), tasks, and
 # calendar.events. A Google OAuth client isn't scope-bound, only the refresh tokens minted from

@@ -131,6 +131,11 @@ resource "dokku_app" "task_manager" {
     # personal_assistant's own below, per #315's resolution (one dataset per service).
     AXIOM_TOKEN   = data.onepassword_item.task_manager_axiom.password
     AXIOM_DATASET = data.onepassword_item.task_manager_axiom.username
+
+    # Optional: error monitoring via Sentry (see src/sentry.ts) — a no-op in server.ts until
+    # set. Its own Sentry project, separate from personal_assistant's below, same by-service
+    # split as the Axiom dataset above.
+    SENTRY_DSN = data.onepassword_item.task_manager_sentry_dsn.password
   }
 
   domains = ["task-manager.ertrzyiks.me"]
@@ -165,6 +170,11 @@ resource "dokku_app" "personal_assistant" {
     # per service).
     AXIOM_TOKEN   = data.onepassword_item.personal_assistant_axiom.password
     AXIOM_DATASET = data.onepassword_item.personal_assistant_axiom.username
+
+    # Optional: error monitoring via Sentry (see src/sentry.ts) — a no-op in server.ts until
+    # set. Its own Sentry project, separate from task_manager's above, same by-service split as
+    # the Axiom dataset above.
+    SENTRY_DSN = data.onepassword_item.personal_assistant_sentry_dsn.password
   }
 
   domains = ["personal-assistant.ertrzyiks.me"]

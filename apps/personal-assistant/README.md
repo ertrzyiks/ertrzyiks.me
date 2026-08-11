@@ -90,6 +90,8 @@ them, so this only affects rows that predate the migration.
 | `PERSONAL_ASSISTANT_DASHBOARD_BASIC_AUTH_PASSWORD` | yes | Basic Auth password guarding the snapshot dashboard |
 | `AXIOM_TOKEN`             | no\*     | Axiom API token for trend-event ingestion (#315)                              |
 | `AXIOM_DATASET`           | no\*     | Axiom dataset to ingest into (e.g. `personal-assistant-events`)               |
+| `SENTRY_DSN`              | no       | Sentry DSN for error monitoring (see "Error monitoring" below)                |
+| `SENTRY_ENVIRONMENT`      | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
 
 Polling frequency and retry/alerting policy are explicitly deferred per #250 — the above are
 reasonable starting defaults, expected to be revisited.
@@ -128,6 +130,32 @@ Axiom outage is an acceptable gap in a 30-day trends view, not a poll-cycle fail
 above) — this is purely additive, task-manager's own `task-manager-events` dataset is separate
 (see its README), and Axiom's own account-login dashboard is the intended way to view this, not
 a Basic-Auth-guarded view here.
+
+## Error monitoring (Sentry)
+
+Axiom above answers "how many emails failed, and when" — a trend, not a stack trace.
+`src/sentry.ts` wires up [Sentry](https://sentry.io) to answer the complementary question, "what
+broke and why": `initSentry(config.sentryDsn)` is called once near the top of `server.ts`
+(`devServer.ts` delegates to it, so local dev gets it too whenever `SENTRY_DSN` is set).
+
+Wired at a few boundaries, not into every internal try/catch:
+
+- Global uncaught-exception/unhandled-rejection handlers — installed automatically by
+  `Sentry.init` itself, no extra code here.
+- `runner.ts`'s outer per-cycle catch — reached only when something breaks `runPollCycle` as a
+  whole, not the routine per-email/per-action-item failures `poller.ts`/`googleTasksSyncer.ts`
+  already swallow internally (those are tracked via `emails.status`/`error_message` in SQLite,
+  and for `poller.ts`'s two sites, an Axiom trend event too — genuinely handled outcomes, not
+  bugs).
+- `healthServer.ts`'s `/admin/status` route: rendering the snapshot (a `Store` read) is now
+  caught before any response headers are sent, so a query failure reports to Sentry and replies
+  `500` instead of taking down the whole process — this is a plain `node:http` listener callback,
+  with no framework-level error handling like task-manager's Fastify gets.
+
+Same no-op-until-configured treatment as Axiom: `Sentry.init`/`Sentry.captureException` are safe
+no-ops with no `SENTRY_DSN` set (see `sentry.ts`'s header comment) — this is purely additive, and
+task-manager has its own separate Sentry project (see its README), matching the same
+one-project-per-service split Axiom already uses.
 
 ## Development
 
