@@ -107,6 +107,7 @@ without a due date.
 | `AXIOM_DATASET`           | no\*\*   | Axiom dataset to ingest into (e.g. `task-manager-events`, same dataset the cloud side uses) |
 | `SENTRY_DSN`              | no\*\*   | Sentry DSN for error monitoring (see "Error monitoring" below), same value as the Jobs API server's above |
 | `SENTRY_ENVIRONMENT`      | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
+| `WORKER_INSPECTION_DIR`   | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
 
 \* All four secrets are read from the macOS Keychain if not set as env vars (see `resolveSecret`
 in `src/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
@@ -188,6 +189,49 @@ no-ops with no `SENTRY_DSN` set (see `sentry.ts`'s header comment) — this is p
 (like `AXIOM_TOKEN`/`AXIOM_DATASET` on the Mac worker side, see the env var table above) isn't
 wired into the LaunchAgent plist's `EnvironmentVariables` today, so `worker.ts`'s own Sentry
 reporting is opt-in via a local env var, not active in the production LaunchAgent yet.
+
+## Inspection log
+
+Axiom and Sentry above answer "did the job succeed" and "what broke" — neither shows *what the LLM
+actually saw and produced*, which is what you need when judging extraction quality or debugging a
+bad set of action items. `src/inspectionLog.ts` writes one JSON file per `extract-action-items` run
+to `WORKER_INSPECTION_DIR` (see the Mac worker env var table above; default `./audit`, resolved
+against the worker process's cwd — the repo checkout in dev, see "macOS LaunchAgent" below for
+prod) — `{ emailId, email, actionItems }` on success, `{ emailId, email, error }` if extraction
+failed (fetch failures aren't logged here, there's no email content yet to inspect). One file per
+run rather than one per `emailId` on purpose: re-running/regenerating action items for the same
+email appends another file instead of overwriting the last one, so every attempt stays available
+for comparison. Set `WORKER_INSPECTION_DIR=""` to turn this off entirely — see
+`createFileInspectionLogger`'s no-op sibling, `noopInspectionLogger`. `./audit` is gitignored
+(unlike `AXIOM_TOKEN`/`SENTRY_DSN`, this one really is on by default — it's real email content, so
+it must never end up committed).
+
+### Reviewing extractions (`npm run review`)
+
+`scripts/review-inspections.ts` is a small local Fastify server + single-page UI
+(`http://127.0.0.1:4600` by default) for browsing the inspection log above and flagging wrong
+extractions. With no flags/env vars it reads from the same `./audit` default the worker itself
+writes to:
+
+```bash
+npm run review
+# or, matching a non-default WORKER_INSPECTION_DIR:
+npm run review -- --dir ./audit --port 4600
+```
+
+It lists every run newest-first (subject/from, collapsible body, extracted action items or the
+error). Clicking "This is wrong…" on a run opens a form to describe what the extraction *should*
+have produced — the same loose `{ count, items: [{ titleContains, descriptionContains, dueDate }] }`
+shape `eval/fixtures.ts`'s hand-picked fixtures use (see that file's `ItemExpectation`). Saving
+writes a fixture to `eval/reviewed-fixtures.json` (read/exported by `eval/reviewedFixtures.ts`),
+which `eval/reviewedFixtures.eval.test.ts` runs the real extractor against, same eval harness as
+`extractActionItems.eval.test.ts` (both now share `eval/runFixtureSuite.ts`).
+
+A freshly-flagged fixture is *expected* to fail (red) — that's the point, it's a checklist entry
+recording a real mistake, not a regression guard. Run `npm run eval` after flagging a few to see
+them fail, use them as a worklist while iterating on `src/prompts/extractActionItems.system.md`,
+and re-run until they go green. "Unflag" in the UI (or deleting the entry from
+`eval/reviewed-fixtures.json` by hand) removes a fixture if it was flagged by mistake.
 
 ## Endpoints
 

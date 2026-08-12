@@ -63,6 +63,7 @@ apps/task-manager/dist
 apps/task-manager/dist-bin
 apps/task-manager/.env
 apps/task-manager/data/
+apps/task-manager/audit/
 apps/personal-assistant/dist
 apps/personal-assistant/.env
 apps/personal-assistant/data/
