@@ -1,48 +1,26 @@
 // Calls LM Studio's local OpenAI-compatible server to extract action items from
 // an email (#238). Never leaves the Mac — `baseUrl` defaults to localhost, and this
-// is the only model call the worker makes. Uses the platform `fetch` (Node 22) with
-// no extra HTTP/SDK dependency, since LM Studio's API surface here is small.
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+// is one of two model calls the worker makes (the other, actionItemJudge.ts, judges what this
+// one extracts) — see lmStudioClient.ts for the HTTP plumbing both share.
 import type { ActionItem } from "./actionItem.js";
 import type { EmailContent } from "./gmail.js";
+import {
+  DEFAULT_LM_STUDIO_BASE_URL,
+  readSystemPrompt,
+  requestStructuredCompletion,
+  type LmStudioConfig,
+} from "./lmStudioClient.js";
 
 export interface ActionItemExtractor {
   extract(email: EmailContent): Promise<ActionItem[]>;
 }
 
-// `__dirname` from the CJS wrapper esbuild's output runs under, when it's defined —
-// which it never is in this file's own true-ESM form (dev via `tsx`, tests via
-// `vitest`), only once bundled to CJS for the production `pkg` binary (see
-// scripts/release-worker.mjs). That distinction matters here because esbuild does
-// NOT carry `import.meta.url` through its CJS output — it silently empties it
-// instead (a `new URL(..., import.meta.url)` call on the empty string throws
-// `ERR_INVALID_URL` at runtime, verified by hand) — so it can't be used
-// unconditionally. `typeof __dirname` is a safe check even in genuine ESM, where
-// `__dirname` is simply unbound rather than `undefined`: the `typeof` operator
-// never throws on an unresolvable reference.
-declare const __dirname: string | undefined;
-
-function resolvePromptsDir(): string {
-  return typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
-}
+export type { LmStudioConfig };
 
 // Kept in its own file (rather than inline) so it reads and edits like prose, not a
-// string embedded in TS. Read once at module load. In the pkg-packaged production
-// binary this resolves inside pkg's own virtual snapshot filesystem, not real disk —
-// release-worker.mjs copies this prompts/ directory next to the bundle and declares
-// it as a pkg "asset" so it's actually embedded there; see that script's comments.
-const systemPromptPath = join(resolvePromptsDir(), "prompts/extractActionItems.system.md");
-const systemPrompt = readFileSync(systemPromptPath, "utf8").trim();
-
-export interface LmStudioConfig {
-  baseUrl?: string;
-  // Test seam — a fake `fetch` swapped in so the request/response shape can be
-  // asserted without a real LM Studio server running (this can't be exercised for
-  // real in CI/sandbox, there is no LM Studio instance to talk to).
-  fetchImpl?: typeof fetch;
-}
+// string embedded in TS. Read once at module load — see lmStudioClient.ts's readSystemPrompt
+// for how this resolves both in dev and inside the packaged production binary.
+const systemPrompt = readSystemPrompt("extractActionItems.system.md");
 
 const actionItemsJsonSchema = {
   type: "object",
@@ -71,28 +49,6 @@ const actionItemsJsonSchema = {
   additionalProperties: false,
 } as const;
 
-interface LmStudioModelsResponse {
-  data?: Array<{ id?: string }>;
-}
-
-interface LmStudioChatCompletionResponse {
-  choices?: Array<{ message?: { content?: string } }>;
-}
-
-async function getLoadedModelId(baseUrl: string, fetchImpl: typeof fetch): Promise<string> {
-  const response = await fetchImpl(`${baseUrl}/v1/models`);
-  if (!response.ok) {
-    throw new Error(`LM Studio /v1/models request failed: ${response.status} ${response.statusText}`);
-  }
-
-  const body = (await response.json()) as LmStudioModelsResponse;
-  const modelId = body.data?.[0]?.id;
-  if (!modelId) {
-    throw new Error("LM Studio has no model currently loaded");
-  }
-  return modelId;
-}
-
 function buildPrompt(email: EmailContent): string {
   return [
     `Subject: ${email.subject}`,
@@ -102,19 +58,7 @@ function buildPrompt(email: EmailContent): string {
   ].join("\n");
 }
 
-function parseActionItems(response: LmStudioChatCompletionResponse): ActionItem[] {
-  const content = response.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error("LM Studio response contained no message content");
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (cause) {
-    throw new Error("LM Studio response content was not valid JSON", { cause });
-  }
-
+function parseActionItems(parsed: unknown): ActionItem[] {
   const actionItems = (parsed as { actionItems?: unknown }).actionItems;
   if (!Array.isArray(actionItems)) {
     throw new Error("LM Studio response was missing an actionItems array");
@@ -124,43 +68,21 @@ function parseActionItems(response: LmStudioChatCompletionResponse): ActionItem[
 }
 
 export function createLmStudioExtractor(config: LmStudioConfig = {}): ActionItemExtractor {
-  const baseUrl = config.baseUrl ?? "http://localhost:1234";
+  const baseUrl = config.baseUrl ?? DEFAULT_LM_STUDIO_BASE_URL;
   const fetchImpl = config.fetchImpl ?? fetch;
 
   return {
     async extract(email: EmailContent): Promise<ActionItem[]> {
-      const model = await getLoadedModelId(baseUrl, fetchImpl);
-
-      const response = await fetchImpl(`${baseUrl}/v1/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "system",
-              content: systemPrompt,
-            },
-            { role: "user", content: buildPrompt(email) },
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "action_items",
-              schema: actionItemsJsonSchema,
-            },
-          },
-        }),
+      const parsed = await requestStructuredCompletion({
+        baseUrl,
+        fetchImpl,
+        systemPrompt,
+        userPrompt: buildPrompt(email),
+        schemaName: "action_items",
+        jsonSchema: actionItemsJsonSchema,
       });
 
-      if (!response.ok) {
-        throw new Error(
-          `LM Studio /v1/chat/completions request failed: ${response.status} ${response.statusText}`,
-        );
-      }
-
-      const body = (await response.json()) as LmStudioChatCompletionResponse;
-      return parseActionItems(body);
+      return parseActionItems(parsed);
     },
   };
 }

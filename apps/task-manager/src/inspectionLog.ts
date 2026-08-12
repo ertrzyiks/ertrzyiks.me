@@ -13,13 +13,25 @@ import { randomBytes } from "node:crypto";
 import type { ActionItem } from "./actionItem.js";
 import type { EmailContent } from "./gmail.js";
 
+// One item the action-item judge (actionItemJudge.ts) rejected, with its stated reason — recorded
+// alongside the surviving `actionItems` so `npm run review` can show *why* something was filtered
+// out, not just the final, already-narrowed list.
+export interface RejectedActionItem {
+  actionItem: ActionItem;
+  reason: string;
+}
+
 export interface InspectionRecord {
   emailId: string;
   email: EmailContent;
   // Exactly one of these is set — `actionItems` on a successful extraction, `error` when the
-  // fetch or extraction step failed (see jobProcessor.ts's catch branch).
+  // fetch, extraction, or judging step failed (see jobProcessor.ts's catch branch).
   actionItems?: ActionItem[];
   error?: string;
+  // Only present alongside `actionItems`, and only when the judge rejected at least one item —
+  // omitted rather than an empty array so existing records/fixtures with no judge involved don't
+  // need a stub field.
+  rejectedActionItems?: RejectedActionItem[];
 }
 
 // What actually lands on disk — `recordedAt` is stamped by the logger itself, not the caller

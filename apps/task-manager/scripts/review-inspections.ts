@@ -47,6 +47,7 @@ interface Run {
   email: EmailContent;
   actionItems?: ActionItem[];
   error?: string;
+  rejectedActionItems?: Array<{ actionItem: ActionItem; reason: string }>;
 }
 
 async function loadRuns(dir: string): Promise<Run[]> {
@@ -177,6 +178,8 @@ const PAGE_HTML = String.raw`<!doctype html>
   .email-body { white-space: pre-wrap; background: #8881; border-radius: 6px; padding: 0.75rem; margin: 0.5rem 0; font-size: 0.85rem; display: none; }
   .email-body.open { display: block; }
   ul.items { margin: 0.5rem 0; padding-left: 1.25rem; }
+  ul.items.rejected { opacity: 0.6; }
+  ul.items.rejected strong { text-decoration: line-through; }
   .error { color: #e5484d; }
   .actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
   button { font: inherit; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid #8884; background: transparent; cursor: pointer; }
@@ -237,6 +240,15 @@ function itemsHtml(items) {
   ).join("") + "</ul>";
 }
 
+function rejectedItemsHtml(rejected) {
+  if (!rejected || rejected.length === 0) return "";
+  return "<p class=\"meta\">Rejected by the judge:</p><ul class=\"items rejected\">" +
+    rejected.map(r =>
+      "<li><strong>" + escapeHtml(r.actionItem.title) + "</strong>" +
+      " — <em>" + escapeHtml(r.reason) + "</em></li>"
+    ).join("") + "</ul>";
+}
+
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -252,7 +264,7 @@ function runHtml(run, i) {
     '<div class="email-body">' + escapeHtml(run.email?.body ?? "") + '</div>' +
     (run.error
       ? '<p class="error">Extraction failed: ' + escapeHtml(run.error) + '</p>'
-      : itemsHtml(run.actionItems)) +
+      : itemsHtml(run.actionItems) + rejectedItemsHtml(run.rejectedActionItems)) +
     '<div class="actions">' +
     (run.reviewed
       ? '<button class="ghost unflag">Unflag</button>'
