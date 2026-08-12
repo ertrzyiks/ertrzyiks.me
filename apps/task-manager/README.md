@@ -381,6 +381,12 @@ pnpm --filter task-manager eval -- --filter due-date
 LM_STUDIO_BASE_URL=http://localhost:1234 pnpm --filter task-manager eval
 ```
 
+`LM_STUDIO_BASE_URL` can also be set once in `.env` (see `.env.example`) instead of prefixing every
+invocation by hand — `eval/vitest.config.ts` loads the same `.env` file `server.ts` does. That's
+also where `.env.example` documents `http://host.docker.internal:1234`, the value to use instead of
+the default `http://localhost:1234` when running eval from inside a Claude Code sandbox rather than
+on the Mac directly (a sandbox's own `localhost` can't reach a port bound on the host machine).
+
 Each fixture asserts on the number of action items returned (exact, or a `{min, max}` range for
 cases where the model has legitimate latitude) and, per item, substring/regex checks on
 `title`/`description` and whether a `dueDate` is present/absent/an exact value. Assertions are
