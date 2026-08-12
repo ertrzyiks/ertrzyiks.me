@@ -1,10 +1,12 @@
 // Writes each extract-action-items run's email content and extracted action items to disk (#346
-// follow-up) — opt-in via `WORKER_INSPECTION_DIR`, see worker.ts. Bull Board (bullBoard.ts) only
-// shows the final `EmailJobResult`, not the raw email body a run's action items were extracted
-// from, which is what you need when judging whether an extraction — or a later regeneration of
-// it, since a re-queued job for the same `emailId` runs through here again — actually got it
-// right. Mirrors axiomEvents.ts's optional-dependency, no-op-when-unset shape and its
-// never-throws-or-blocks-the-caller contract.
+// follow-up) — on by default (`WORKER_INSPECTION_DIR` defaults to `./audit`, opt out with
+// `WORKER_INSPECTION_DIR=""`), see worker.ts. Bull Board (bullBoard.ts) only shows the final
+// `EmailJobResult`, not the raw email body a run's action items were extracted from, which is
+// what you need when judging whether an extraction — or a later regeneration of it, since a
+// re-queued job for the same `emailId` runs through here again — actually got it right. Mirrors
+// axiomEvents.ts's optional-dependency shape and its never-throws-or-blocks-the-caller contract;
+// unlike Axiom this one defaults to *on*, so `noopInspectionLogger` only ever kicks in when a
+// caller explicitly opts out.
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { randomBytes } from "node:crypto";

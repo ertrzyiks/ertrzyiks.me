@@ -52,12 +52,14 @@ const events: EventEmitter =
 // the LaunchAgent plist's `EnvironmentVariables` today, same as Axiom.
 initSentry(process.env.SENTRY_DSN);
 
-// Opt-in on-disk inspection trail (see inspectionLog.ts): every extraction's email content and
-// resulting action items (or error), one JSON file per run — unset, purely local by default,
-// nothing about the worker changes. A relative path is resolved against wherever the worker
-// process's cwd happens to be (the repo checkout in dev, see README's "macOS LaunchAgent"
-// section for prod), same as every other unqualified path this worker touches.
-const inspectionDir = process.env.WORKER_INSPECTION_DIR;
+// On-disk inspection trail (see inspectionLog.ts): every extraction's email content and
+// resulting action items (or error), one JSON file per run — on by default (`./audit`, resolved
+// against wherever the worker process's cwd happens to be, the repo checkout in dev, see
+// README's "macOS LaunchAgent" section for prod), same as every other unqualified path this
+// worker touches. Set WORKER_INSPECTION_DIR to point it elsewhere, or to "" to turn it off
+// entirely (falls back to noopInspectionLogger).
+const inspectionDirEnv = process.env.WORKER_INSPECTION_DIR;
+const inspectionDir = inspectionDirEnv === undefined ? "./audit" : inspectionDirEnv;
 const inspectionLogger: InspectionLogger = inspectionDir
   ? createFileInspectionLogger(inspectionDir)
   : noopInspectionLogger;

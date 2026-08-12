@@ -15,9 +15,10 @@
 // dependency for server.ts) rather than pulling in a separate static-site/UI toolchain for what's
 // a few hundred lines of vanilla HTML/JS.
 //
-// Usage:
-//   WORKER_INSPECTION_DIR=./inspection-log npm run review
-//   npm run review -- --dir ./inspection-log --port 4600
+// Usage (defaults to WORKER_INSPECTION_DIR's own default, `./audit`, when no flag/env var is
+// given, so this reads from wherever a default-config worker run already wrote to):
+//   npm run review
+//   npm run review -- --dir ./audit --port 4600
 import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -33,14 +34,9 @@ function readArg(flag: string): string | undefined {
   return index === -1 ? undefined : process.argv[index + 1];
 }
 
-const inspectionDir = readArg("--dir") ?? process.env.WORKER_INSPECTION_DIR;
-if (!inspectionDir) {
-  console.error(
-    "No inspection directory given — pass --dir <path> or set WORKER_INSPECTION_DIR " +
-      "(the same directory the worker was run with, see README's \"Inspection log\" section).",
-  );
-  process.exit(1);
-}
+// Same default as worker.ts's own WORKER_INSPECTION_DIR fallback, so `npm run review` with no
+// flags/env vars just works against wherever a worker run with no overrides already wrote to.
+const inspectionDir = readArg("--dir") ?? process.env.WORKER_INSPECTION_DIR ?? "./audit";
 
 const port = Number(readArg("--port") ?? process.env.REVIEW_PORT ?? 4600);
 
@@ -103,7 +99,7 @@ app.get("/", async (_request, reply) => {
 
 app.get("/api/runs", async (_request, reply) => {
   const [runs, reviewedFixtures] = await Promise.all([
-    loadRuns(inspectionDir as string),
+    loadRuns(inspectionDir),
     loadReviewedFixtures(),
   ]);
   const reviewedSourceFiles = new Set(
