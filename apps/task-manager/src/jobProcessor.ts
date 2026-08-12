@@ -28,7 +28,10 @@ export interface JobProcessorDeps {
   actionItemJudge?: ActionItemJudge;
 }
 
-async function judgeActionItems(
+// Exported so eval/runFixtureSuite.ts can run the exact same extract-then-judge filtering a real
+// job does, instead of an eval harness that only ever exercised the extractor half of the
+// pipeline.
+export async function judgeActionItems(
   email: EmailContent,
   actionItems: ActionItem[],
   judge: ActionItemJudge,
