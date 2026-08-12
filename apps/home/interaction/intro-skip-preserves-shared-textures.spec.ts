@@ -18,6 +18,19 @@ import { test, expect } from "@playwright/test";
 test("clicking the board again to skip the intro doesn't destroy the shared atlas textures", async ({
   page,
 }) => {
+  // Unlike every other interaction test, this one drives the real homepage
+  // (`/`) instead of the lightweight `/interaction-harness` route (ADR
+  // 0001), which is the whole point — it exercises the actual skip-intro
+  // gesture, pulling in the full game bundle plus the real board1-0/units-0/
+  // intro-0 texture atlases. On a cold `astro dev` server (every CI run:
+  // webServer always starts fresh) that first compile has been observed to
+  // border on or exceed the default 30s test timeout — e.g.
+  // https://github.com/ertrzyiks/ertrzyiks.me/actions/runs/31493568680/job/93785630517
+  // — passing only via CI's one retry, against the now-warm server. slow()
+  // gives this one test the headroom to finish on its first attempt instead
+  // of wasting a full fail-and-relaunch cycle on every flake.
+  test.slow();
+
   const textureDestroyedWarnings: string[] = [];
   page.on("console", (msg) => {
     if (msg.type() === "warning" && /destroyed instead of unloaded/.test(msg.text())) {
