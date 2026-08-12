@@ -22,6 +22,11 @@ function recordingInspectionLogger(): InspectionLogger & { records: InspectionRe
   };
 }
 
+function recordingLog(): { log: (message: string) => void; messages: string[] } {
+  const messages: string[] = [];
+  return { messages, log: (message) => messages.push(message) };
+}
+
 function fakeFetcher(email: EmailContent): EmailFetcher {
   return {
     async fetchEmail(emailId) {
@@ -370,5 +375,65 @@ describe("processEmailJob", () => {
 
     expect(result).toEqual({ emailId: "email-1", actionItems: [] });
     expect(judgeCalls).toBe(0);
+  });
+
+  it("leaves progress notes on success, for Bull Board's Logs tab (#348)", async () => {
+    const { log, messages } = recordingLog();
+
+    await processEmailJob("email-1", {
+      emailFetcher: fakeFetcher(EMAIL),
+      actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+      log,
+    });
+
+    expect(messages).toEqual([
+      "Fetching email email-1 from Gmail",
+      'Extracting action items from "Q3 planning"',
+      "Judging 1 extracted action item(s)",
+      "Kept 1, rejected 0 action item(s)",
+    ]);
+  });
+
+  it("leaves a failure progress note when the email fetch fails", async () => {
+    const { log, messages } = recordingLog();
+
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: failingFetcher(new Error("boom")),
+        actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+        log,
+      }),
+    ).rejects.toThrow();
+
+    expect(messages).toEqual(["Fetching email email-1 from Gmail", "Failed: boom"]);
+  });
+
+  it("leaves a failure progress note when judging fails", async () => {
+    const { log, messages } = recordingLog();
+
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: fakeFetcher(EMAIL),
+        actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+        actionItemJudge: failingJudge(new Error("boom")),
+        log,
+      }),
+    ).rejects.toThrow();
+
+    expect(messages).toEqual([
+      "Fetching email email-1 from Gmail",
+      'Extracting action items from "Q3 planning"',
+      "Judging 1 extracted action item(s)",
+      "Failed: boom",
+    ]);
+  });
+
+  it("doesn't throw when no log dep is given — defaults to a no-op", async () => {
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: fakeFetcher(EMAIL),
+        actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+      }),
+    ).resolves.toBeDefined();
   });
 });

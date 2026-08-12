@@ -4,6 +4,7 @@
 // current loan that loanCalendarSync.ts then handles individually.
 import type { LibraryClient } from "./library.js";
 import type { LoanSyncQueue } from "./librarySyncQueue.js";
+import { noopJobLogger, type JobLogger } from "./jobLogger.js";
 import type { LoansStore } from "./loansStore.js";
 import type { CalendarClient } from "./googleCalendar.js";
 
@@ -12,6 +13,8 @@ export interface LibraryRefreshDeps {
   store: LoansStore;
   syncQueue: LoanSyncQueue;
   calendar: CalendarClient;
+  /** Bull Board per-job progress notes (#348) — optional, defaults to a no-op. */
+  log?: JobLogger;
 }
 
 export interface LibraryRefreshResult {
@@ -20,10 +23,14 @@ export interface LibraryRefreshResult {
 }
 
 export async function refreshLibraryLoans(deps: LibraryRefreshDeps): Promise<LibraryRefreshResult> {
+  const log = deps.log ?? noopJobLogger;
+
+  log("Fetching current loans and filia names from WBPG");
   const [loans, filiaNames] = await Promise.all([
     deps.libraryClient.getCurrentLoans(),
     deps.libraryClient.getFiliaNames(),
   ]);
+  log(`Fetched ${loans.length} current loan(s)`);
 
   const rows = loans.map((loan) => ({
     ...loan,
@@ -49,9 +56,14 @@ export async function refreshLibraryLoans(deps: LibraryRefreshDeps): Promise<Lib
     removedCalendarEventGroups++;
   }
 
+  if (removedCalendarEventGroups > 0) {
+    log(`Removed ${removedCalendarEventGroups} stale calendar event group(s)`);
+  }
+
   for (const loan of rows) {
     await deps.syncQueue.enqueue(loan.holdingId);
   }
+  log(`Enqueued ${rows.length} sync-loan-calendar job(s)`);
 
   return { loanCount: rows.length, removedCalendarEventGroups };
 }

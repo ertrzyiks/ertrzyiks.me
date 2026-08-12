@@ -16,6 +16,7 @@ import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js"
 import { createGoogleTasksClient } from "./googleTasksClient.js";
 import { processGoogleTaskJob } from "./googleTasksJobProcessor.js";
 import { GOOGLE_TASKS_QUEUE_NAME } from "./googleTasksQueue.js";
+import { jobLoggerFor } from "./jobLogger.js";
 import { createLibraryClient } from "./library.js";
 import { loadLibraryWorkerConfig } from "./libraryConfig.js";
 import { refreshLibraryLoans } from "./libraryRefresh.js";
@@ -127,7 +128,7 @@ if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
   const googleTasksConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   const googleTasksWorker = new Worker<GoogleTaskJobPayload, GoogleTaskJobResult>(
     GOOGLE_TASKS_QUEUE_NAME,
-    async (job) => processGoogleTaskJob(job.data, { googleTasksClient, events }),
+    async (job) => processGoogleTaskJob(job.data, { googleTasksClient, events, log: jobLoggerFor(job) }),
     {
       connection: googleTasksConnection,
       limiter: { max: googleTasksRateLimitMax, duration: googleTasksRateLimitDurationMs },
@@ -178,12 +179,13 @@ if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClie
 
   const libraryRefreshWorker = new Worker(
     LIBRARY_REFRESH_QUEUE_NAME,
-    async () => {
+    async (job) => {
       const result = await refreshLibraryLoans({
         libraryClient,
         store,
         syncQueue: librarySyncQueueAdapter,
         calendar,
+        log: jobLoggerFor(job),
       });
       app.log.info(
         `library refresh: ${result.loanCount} current loan(s), ` +
@@ -196,7 +198,7 @@ if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClie
   const librarySyncWorker = new Worker<LoanSyncJobPayload>(
     LIBRARY_SYNC_QUEUE_NAME,
     async (job) => {
-      await syncLoanCalendarEvent(job.data.holdingId, { store, calendar });
+      await syncLoanCalendarEvent(job.data.holdingId, { store, calendar, log: jobLoggerFor(job) });
     },
     { connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) },
   );

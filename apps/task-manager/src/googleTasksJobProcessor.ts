@@ -4,12 +4,15 @@
 import { noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js";
 import type { GoogleTasksClient } from "./googleTasksClient.js";
+import { noopJobLogger, type JobLogger } from "./jobLogger.js";
 
 export interface GoogleTasksJobProcessorDeps {
   googleTasksClient: GoogleTasksClient;
   /** Trend-event emission (#315) — optional, defaults to a no-op so existing callers/tests are
    * unaffected by omitting it. */
   events?: EventEmitter;
+  /** Bull Board per-job progress notes (#348) — optional, defaults to a no-op. */
+  log?: JobLogger;
 }
 
 // Throws on any failure so BullMQ marks the job `failed` with that error as `failedReason` —
@@ -19,10 +22,12 @@ export async function processGoogleTaskJob(
   deps: GoogleTasksJobProcessorDeps,
 ): Promise<GoogleTaskJobResult> {
   const events = deps.events ?? noopEventEmitter;
+  const log = deps.log ?? noopJobLogger;
   const entity = "sync-google-tasks";
   const entityId = String(payload.actionItemId);
 
   events.emit({ entity, entityId, status: "active" });
+  log(`Creating Google Task "${payload.title}"`);
   try {
     const { id } = await deps.googleTasksClient.createTask({
       title: payload.title,
@@ -30,15 +35,13 @@ export async function processGoogleTaskJob(
       due: payload.dueDate,
     });
 
+    log(`Created Google Task ${id}`);
     events.emit({ entity, entityId, status: "completed" });
     return { actionItemId: payload.actionItemId, googleTaskId: id };
   } catch (error) {
-    events.emit({
-      entity,
-      entityId,
-      status: "failed",
-      error: error instanceof Error ? error.message : String(error),
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    log(`Failed: ${message}`);
+    events.emit({ entity, entityId, status: "failed", error: message });
     throw error;
   }
 }

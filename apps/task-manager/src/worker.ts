@@ -27,6 +27,7 @@ import {
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { createGmailFetcher, type EmailFetcher } from "./gmail.js";
 import { createFileInspectionLogger, noopInspectionLogger, type InspectionLogger } from "./inspectionLog.js";
+import { jobLoggerFor } from "./jobLogger.js";
 import { macKeychainReader, resolveSecret } from "./keychain.js";
 import { createLmStudioExtractor, type ActionItemExtractor } from "./lmStudio.js";
 import { processEmailJob } from "./jobProcessor.js";
@@ -181,6 +182,7 @@ async function main() {
         actionItemJudge,
         events,
         inspectionLogger,
+        log: jobLoggerFor(job),
       }),
     { connection },
   );
