@@ -165,4 +165,8 @@ export const fixtures: EvalFixture[] = [
       body: "Could you review my PR when you have a moment? No rush, just don't want it to go stale.",
     },
     expect: {
-      coun
+      count: 1,
+      items: [{ titleContains: /PR|review/i, dueDate: "absent" }],
+    },
+  },
+];

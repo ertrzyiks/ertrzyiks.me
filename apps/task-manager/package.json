@@ -13,6 +13,7 @@
     "test": "vitest run",
     "eval": "vitest run --config eval/vitest.config.ts",
     "eval:watch": "vitest --config eval/vitest.config.ts",
+    "review": "tsx scripts/review-inspections.ts",
     "release:worker": "node scripts/release-worker.mjs"
   },
   "dependencies": {

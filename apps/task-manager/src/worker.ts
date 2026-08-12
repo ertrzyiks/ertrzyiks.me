@@ -21,6 +21,7 @@ import { Redis } from "ioredis";
 import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { createGmailFetcher, type EmailFetcher } from "./gmail.js";
+import { createFileInspectionLogger, noopInspectionLogger, type InspectionLogger } from "./inspectionLog.js";
 import { macKeychainReader, resolveSecret } from "./keychain.js";
 import { createLmStudioExtractor, type ActionItemExtractor } from "./lmStudio.js";
 import { processEmailJob } from "./jobProcessor.js";
@@ -50,6 +51,16 @@ const events: EventEmitter =
 // comment for why a Sentry DSN doesn't need Keychain treatment either) — also not wired into
 // the LaunchAgent plist's `EnvironmentVariables` today, same as Axiom.
 initSentry(process.env.SENTRY_DSN);
+
+// Opt-in on-disk inspection trail (see inspectionLog.ts): every extraction's email content and
+// resulting action items (or error), one JSON file per run — unset, purely local by default,
+// nothing about the worker changes. A relative path is resolved against wherever the worker
+// process's cwd happens to be (the repo checkout in dev, see README's "macOS LaunchAgent"
+// section for prod), same as every other unqualified path this worker touches.
+const inspectionDir = process.env.WORKER_INSPECTION_DIR;
+const inspectionLogger: InspectionLogger = inspectionDir
+  ? createFileInspectionLogger(inspectionDir)
+  : noopInspectionLogger;
 
 // Escape hatch for manual smoke-testing against a real Redis/BullMQ queue in
 // environments without macOS Keychain or a running LM Studio (e.g. this repo's
@@ -134,7 +145,8 @@ async function main() {
 
   const worker = new Worker<EmailJobPayload, EmailJobResult>(
     QUEUE_NAME,
-    async (job) => processEmailJob(job.data.emailId, { emailFetcher, actionItemExtractor, events }),
+    async (job) =>
+      processEmailJob(job.data.emailId, { emailFetcher, actionItemExtractor, events, inspectionLogger }),
     { connection },
   );
 

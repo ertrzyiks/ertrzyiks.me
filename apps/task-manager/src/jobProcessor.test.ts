@@ -2,12 +2,23 @@ import { describe, expect, it } from "vitest";
 import type { EventEmitter, TrendEvent } from "./axiomEvents.js";
 import { processEmailJob } from "./jobProcessor.js";
 import type { EmailContent, EmailFetcher } from "./gmail.js";
+import type { InspectionLogger, InspectionRecord } from "./inspectionLog.js";
 import type { ActionItemExtractor } from "./lmStudio.js";
 import type { ActionItem } from "./actionItem.js";
 
 function recordingEmitter(): EventEmitter & { events: TrendEvent[] } {
   const events: TrendEvent[] = [];
   return { events, emit: (event) => events.push(event) };
+}
+
+function recordingInspectionLogger(): InspectionLogger & { records: InspectionRecord[] } {
+  const records: InspectionRecord[] = [];
+  return {
+    records,
+    record: async (entry) => {
+      records.push(entry);
+    },
+  };
 }
 
 function fakeFetcher(email: EmailContent): EmailFetcher {
@@ -134,5 +145,58 @@ describe("processEmailJob", () => {
         actionItemExtractor: fakeExtractor(ACTION_ITEMS),
       }),
     ).resolves.toBeDefined();
+  });
+
+  it("doesn't throw when no inspectionLogger dep is given — defaults to a no-op", async () => {
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: fakeFetcher(EMAIL),
+        actionItemExtractor: failingExtractor(new Error("boom")),
+      }),
+    ).rejects.toThrow("boom");
+  });
+
+  it("records the email content and action items to the inspection logger on success", async () => {
+    const inspectionLogger = recordingInspectionLogger();
+
+    await processEmailJob("email-1", {
+      emailFetcher: fakeFetcher(EMAIL),
+      actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+      inspectionLogger,
+    });
+
+    expect(inspectionLogger.records).toEqual([
+      { emailId: "email-1", email: EMAIL, actionItems: ACTION_ITEMS },
+    ]);
+  });
+
+  it("records the email content and error to the inspection logger when extraction fails", async () => {
+    const inspectionLogger = recordingInspectionLogger();
+
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: fakeFetcher(EMAIL),
+        actionItemExtractor: failingExtractor(new Error("LM Studio error")),
+        inspectionLogger,
+      }),
+    ).rejects.toThrow("LM Studio error");
+
+    expect(inspectionLogger.records).toEqual([
+      { emailId: "email-1", email: EMAIL, error: "LM Studio error" },
+    ]);
+  });
+
+  it("doesn't record to the inspection logger when the email fetch itself fails", async () => {
+    const inspectionLogger = recordingInspectionLogger();
+
+    await expect(
+      processEmailJob("email-1", {
+        emailFetcher: failingFetcher(new Error("Gmail API error")),
+        actionItemExtractor: fakeExtractor(ACTION_ITEMS),
+        inspectionLogger,
+      }),
+    ).rejects.toThrow("Gmail API error");
+
+    expect(inspectionLogger.records).toEqual([]);
   });
 });
