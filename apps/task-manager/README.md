@@ -102,6 +102,7 @@ without a due date.
 | `GMAIL_KEYCHAIN_SERVICE`  | no       | macOS Keychain "service" all four secrets above are read from (default `task-manager-worker`) |
 | `GMAIL_KEYCHAIN_ACCOUNT`  | no       | macOS Keychain "account" the refresh token specifically is read from (default `gmail-refresh-token`) |
 | `LM_STUDIO_BASE_URL`      | no       | Base URL of the local LM Studio server (default `http://localhost:1234`)      |
+| `WORKER_JUDGE_ACTION_ITEMS` | no     | Set to `"false"` to skip the action item judge (see "Action item judge" below) and keep everything the extractor returns — on by default |
 | `WORKER_FAKE_DEPS`        | no       | `"true"` swaps in canned fake Gmail/LM Studio implementations instead of the real ones — **manual smoke-testing only, never set in production** (see below) |
 | `AXIOM_TOKEN`             | no\*\*   | Axiom API token for trend-event ingestion (#315), used by `extract-action-items` jobs here |
 | `AXIOM_DATASET`           | no\*\*   | Axiom dataset to ingest into (e.g. `task-manager-events`, same dataset the cloud side uses) |
@@ -197,14 +198,42 @@ actually saw and produced*, which is what you need when judging extraction quali
 bad set of action items. `src/inspectionLog.ts` writes one JSON file per `extract-action-items` run
 to `WORKER_INSPECTION_DIR` (see the Mac worker env var table above; default `./audit`, resolved
 against the worker process's cwd — the repo checkout in dev, see "macOS LaunchAgent" below for
-prod) — `{ emailId, email, actionItems }` on success, `{ emailId, email, error }` if extraction
-failed (fetch failures aren't logged here, there's no email content yet to inspect). One file per
-run rather than one per `emailId` on purpose: re-running/regenerating action items for the same
-email appends another file instead of overwriting the last one, so every attempt stays available
-for comparison. Set `WORKER_INSPECTION_DIR=""` to turn this off entirely — see
-`createFileInspectionLogger`'s no-op sibling, `noopInspectionLogger`. `./audit` is gitignored
+prod) — `{ emailId, email, actionItems, rejectedActionItems? }` on success (`rejectedActionItems`
+only present when the judge below actually rejected something), `{ emailId, email, error }` if
+extraction or judging failed (fetch failures aren't logged here, there's no email content yet to
+inspect). One file per run rather than one per `emailId` on purpose: re-running/regenerating action
+items for the same email appends another file instead of overwriting the last one, so every
+attempt stays available for comparison. Set `WORKER_INSPECTION_DIR=""` to turn this off entirely —
+see `createFileInspectionLogger`'s no-op sibling, `noopInspectionLogger`. `./audit` is gitignored
 (unlike `AXIOM_TOKEN`/`SENTRY_DSN`, this one really is on by default — it's real email content, so
 it must never end up committed).
+
+### Action item judge
+
+Extraction (above) and judging are two separate LM Studio calls, not one bigger prompt: after
+`src/lmStudio.ts` turns an email into a list of action items, `src/actionItemJudge.ts` calls LM
+Studio again **once per action item**, passing it the original email plus that one proposed item,
+and asks it to decide whether the item should actually be kept — see
+`src/prompts/judgeActionItem.system.md` for exactly what it's checking for (grounded in the email,
+not just a call-to-action link, not from a newsletter/notification that shouldn't have produced
+anything, a real due date rather than a guess, one coherent action rather than a vague catch-all).
+`src/jobProcessor.ts` runs every item's judge call concurrently, drops whatever gets rejected
+before the job result and Google Tasks sync ever see it, and records both halves — survivors and
+rejects, with the judge's stated reason — to the inspection log above, so a bad extraction that
+*would* have created a wrong task is visible in `npm run review` (below) instead of only the ones
+that made it through.
+
+On by default, same "never leaves the Mac" constraint as extraction itself (it's still the only
+local LM Studio server involved, just a second call to it) — set `WORKER_JUDGE_ACTION_ITEMS=false`
+to skip it and keep everything the extractor returns unfiltered, e.g. while comparing
+extraction-only vs. judged output during prompt iteration. A judging failure fails the whole job
+the same way an extraction failure does (see `processEmailJob`'s catch block) rather than silently
+falling back to "keep everything" — a job that failed outright is easier to notice and retry than
+one that quietly skipped a safety check.
+
+Both LM Studio calls share their HTTP plumbing (`src/lmStudioClient.ts`: model discovery, the
+structured `response_format` request shape, error messages) so the two prompts differ only in
+*what* they ask, not in *how* they talk to LM Studio.
 
 ### Reviewing extractions (`npm run review`)
 
@@ -220,8 +249,11 @@ npm run review -- --dir ./audit --port 4600
 ```
 
 It lists every run newest-first (subject/from, collapsible body, extracted action items or the
-error). Clicking "This is wrong…" on a run opens a form to describe what the extraction *should*
-have produced — the same loose `{ count, items: [{ titleContains, descriptionContains, dueDate }] }`
+error) — action items the judge rejected are shown too, struck through with its stated reason, so
+you can tell a clean extraction from one the judge had to clean up after. Clicking "This is
+wrong…" on a run opens a form to describe what the extraction *should* have produced (against the
+kept items only — the judge already agreed the rejected ones shouldn't count) — the same loose
+`{ count, items: [{ titleContains, descriptionContains, dueDate }] }`
 shape `eval/fixtures.ts`'s hand-picked fixtures use (see that file's `ItemExpectation`). Saving
 writes a fixture to `eval/reviewed-fixtures.json` (read/exported by `eval/reviewedFixtures.ts`),
 which `eval/reviewedFixtures.eval.test.ts` runs the real extractor against, same eval harness as
