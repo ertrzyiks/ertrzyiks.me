@@ -24,13 +24,18 @@ as "what the clock read when the admin entered it," consistently redisplayed the
 
 - **`GET /`** — the public status page. Shows a 14-day history bar at the top (green = no
   incidents, yellow = a warning happened that day, red = a downtime covered that day — red wins
-  if a day had both; see `src/dayBar.ts`), followed by every recorded event as a stream grouped by
-  day (newest day first). No authentication.
+  if a day had both; see `src/dayBar.ts`), followed by a day-by-day stream covering that same
+  14-day window (newest day first, see `eventStreamHtml` in `src/views.ts`) — every day gets a
+  heading, and a day with nothing recorded shows a "No events, all good." placeholder instead of
+  being skipped. No authentication.
 - **`GET /admin`** — the admin page. Shows events from the last 2 days (plus any still-open
   downtime regardless of age, so it's never impossible to close one out — see
-  `Store.listAdminEvents`), an "Add event" form, and an **Edit** link per event.
+  `Store.listAdminEvents`), an "Add event" form, and an **Edit** link and a **Remove** button per
+  event.
 - **`GET /admin/events/:id/edit`** — edit form for a single event, prefilled with its current
   values.
+- **`POST /admin/events/:id/delete`** — deletes a single event (confirmed client-side before
+  submitting) and redirects back to `/admin`. 404s if the id doesn't exist.
 
 ## Admin authentication
 

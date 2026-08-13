@@ -163,6 +163,19 @@ export function createApp(
         return reply.redirect("/admin", 303);
       },
     );
+
+    admin.post<{ Params: { id: string } }>(
+      "/admin/events/:id/delete",
+      async (request, reply) => {
+        const id = Number(request.params.id);
+        if (!Number.isInteger(id)) return reply.code(404).send("Not found");
+
+        const deleted = store.deleteEvent(id);
+        if (!deleted) return reply.code(404).send("Not found");
+
+        return reply.redirect("/admin", 303);
+      },
+    );
   });
 
   return app;

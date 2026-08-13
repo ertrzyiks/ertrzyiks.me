@@ -172,12 +172,20 @@ describe("renderStatusPage", () => {
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
   });
 
-  it("shows an empty state when there are no events", () => {
-    const html = renderStatusPage([], buildDayBar([], TODAY));
-    expect(html).toContain("No incidents reported.");
+  it("shows a 'No events, all good' placeholder for every day when there are no events", () => {
+    const html = renderStatusPage([], buildDayBar([], TODAY, 3));
+    expect(html.match(/No events, all good\./g)).toHaveLength(3);
   });
 
-  it("does not render an Edit link (public page)", () => {
+  it("marks only the days with no events, alongside days that have some", () => {
+    const events = [makeEvent({ startsAt: "2026-08-09T09:30" })]; // TODAY only
+    const html = renderStatusPage(events, buildDayBar(events, TODAY, 2));
+
+    expect(html).toContain("Elevated latency");
+    expect(html.match(/No events, all good\./g)).toHaveLength(1); // 2026-08-08 only
+  });
+
+  it("does not render an Edit or Remove link/button (public page)", () => {
     const events = [makeEvent()];
     const html = renderStatusPage(events, buildDayBar(events, TODAY));
     expect(html).not.toContain("/admin/events/");
@@ -217,6 +225,13 @@ describe("renderAdminPage", () => {
 
     expect(html).toContain(`action="/admin/events"`);
     expect(html).toContain(`href="/admin/events/42/edit"`);
+  });
+
+  it("renders a Remove form posting to the event's delete route", () => {
+    const html = renderAdminPage({ events: [makeEvent({ id: 42 })] });
+
+    expect(html).toContain(`action="/admin/events/42/delete"`);
+    expect(html).toContain(">Remove<");
   });
 
   it("renders a submitted error message", () => {

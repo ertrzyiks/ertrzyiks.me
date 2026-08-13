@@ -105,6 +105,29 @@ describe("store (in-memory)", () => {
     expect(updated!.updatedAt).not.toBe(created.updatedAt);
   });
 
+  it("deletes an existing event and reports success", () => {
+    const created = store.createEvent({
+      type: "warning",
+      title: "Elevated latency",
+      startsAt: "2026-08-09T10:00",
+    });
+
+    expect(store.deleteEvent(created.id)).toBe(true);
+    expect(store.getEvent(created.id)).toBeNull();
+    expect(store.listEvents()).toEqual([]);
+  });
+
+  it("returns false deleting an unknown event id, without touching other rows", () => {
+    const created = store.createEvent({
+      type: "warning",
+      title: "Elevated latency",
+      startsAt: "2026-08-09T10:00",
+    });
+
+    expect(store.deleteEvent(999)).toBe(false);
+    expect(store.listEvents()).toEqual([created]);
+  });
+
   it("lists events newest-starting first", () => {
     const older = store.createEvent({
       type: "warning",
