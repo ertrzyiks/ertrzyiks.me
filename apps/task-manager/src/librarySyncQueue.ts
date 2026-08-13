@@ -8,6 +8,7 @@
 // - `sync-loan-calendar`: one job per current loan, processed by loanCalendarSync.ts.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
+import { DEFAULT_JOB_OPTIONS } from "./retry.js";
 
 export const LIBRARY_REFRESH_QUEUE_NAME = "refresh-library-loans";
 export const LIBRARY_SYNC_QUEUE_NAME = "sync-loan-calendar";
@@ -16,14 +17,16 @@ export interface LoanSyncJobPayload {
   holdingId: number;
 }
 
+// `defaultJobOptions` (#348) — see retry.ts for the shared policy this and createLibrarySyncQueue
+// apply to every job on their queue, same as queue.ts's createQueue.
 export function createLibraryRefreshQueue(redisUrl: string): Queue {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  return new Queue(LIBRARY_REFRESH_QUEUE_NAME, { connection });
+  return new Queue(LIBRARY_REFRESH_QUEUE_NAME, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 }
 
 export function createLibrarySyncQueue(redisUrl: string): Queue<LoanSyncJobPayload> {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  return new Queue(LIBRARY_SYNC_QUEUE_NAME, { connection });
+  return new Queue(LIBRARY_SYNC_QUEUE_NAME, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 }
 
 // Narrow seam libraryRefresh.ts depends on instead of the full BullMQ `Queue` — matches

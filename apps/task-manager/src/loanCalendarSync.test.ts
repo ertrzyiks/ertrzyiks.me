@@ -49,6 +49,11 @@ function fakeCalendar(): CalendarClient & { events: Map<string, FakeCalendarEven
   };
 }
 
+function recordingLog(): { log: (message: string) => void; messages: string[] } {
+  const messages: string[] = [];
+  return { messages, log: (message) => messages.push(message) };
+}
+
 describe("syncLoanCalendarEvent", () => {
   let store: LoansStore;
   let calendar: ReturnType<typeof fakeCalendar>;
@@ -191,5 +196,42 @@ describe("syncLoanCalendarEvent", () => {
     const newEventId = store.getCalendarEventGroup(144, "2026-08-20")!.googleEventId;
     expect(newEventId).not.toBe(oldEventId);
     expect(await calendar.eventExists(newEventId)).toBe(true);
+  });
+
+  it("leaves a progress note when skipping an untracked loan, for Bull Board's Logs tab (#348)", async () => {
+    const { log, messages } = recordingLog();
+
+    await syncLoanCalendarEvent(999, { store, calendar, log });
+
+    expect(messages).toEqual(["Loan 999 is no longer tracked (already returned) — skipping"]);
+  });
+
+  it("leaves a progress note when creating a new event", async () => {
+    store.replaceCurrentLoans([loanInput()]);
+    const { log, messages } = recordingLog();
+
+    await syncLoanCalendarEvent(1, { store, calendar, log });
+
+    expect(messages).toEqual([
+      "Creating new calendar event for Filia nr 002 Biblioteka Oliwska on 2026-08-20",
+    ]);
+  });
+
+  it("leaves a progress note when updating an existing event", async () => {
+    store.replaceCurrentLoans([loanInput()]);
+    await syncLoanCalendarEvent(1, { store, calendar });
+    const { log, messages } = recordingLog();
+
+    await syncLoanCalendarEvent(1, { store, calendar, log });
+
+    expect(messages).toEqual([
+      "Updating existing calendar event for Filia nr 002 Biblioteka Oliwska on 2026-08-20",
+    ]);
+  });
+
+  it("doesn't throw when no log dep is given — defaults to a no-op", async () => {
+    store.replaceCurrentLoans([loanInput()]);
+
+    await expect(syncLoanCalendarEvent(1, { store, calendar })).resolves.toBeUndefined();
   });
 });

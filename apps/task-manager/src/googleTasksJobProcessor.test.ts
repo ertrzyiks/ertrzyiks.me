@@ -9,6 +9,11 @@ function recordingEmitter(): EventEmitter & { events: TrendEvent[] } {
   return { events, emit: (event) => events.push(event) };
 }
 
+function recordingLog(): { log: (message: string) => void; messages: string[] } {
+  const messages: string[] = [];
+  return { messages, log: (message) => messages.push(message) };
+}
+
 function fakeClient(id: string): GoogleTasksClient {
   return {
     async createTask() {
@@ -72,6 +77,30 @@ describe("processGoogleTaskJob", () => {
   });
 
   it("doesn't throw when no events dep is given — defaults to a no-op", async () => {
+    await expect(
+      processGoogleTaskJob(PAYLOAD, { googleTasksClient: fakeClient("gtask-1") }),
+    ).resolves.toBeDefined();
+  });
+
+  it("leaves progress notes on success, for Bull Board's Logs tab (#348)", async () => {
+    const { log, messages } = recordingLog();
+
+    await processGoogleTaskJob(PAYLOAD, { googleTasksClient: fakeClient("gtask-1"), log });
+
+    expect(messages).toEqual(['Creating Google Task "Send the report"', "Created Google Task gtask-1"]);
+  });
+
+  it("leaves a failure progress note when the Google Tasks API call fails", async () => {
+    const { log, messages } = recordingLog();
+
+    await expect(
+      processGoogleTaskJob(PAYLOAD, { googleTasksClient: failingClient(new Error("boom")), log }),
+    ).rejects.toThrow();
+
+    expect(messages).toEqual(['Creating Google Task "Send the report"', "Failed: boom"]);
+  });
+
+  it("doesn't throw when no log dep is given — defaults to a no-op", async () => {
     await expect(
       processGoogleTaskJob(PAYLOAD, { googleTasksClient: fakeClient("gtask-1") }),
     ).resolves.toBeDefined();

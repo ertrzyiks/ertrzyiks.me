@@ -11,6 +11,7 @@ import {
   type InspectionLogger,
   type RejectedActionItem,
 } from "./inspectionLog.js";
+import { noopJobLogger, type JobLogger } from "./jobLogger.js";
 import type { ActionItemExtractor } from "./lmStudio.js";
 
 export interface JobProcessorDeps {
@@ -26,6 +27,8 @@ export interface JobProcessorDeps {
    * to a no-op that keeps everything so existing callers/tests are unaffected by omitting it.
    * See actionItemJudge.ts. */
   actionItemJudge?: ActionItemJudge;
+  /** Bull Board per-job progress notes (#348) — optional, defaults to a no-op. */
+  log?: JobLogger;
 }
 
 // Exported so eval/runFixtureSuite.ts can run the exact same extract-then-judge filtering a real
@@ -66,9 +69,11 @@ export async function processEmailJob(
   const events = deps.events ?? noopEventEmitter;
   const inspectionLogger = deps.inspectionLogger ?? noopInspectionLogger;
   const actionItemJudge = deps.actionItemJudge ?? noopActionItemJudge;
+  const log = deps.log ?? noopJobLogger;
   const entity = "extract-action-items";
 
   events.emit({ entity, entityId: emailId, status: "active" });
+  log(`Fetching email ${emailId} from Gmail`);
 
   // Fetched outside the try so a fetch failure (no `email` to log) is distinguished from an
   // extraction/judging failure (where the email that was sent to the LLM is exactly what's worth
@@ -77,18 +82,18 @@ export async function processEmailJob(
   try {
     email = await deps.emailFetcher.fetchEmail(emailId);
   } catch (error) {
-    events.emit({
-      entity,
-      entityId: emailId,
-      status: "failed",
-      error: error instanceof Error ? error.message : String(error),
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    log(`Failed: ${message}`);
+    events.emit({ entity, entityId: emailId, status: "failed", error: message });
     throw error;
   }
 
   try {
+    log(`Extracting action items from "${email.subject}"`);
     const extracted = await deps.actionItemExtractor.extract(email);
+    log(`Judging ${extracted.length} extracted action item(s)`);
     const { kept, rejected } = await judgeActionItems(email, extracted, actionItemJudge);
+    log(`Kept ${kept.length}, rejected ${rejected.length} action item(s)`);
 
     events.emit({ entity, entityId: emailId, status: "completed" });
     await inspectionLogger.record({
@@ -100,6 +105,7 @@ export async function processEmailJob(
     return { emailId, actionItems: kept };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    log(`Failed: ${message}`);
     events.emit({ entity, entityId: emailId, status: "failed", error: message });
     await inspectionLogger.record({ emailId, email, error: message });
     throw error;

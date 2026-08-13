@@ -58,6 +58,11 @@ function fakeCalendar(): CalendarClient & { deleted: string[] } {
   };
 }
 
+function recordingLog(): { log: (message: string) => void; messages: string[] } {
+  const messages: string[] = [];
+  return { messages, log: (message) => messages.push(message) };
+}
+
 const FILIA_NAMES = new Map([
   [143, "Filia nr 001 Biblioteka Manhattan"],
   [144, "Filia nr 002 Biblioteka Oliwska"],
@@ -147,5 +152,38 @@ describe("refreshLibraryLoans", () => {
     expect(calendar.deleted).toEqual([]);
     expect(store.getCalendarEventGroup(144, "2026-08-20")).not.toBeNull();
     expect(result.removedCalendarEventGroups).toBe(0);
+  });
+
+  it("leaves progress notes for Bull Board's Logs tab (#348)", async () => {
+    store.setCalendarEventGroup(144, "2026-07-01", "stale-event"); // no current loan is due this day
+
+    const { log, messages } = recordingLog();
+    const deps = {
+      libraryClient: fakeLibraryClient([loan({ holdingId: 1 }), loan({ holdingId: 2 })], FILIA_NAMES),
+      store,
+      syncQueue: fakeSyncQueue(),
+      calendar: fakeCalendar(),
+      log,
+    };
+
+    await refreshLibraryLoans(deps);
+
+    expect(messages).toEqual([
+      "Fetching current loans and filia names from WBPG",
+      "Fetched 2 current loan(s)",
+      "Removed 1 stale calendar event group(s)",
+      "Enqueued 2 sync-loan-calendar job(s)",
+    ]);
+  });
+
+  it("doesn't throw when no log dep is given — defaults to a no-op", async () => {
+    const deps = {
+      libraryClient: fakeLibraryClient([loan()], FILIA_NAMES),
+      store,
+      syncQueue: fakeSyncQueue(),
+      calendar: fakeCalendar(),
+    };
+
+    await expect(refreshLibraryLoans(deps)).resolves.toBeDefined();
   });
 });
