@@ -31,6 +31,8 @@ export interface Store {
   /** Returns `null` if `id` doesn't exist, rather than throwing. */
   updateEvent(id: number, input: EventInput): Event | null;
   getEvent(id: number): Event | null;
+  /** Returns `false` if `id` doesn't exist, rather than throwing. */
+  deleteEvent(id: number): boolean;
   /** All events, newest first — the public status page's full stream. */
   listEvents(): Event[];
   /**
@@ -108,6 +110,7 @@ export function createStore(path: string): Store {
      WHERE id = ?`,
   );
   const getStmt = db.prepare("SELECT * FROM events WHERE id = ?");
+  const deleteStmt = db.prepare("DELETE FROM events WHERE id = ?");
   const listAllStmt = db.prepare("SELECT * FROM events ORDER BY starts_at DESC, id DESC");
   const listAdminStmt = db.prepare(
     `SELECT * FROM events
@@ -152,6 +155,11 @@ export function createStore(path: string): Store {
     },
 
     getEvent,
+
+    deleteEvent(id) {
+      const result = deleteStmt.run(id);
+      return result.changes > 0;
+    },
 
     listEvents() {
       return (listAllStmt.all() as unknown as EventRow[]).map(rowToEvent);

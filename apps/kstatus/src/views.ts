@@ -156,7 +156,18 @@ function layout(title: string, bodyHtml: string): string {
   }
   .error { color: #b91c1c; margin-bottom: 1rem; }
   .admin-event { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
-  .admin-event a { flex-shrink: 0; }
+  .admin-event-actions { display: flex; align-items: baseline; gap: 0.75rem; flex-shrink: 0; }
+  .admin-event-actions form { margin: 0; }
+  .link-button {
+    font: inherit;
+    font-size: 1em;
+    color: #b91c1c;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+  }
   section.add-event { margin-bottom: 3rem; padding-bottom: 2rem; border-bottom: 1px solid #e5e7eb; }
 </style>
 </head>
@@ -209,9 +220,43 @@ function eventItemHtml(event: Event, options: { editable: boolean }): string {
       <div class="admin-event">
         <div>${body}
         </div>
-        <a href="/admin/events/${event.id}/edit">Edit</a>
+        <div class="admin-event-actions">
+          <a href="/admin/events/${event.id}/edit">Edit</a>
+          <form method="post" action="/admin/events/${event.id}/delete" onsubmit="return confirm('Remove this event?')">
+            <button type="submit" class="link-button">Remove</button>
+          </form>
+        </div>
       </div>
     </li>`;
+}
+
+/**
+ * Renders the public status page's day-by-day stream over exactly the days covered by `dayBar` —
+ * unlike `eventListHtml` (which silently skips any day with nothing to show), every one of those
+ * days gets a heading, and a day with no events for it gets an explicit "No events, all good."
+ * placeholder instead of being omitted. `dayBar` is oldest-first (see buildDayBar); reversed here
+ * so the stream reads newest day first, matching the rest of the page.
+ */
+function eventStreamHtml(events: Event[], dayBar: DayBarEntry[]): string {
+  const eventsByDay = new Map(groupEventsByDay(events).map((group) => [group.dayKey, group.events]));
+
+  return [...dayBar]
+    .reverse()
+    .map((entry) => {
+      const dayEvents = eventsByDay.get(entry.dayKey);
+      const content = dayEvents
+        ? `<ul class="events">
+    ${dayEvents.map((event) => eventItemHtml(event, { editable: false })).join("\n    ")}
+  </ul>`
+        : `<p class="empty">No events, all good.</p>`;
+
+      return `
+<section>
+  <h2 class="day-heading">${escapeHtml(formatDayHeading(entry.dayKey))}</h2>
+  ${content}
+</section>`;
+    })
+    .join("\n");
 }
 
 const DAY_BAR_STATUS_LABELS: Record<DayBarStatus, string> = {
@@ -255,7 +300,7 @@ export function renderStatusPage(events: Event[], dayBar: DayBarEntry[]): string
 </header>
 <main>
   ${dayBarHtml(dayBar)}
-  ${eventListHtml(events)}
+  ${eventStreamHtml(events, dayBar)}
 </main>`;
 
   return layout("Status", body);

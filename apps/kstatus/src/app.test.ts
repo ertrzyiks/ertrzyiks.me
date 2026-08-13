@@ -325,4 +325,42 @@ describe("app", () => {
       expect(store.getEvent(event.id)!.title).toBe("Original");
     });
   });
+
+  describe("POST /admin/events/:id/delete", () => {
+    let app: FastifyInstance;
+
+    beforeEach(() => {
+      app = createApp(store, null, () => NOW);
+    });
+
+    it("deletes the event and redirects to /admin", async () => {
+      const event = store.createEvent({
+        type: "warning",
+        title: "Elevated latency",
+        startsAt: "2026-08-09T10:00",
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: `/admin/events/${event.id}/delete`,
+      });
+
+      expect(response.statusCode).toBe(303);
+      expect(response.headers.location).toBe("/admin");
+      expect(store.getEvent(event.id)).toBeNull();
+    });
+
+    it("404s for an unknown id", async () => {
+      const response = await app.inject({ method: "POST", url: "/admin/events/999/delete" });
+      expect(response.statusCode).toBe(404);
+    });
+
+    it("404s for a non-numeric id", async () => {
+      const response = await app.inject({
+        method: "POST",
+        url: "/admin/events/not-a-number/delete",
+      });
+      expect(response.statusCode).toBe(404);
+    });
+  });
 });
