@@ -23,7 +23,7 @@
     "bullmq": "6.0.8",
     "dotenv": "17.4.2",
     "fastify": "5.11.2",
-    "google-auth-library": "10.5.0",
+    "google-auth-library": "10.9.0",
     "googleapis": "173.0.0",
     "ioredis": "6.0.0"
   },
