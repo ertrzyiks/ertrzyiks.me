@@ -1,7 +1,7 @@
 // BullMQ wiring for the `sync-google-tasks` queue — the actual "create one Google Task" logic
 // lives in googleTasksJobProcessor.ts, independent of BullMQ; this file is only the `Worker`
 // construction, its rate limiter, and its `ready`/`failed` listeners, extracted out of server.ts
-// so the queue/worker pairing matches every other queue under src/queues/.
+// so the queue/worker pairing matches every other queue under src/modules/*/queues/.
 import type { ConnectionOptions } from "bullmq";
 import { Worker } from "bullmq";
 import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js";
@@ -9,9 +9,9 @@ import {
   processGoogleTaskJob,
   type GoogleTasksJobProcessorDeps,
 } from "./googleTasksJobProcessor.js";
-import { jobLoggerFor } from "../../jobLogger.js";
-import { Sentry } from "../../sentry.js";
-import type { WorkerLogger } from "../workerLogger.js";
+import { jobLoggerFor } from "../../../../jobLogger.js";
+import { Sentry } from "../../../../sentry.js";
+import type { WorkerLogger } from "../../../../workerLogger.js";
 import { GOOGLE_TASKS_QUEUE_NAME } from "./queue.js";
 
 export interface CreateWorkerOptions {

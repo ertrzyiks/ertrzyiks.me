@@ -2,14 +2,14 @@
 // lives in jobProcessor.ts, independent of BullMQ, so it can be unit-tested with fakes; this file
 // is only the `Worker` construction and its `ready`/`failed` listeners, extracted out of the
 // top-level worker.ts entrypoint so the queue/worker pairing matches every other queue under
-// src/queues/.
+// src/modules/*/queues/.
 import type { ConnectionOptions } from "bullmq";
 import { Worker } from "bullmq";
 import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
 import { processEmailJob, type JobProcessorDeps } from "./jobProcessor.js";
-import { jobLoggerFor } from "../../jobLogger.js";
-import { Sentry } from "../../sentry.js";
-import type { WorkerLogger } from "../workerLogger.js";
+import { jobLoggerFor } from "../../../../jobLogger.js";
+import { Sentry } from "../../../../sentry.js";
+import type { WorkerLogger } from "../../../../workerLogger.js";
 import { QUEUE_NAME } from "./queue.js";
 
 export interface CreateWorkerOptions {

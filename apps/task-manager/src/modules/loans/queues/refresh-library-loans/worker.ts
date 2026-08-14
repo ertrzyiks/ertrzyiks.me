@@ -1,13 +1,13 @@
 // BullMQ wiring for the `refresh-library-loans` queue — the actual "check WBPG, replace the
 // snapshot, fan out per-loan jobs" logic lives in libraryRefresh.ts, independent of BullMQ; this
 // file is only the `Worker` construction and its `ready`/`failed` listeners, extracted out of
-// server.ts so the queue/worker pairing matches every other queue under src/queues/.
+// server.ts so the queue/worker pairing matches every other queue under src/modules/*/queues/.
 import type { ConnectionOptions } from "bullmq";
 import { Worker } from "bullmq";
 import { refreshLibraryLoans, type LibraryRefreshDeps } from "./libraryRefresh.js";
-import { jobLoggerFor } from "../../jobLogger.js";
-import { Sentry } from "../../sentry.js";
-import type { WorkerLogger } from "../workerLogger.js";
+import { jobLoggerFor } from "../../../../jobLogger.js";
+import { Sentry } from "../../../../sentry.js";
+import type { WorkerLogger } from "../../../../workerLogger.js";
 import { LIBRARY_REFRESH_QUEUE_NAME } from "./queue.js";
 
 export interface CreateWorkerOptions {

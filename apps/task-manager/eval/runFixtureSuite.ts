@@ -5,10 +5,10 @@
 // assertions shape, just against a different fixture list and (in principle) a different
 // extractor/judge — pulled out so neither file has to duplicate it.
 import { beforeAll, describe, expect, it } from "vitest";
-import type { ActionItem } from "../src/queues/extract-action-items/actionItem.js";
-import type { ActionItemJudge } from "../src/queues/extract-action-items/actionItemJudge.js";
-import { judgeActionItems } from "../src/queues/extract-action-items/jobProcessor.js";
-import type { ActionItemExtractor } from "../src/queues/extract-action-items/lmStudio.js";
+import type { ActionItem } from "../src/modules/email-processing/queues/extract-action-items/actionItem.js";
+import type { ActionItemJudge } from "../src/modules/email-processing/queues/extract-action-items/actionItemJudge.js";
+import { judgeActionItems } from "../src/modules/email-processing/queues/extract-action-items/jobProcessor.js";
+import type { ActionItemExtractor } from "../src/modules/email-processing/queues/extract-action-items/lmStudio.js";
 import type { EvalFixture } from "./fixtures.js";
 
 // `judge` is optional so callers that only want to eval the extraction prompt in isolation still

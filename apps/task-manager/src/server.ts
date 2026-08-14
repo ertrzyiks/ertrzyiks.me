@@ -10,21 +10,21 @@ import { createApp } from "./app.js";
 import { isValidBasicAuth } from "./auth.js";
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { BULL_BOARD_BASE_PATH, registerBullBoard } from "./bullBoard.js";
-import { createGoogleCalendarClient } from "./googleCalendar.js";
-import { createGoogleTasksClient } from "./queues/sync-google-tasks/googleTasksClient.js";
-import { createLibraryClient } from "./queues/refresh-library-loans/library.js";
-import { loadLibraryWorkerConfig } from "./libraryConfig.js";
-import { createQueue as createExtractActionItemsQueue } from "./queues/extract-action-items/queue.js";
-import { createQueue as createGoogleTasksQueue } from "./queues/sync-google-tasks/queue.js";
-import { createWorker as createGoogleTasksWorker } from "./queues/sync-google-tasks/worker.js";
-import { createQueue as createLibraryRefreshQueue } from "./queues/refresh-library-loans/queue.js";
-import { createWorker as createLibraryRefreshWorker } from "./queues/refresh-library-loans/worker.js";
+import { createGoogleCalendarClient } from "./modules/loans/googleCalendar.js";
+import { createGoogleTasksClient } from "./modules/google-tasks/queues/sync-google-tasks/googleTasksClient.js";
+import { createLibraryClient } from "./modules/loans/queues/refresh-library-loans/library.js";
+import { loadLibraryWorkerConfig } from "./modules/loans/libraryConfig.js";
+import { createQueue as createExtractActionItemsQueue } from "./modules/email-processing/queues/extract-action-items/queue.js";
+import { createQueue as createGoogleTasksQueue } from "./modules/google-tasks/queues/sync-google-tasks/queue.js";
+import { createWorker as createGoogleTasksWorker } from "./modules/google-tasks/queues/sync-google-tasks/worker.js";
+import { createQueue as createLibraryRefreshQueue } from "./modules/loans/queues/refresh-library-loans/queue.js";
+import { createWorker as createLibraryRefreshWorker } from "./modules/loans/queues/refresh-library-loans/worker.js";
 import {
   createQueue as createLibrarySyncQueue,
   createLoanSyncQueueAdapter,
-} from "./queues/sync-loan-calendar/queue.js";
-import { createWorker as createLibrarySyncWorker } from "./queues/sync-loan-calendar/worker.js";
-import { createStore } from "./loansStore.js";
+} from "./modules/loans/queues/sync-loan-calendar/queue.js";
+import { createWorker as createLibrarySyncWorker } from "./modules/loans/queues/sync-loan-calendar/worker.js";
+import { createStore } from "./modules/loans/loansStore.js";
 import { initSentry, Sentry } from "./sentry.js";
 
 const redisUrl = process.env.REDIS_URL;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_JOB_OPTIONS } from "../../retry.js";
+import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 // See ../extract-action-items/queue.test.ts's header comment — same mocking rationale.
 const QueueMock = vi.fn();

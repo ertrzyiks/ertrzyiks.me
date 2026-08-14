@@ -22,17 +22,17 @@ import {
   createLmStudioActionItemJudge,
   noopActionItemJudge,
   type ActionItemJudge,
-} from "./queues/extract-action-items/actionItemJudge.js";
+} from "./modules/email-processing/queues/extract-action-items/actionItemJudge.js";
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
-import { createGmailFetcher, type EmailFetcher } from "./queues/extract-action-items/gmail.js";
+import { createGmailFetcher, type EmailFetcher } from "./modules/email-processing/queues/extract-action-items/gmail.js";
 import {
   createFileInspectionLogger,
   noopInspectionLogger,
   type InspectionLogger,
-} from "./queues/extract-action-items/inspectionLog.js";
-import { macKeychainReader, resolveSecret } from "./queues/extract-action-items/keychain.js";
-import { createLmStudioExtractor, type ActionItemExtractor } from "./queues/extract-action-items/lmStudio.js";
-import { createWorker } from "./queues/extract-action-items/worker.js";
+} from "./modules/email-processing/queues/extract-action-items/inspectionLog.js";
+import { macKeychainReader, resolveSecret } from "./modules/email-processing/queues/extract-action-items/keychain.js";
+import { createLmStudioExtractor, type ActionItemExtractor } from "./modules/email-processing/queues/extract-action-items/lmStudio.js";
+import { createWorker } from "./modules/email-processing/queues/extract-action-items/worker.js";
 import { initSentry, Sentry } from "./sentry.js";
 
 // Shared Keychain service for every secret this worker reads (refresh token, Redis

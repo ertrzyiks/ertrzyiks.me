@@ -1,10 +1,10 @@
 // The actual "handle one sync job" logic, independent of BullMQ — mirrors jobProcessor.ts.
 // server.ts wraps this in a `Worker` processor callback for the `sync-google-tasks` queue; tests
 // call it directly with a fake `GoogleTasksClient`.
-import { noopEventEmitter, type EventEmitter } from "../../axiomEvents.js";
+import { noopEventEmitter, type EventEmitter } from "../../../../axiomEvents.js";
 import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js";
 import type { GoogleTasksClient } from "./googleTasksClient.js";
-import { noopJobLogger, type JobLogger } from "../../jobLogger.js";
+import { noopJobLogger, type JobLogger } from "../../../../jobLogger.js";
 
 export interface GoogleTasksJobProcessorDeps {
   googleTasksClient: GoogleTasksClient;
