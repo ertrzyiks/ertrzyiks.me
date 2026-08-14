@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { refreshLibraryLoans } from "./libraryRefresh.js";
-import { createStore, type LoansStore } from "./loansStore.js";
+import { createStore, type LoansStore } from "../../loansStore.js";
 import type { LibraryClient, LibraryLoan } from "./library.js";
-import type { LoanSyncQueue } from "./librarySyncQueue.js";
-import type { CalendarClient } from "./googleCalendar.js";
+import type { LoanSyncQueue } from "../sync-loan-calendar/queue.js";
+import type { CalendarClient } from "../../googleCalendar.js";
 
 function loan(overrides: Partial<LibraryLoan> = {}): LibraryLoan {
   return {

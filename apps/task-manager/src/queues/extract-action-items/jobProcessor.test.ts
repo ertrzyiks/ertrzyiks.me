@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ActionItemJudge } from "./actionItemJudge.js";
-import type { EventEmitter, TrendEvent } from "./axiomEvents.js";
+import type { EventEmitter, TrendEvent } from "../../axiomEvents.js";
 import { processEmailJob } from "./jobProcessor.js";
 import type { EmailContent, EmailFetcher } from "./gmail.js";
 import type { InspectionLogger, InspectionRecord } from "./inspectionLog.js";

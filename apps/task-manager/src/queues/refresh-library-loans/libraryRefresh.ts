@@ -3,10 +3,10 @@
 // repeatable job), not once per loan — it's what *produces* the one `sync-loan-calendar` job per
 // current loan that loanCalendarSync.ts then handles individually.
 import type { LibraryClient } from "./library.js";
-import type { LoanSyncQueue } from "./librarySyncQueue.js";
-import { noopJobLogger, type JobLogger } from "./jobLogger.js";
-import type { LoansStore } from "./loansStore.js";
-import type { CalendarClient } from "./googleCalendar.js";
+import type { LoanSyncQueue } from "../sync-loan-calendar/queue.js";
+import { noopJobLogger, type JobLogger } from "../../jobLogger.js";
+import type { LoansStore } from "../../loansStore.js";
+import type { CalendarClient } from "../../googleCalendar.js";
 
 export interface LibraryRefreshDeps {
   libraryClient: LibraryClient;
