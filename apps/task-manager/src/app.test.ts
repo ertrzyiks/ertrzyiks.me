@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createApp } from "./app.js";
-import type { GoogleTaskJobPayload } from "./googleTask.js";
-import type { GoogleTaskJobLike, GoogleTasksJobsQueue } from "./googleTasksJobsQueue.js";
-import type { JobLike, JobsQueue } from "./jobsQueue.js";
+import type { GoogleTaskJobPayload } from "./queues/sync-google-tasks/googleTask.js";
+import type { GoogleTaskJobLike, GoogleTasksJobsQueue } from "./queues/sync-google-tasks/queue.js";
+import type { JobLike, JobsQueue } from "./queues/extract-action-items/queue.js";
 
 const BEARER_TOKEN = "test-token";
 

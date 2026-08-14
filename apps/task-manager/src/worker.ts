@@ -1,7 +1,8 @@
-// Mac worker entry point (#249). Separate from `server.ts` — this is
-// never deployed to Dokku, it only ever runs on the user's Mac via a LaunchAgent
-// (#243), colocated here so it can share the `EmailJobPayload`/`EmailJobResult`/
-// `ActionItem` types and `QUEUE_NAME` with the Jobs API server directly via import.
+// Mac worker entry point (#249). Separate from `server.ts` — this is never deployed to Dokku, it
+// only ever runs on the user's Mac via a LaunchAgent (#243). Wires up the real (or, behind
+// WORKER_FAKE_DEPS, canned) Gmail/LM Studio dependencies and hands them to
+// queues/extract-action-items/worker.ts's `createWorker`, which owns the actual BullMQ `Worker`
+// construction — this file's own job is assembling those dependencies from Keychain/env vars.
 //
 // Consumes the `extract-action-items` queue: for each job, fetches the email via
 // the worker's own `gmail.readonly` credential (refresh token read from the macOS
@@ -16,22 +17,22 @@
 // is wrapped in `main()` rather than a top-level `await` for that bundler's sake —
 // esbuild/pkg's module loader has spottier support for top-level await than plain
 // `node dist/worker.js` (still how this file runs in local/CI dev, see README) does.
-import { Worker } from "bullmq";
 import { Redis } from "ioredis";
-import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
 import {
   createLmStudioActionItemJudge,
   noopActionItemJudge,
   type ActionItemJudge,
-} from "./actionItemJudge.js";
+} from "./queues/extract-action-items/actionItemJudge.js";
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
-import { createGmailFetcher, type EmailFetcher } from "./gmail.js";
-import { createFileInspectionLogger, noopInspectionLogger, type InspectionLogger } from "./inspectionLog.js";
-import { jobLoggerFor } from "./jobLogger.js";
-import { macKeychainReader, resolveSecret } from "./keychain.js";
-import { createLmStudioExtractor, type ActionItemExtractor } from "./lmStudio.js";
-import { processEmailJob } from "./jobProcessor.js";
-import { QUEUE_NAME } from "./queue.js";
+import { createGmailFetcher, type EmailFetcher } from "./queues/extract-action-items/gmail.js";
+import {
+  createFileInspectionLogger,
+  noopInspectionLogger,
+  type InspectionLogger,
+} from "./queues/extract-action-items/inspectionLog.js";
+import { macKeychainReader, resolveSecret } from "./queues/extract-action-items/keychain.js";
+import { createLmStudioExtractor, type ActionItemExtractor } from "./queues/extract-action-items/lmStudio.js";
+import { createWorker } from "./queues/extract-action-items/worker.js";
 import { initSentry, Sentry } from "./sentry.js";
 
 // Shared Keychain service for every secret this worker reads (refresh token, Redis
@@ -173,28 +174,7 @@ async function main() {
 
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
-  const worker = new Worker<EmailJobPayload, EmailJobResult>(
-    QUEUE_NAME,
-    async (job) =>
-      processEmailJob(job.data.emailId, {
-        emailFetcher,
-        actionItemExtractor,
-        actionItemJudge,
-        events,
-        inspectionLogger,
-        log: jobLoggerFor(job),
-      }),
-    { connection },
-  );
-
-  worker.on("ready", () => {
-    console.log(`task-manager worker ready, consuming queue "${QUEUE_NAME}"`);
-  });
-
-  worker.on("failed", (job, error) => {
-    console.error(`Job ${job?.id ?? "<unknown>"} failed:`, error);
-    Sentry.captureException(error, { tags: { queue: QUEUE_NAME, jobId: job?.id } });
-  });
+  createWorker(connection, { emailFetcher, actionItemExtractor, actionItemJudge, events, inspectionLogger });
 }
 
 main().catch((error) => {

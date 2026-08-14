@@ -1,13 +1,14 @@
-// Vitest suite for src/prompts/extractActionItems.system.md and
-// src/prompts/judgeActionItem.system.md together — a manual-run-only eval against a real local LM
-// Studio server (see src/lmStudio.ts, src/actionItemJudge.ts). Never part of `pnpm test`/CI: this
-// file is only picked up by eval/vitest.config.ts, which nothing but the `eval` package script
-// points at, and the root vitest.config.ts excludes eval/ explicitly too. LM Studio is macOS-only
-// local software, so this only ever runs by hand on a Mac with LM Studio running and a model
-// loaded.
+// Vitest suite for src/queues/extract-action-items/prompts/extractActionItems.system.md and
+// .../judgeActionItem.system.md together — a manual-run-only eval against a real local LM
+// Studio server (see src/queues/extract-action-items/lmStudio.ts, .../actionItemJudge.ts). Never
+// part of `pnpm test`/CI: this file is only picked up by eval/vitest.config.ts, which nothing but
+// the `eval` package script points at, and the root vitest.config.ts excludes eval/ explicitly too.
+// LM Studio is macOS-only local software, so this only ever runs by hand on a Mac with LM Studio
+// running and a model loaded.
 //
 // Each fixture (eval/fixtures.ts) extracts, then judges and filters, once in `beforeAll` — the
-// exact same two-call pipeline src/jobProcessor.ts runs for a real job (see runFixtureSuite.ts) —
+// exact same two-call pipeline src/queues/extract-action-items/jobProcessor.ts runs for a real job
+// (see runFixtureSuite.ts) —
 // and every assertion below reuses that one result. Local model output isn't deterministic: a
 // fixture or two flipping between runs is expected, treat it as a trend to watch across a prompt
 // change, not a hard pass/fail gate the way `src/**/*.test.ts` is. A fixture failing here doesn't
@@ -22,8 +23,8 @@
 //   pnpm --filter task-manager eval
 //   pnpm --filter task-manager eval -- -t due-date       # Vitest's own -t name filter
 //   LM_STUDIO_BASE_URL=http://localhost:1234 pnpm --filter task-manager eval
-import { createLmStudioActionItemJudge } from "../src/actionItemJudge.js";
-import { createLmStudioExtractor } from "../src/lmStudio.js";
+import { createLmStudioActionItemJudge } from "../src/queues/extract-action-items/actionItemJudge.js";
+import { createLmStudioExtractor } from "../src/queues/extract-action-items/lmStudio.js";
 import { fixtures } from "./fixtures.js";
 import { runFixtureSuite } from "./runFixtureSuite.js";
 

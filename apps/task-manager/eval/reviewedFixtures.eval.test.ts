@@ -1,5 +1,6 @@
 // Same eval harness as extractActionItems.eval.test.ts (see runFixtureSuite.ts) — extract, then
-// judge and filter, the same two-call pipeline src/jobProcessor.ts runs for a real job — run
+// judge and filter, the same two-call pipeline src/queues/extract-action-items/jobProcessor.ts
+// runs for a real job — run
 // against reviewedFixtures.ts — real emails a human flagged as wrongly extracted via `npm run
 // review` (scripts/review-inspections.ts) — instead of fixtures.ts's hand-picked ones.
 //
@@ -14,8 +15,8 @@
 // Only ever run manually (`pnpm --filter task-manager eval`), same caveats as
 // extractActionItems.eval.test.ts's header comment (non-deterministic local model output).
 import { describe, it } from "vitest";
-import { createLmStudioActionItemJudge } from "../src/actionItemJudge.js";
-import { createLmStudioExtractor } from "../src/lmStudio.js";
+import { createLmStudioActionItemJudge } from "../src/queues/extract-action-items/actionItemJudge.js";
+import { createLmStudioExtractor } from "../src/queues/extract-action-items/lmStudio.js";
 import { reviewedFixtures } from "./reviewedFixtures.js";
 import { runFixtureSuite } from "./runFixtureSuite.js";
 

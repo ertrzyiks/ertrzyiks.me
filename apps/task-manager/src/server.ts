@@ -5,32 +5,26 @@
 // production too (#296/#311): `dotenv/config` is a no-op when no `.env` file exists, which is the
 // case in production, so loading it unconditionally is safe.
 import "dotenv/config";
-import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { createApp } from "./app.js";
 import { isValidBasicAuth } from "./auth.js";
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { BULL_BOARD_BASE_PATH, registerBullBoard } from "./bullBoard.js";
 import { createGoogleCalendarClient } from "./googleCalendar.js";
-import type { GoogleTaskJobPayload, GoogleTaskJobResult } from "./googleTask.js";
-import { createGoogleTasksClient } from "./googleTasksClient.js";
-import { processGoogleTaskJob } from "./googleTasksJobProcessor.js";
-import { GOOGLE_TASKS_QUEUE_NAME } from "./googleTasksQueue.js";
-import { jobLoggerFor } from "./jobLogger.js";
-import { createLibraryClient } from "./library.js";
+import { createGoogleTasksClient } from "./queues/sync-google-tasks/googleTasksClient.js";
+import { createLibraryClient } from "./queues/refresh-library-loans/library.js";
 import { loadLibraryWorkerConfig } from "./libraryConfig.js";
-import { refreshLibraryLoans } from "./libraryRefresh.js";
+import { createQueue as createExtractActionItemsQueue } from "./queues/extract-action-items/queue.js";
+import { createQueue as createGoogleTasksQueue } from "./queues/sync-google-tasks/queue.js";
+import { createWorker as createGoogleTasksWorker } from "./queues/sync-google-tasks/worker.js";
+import { createQueue as createLibraryRefreshQueue } from "./queues/refresh-library-loans/queue.js";
+import { createWorker as createLibraryRefreshWorker } from "./queues/refresh-library-loans/worker.js";
 import {
-  createLibraryRefreshQueue,
-  createLibrarySyncQueue,
+  createQueue as createLibrarySyncQueue,
   createLoanSyncQueueAdapter,
-  LIBRARY_REFRESH_QUEUE_NAME,
-  LIBRARY_SYNC_QUEUE_NAME,
-  type LoanSyncJobPayload,
-} from "./librarySyncQueue.js";
-import { syncLoanCalendarEvent } from "./loanCalendarSync.js";
+} from "./queues/sync-loan-calendar/queue.js";
+import { createWorker as createLibrarySyncWorker } from "./queues/sync-loan-calendar/worker.js";
 import { createStore } from "./loansStore.js";
-import { createQueue, QUEUE_NAME } from "./queue.js";
 import { initSentry, Sentry } from "./sentry.js";
 
 const redisUrl = process.env.REDIS_URL;
@@ -70,8 +64,8 @@ const events: EventEmitter =
     ? createAxiomEventEmitter({ token: axiomToken, dataset: axiomDataset, service: "task-manager" })
     : noopEventEmitter;
 
-const queue = createQueue(redisUrl, QUEUE_NAME);
-const googleTasksQueue = createQueue(redisUrl, GOOGLE_TASKS_QUEUE_NAME);
+const queue = createExtractActionItemsQueue(redisUrl);
+const googleTasksQueue = createGoogleTasksQueue(redisUrl);
 const app = createApp(queue, googleTasksQueue, bearerToken);
 
 // Registered here (rather than only inside the "library sync workers" block below) so Bull
@@ -122,27 +116,19 @@ if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
   // `limiter` throttles how fast this worker drains the queue — BullMQ just holds jobs back
   // rather than dropping/retrying them, so a burst of scheduled jobs (e.g. many action items
   // completing in one personal-assistant poll cycle) gets smoothed out over time instead of
-  // firing at Google Tasks all at once. Added after a real "quota exceeded" error from the Tasks
-  // API; 5/sec is a conservative starting point, not a measured ceiling — tune via the env vars
-  // if it turns out to be too slow (a deep backlog) or still too fast (still hitting quota).
+  // firing at Google Tasks all at once. Added after hitting a real "quota exceeded" error from
+  // the Tasks API; 5/sec is a conservative starting point, not a measured ceiling — tune via the
+  // env vars if it turns out to be too slow (a deep backlog) or still too fast (still hitting
+  // quota).
   const googleTasksConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  const googleTasksWorker = new Worker<GoogleTaskJobPayload, GoogleTaskJobResult>(
-    GOOGLE_TASKS_QUEUE_NAME,
-    async (job) => processGoogleTaskJob(job.data, { googleTasksClient, events, log: jobLoggerFor(job) }),
+  createGoogleTasksWorker(
+    googleTasksConnection,
+    { googleTasksClient, events },
     {
-      connection: googleTasksConnection,
       limiter: { max: googleTasksRateLimitMax, duration: googleTasksRateLimitDurationMs },
+      logger: app.log,
     },
   );
-
-  googleTasksWorker.on("ready", () => {
-    app.log.info(`sync-google-tasks worker ready, consuming queue "${GOOGLE_TASKS_QUEUE_NAME}"`);
-  });
-
-  googleTasksWorker.on("failed", (job, error) => {
-    app.log.error(`Google Tasks sync job ${job?.id ?? "<unknown>"} failed: ${error}`);
-    Sentry.captureException(error, { tags: { queue: GOOGLE_TASKS_QUEUE_NAME, jobId: job?.id } });
-  });
 } else {
   app.log.warn(
     "GOOGLE_TASKS_CLIENT_ID/GOOGLE_TASKS_CLIENT_SECRET/GOOGLE_TASKS_REFRESH_TOKEN not fully set — " +
@@ -177,39 +163,17 @@ if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClie
     { name: "refresh" },
   );
 
-  const libraryRefreshWorker = new Worker(
-    LIBRARY_REFRESH_QUEUE_NAME,
-    async (job) => {
-      const result = await refreshLibraryLoans({
-        libraryClient,
-        store,
-        syncQueue: librarySyncQueueAdapter,
-        calendar,
-        log: jobLoggerFor(job),
-      });
-      app.log.info(
-        `library refresh: ${result.loanCount} current loan(s), ` +
-          `${result.removedCalendarEventGroups} stale calendar event group(s) removed`,
-      );
-    },
-    { connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) },
+  createLibraryRefreshWorker(
+    new Redis(redisUrl, { maxRetriesPerRequest: null }),
+    { libraryClient, store, syncQueue: librarySyncQueueAdapter, calendar },
+    { logger: app.log },
   );
 
-  const librarySyncWorker = new Worker<LoanSyncJobPayload>(
-    LIBRARY_SYNC_QUEUE_NAME,
-    async (job) => {
-      await syncLoanCalendarEvent(job.data.holdingId, { store, calendar, log: jobLoggerFor(job) });
-    },
-    { connection: new Redis(redisUrl, { maxRetriesPerRequest: null }) },
+  createLibrarySyncWorker(
+    new Redis(redisUrl, { maxRetriesPerRequest: null }),
+    { store, calendar },
+    { logger: app.log },
   );
-
-  for (const worker of [libraryRefreshWorker, librarySyncWorker]) {
-    worker.on("ready", () => app.log.info(`library sync worker ready, consuming "${worker.name}"`));
-    worker.on("failed", (job, error) => {
-      app.log.error(`Library sync job ${job?.id ?? "<unknown>"} on "${worker.name}" failed: ${error}`);
-      Sentry.captureException(error, { tags: { queue: worker.name, jobId: job?.id } });
-    });
-  }
 } else {
   app.log.warn(
     "WBPG_USERNAME/WBPG_PASSWORD/GOOGLE_CALENDAR_CLIENT_ID/GOOGLE_CALENDAR_CLIENT_SECRET/" +

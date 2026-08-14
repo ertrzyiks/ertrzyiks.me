@@ -40,13 +40,13 @@ const LAUNCH_AGENT_LABEL = "com.ertrzyiks.task-manager-worker";
 const KEYCHAIN_SERVICE = "task-manager-worker";
 const BUNDLE_PATH = "dist-bin/worker.bundle.cjs";
 const BINARY_PATH = "dist-bin/task-manager-worker";
-// lmStudio.ts reads its system prompt from src/prompts/ via a path resolved relative
-// to its own file at runtime (import.meta.url). That resolution lands here once
+// lmStudio.ts reads its system prompt from src/queues/extract-action-items/prompts/ via a path
+// resolved relative to its own file at runtime (import.meta.url). That resolution lands here once
 // bundled, so the prompts have to physically exist next to the bundle too — copied
 // by runBundle() below, and declared as a pkg "assets" glob (see package.json) so
 // @yao-pkg/pkg embeds them in the standalone executable rather than leaving them as
 // a loose file the binary can't find once it's moved off this machine.
-const PROMPTS_SRC_DIR = "src/prompts";
+const PROMPTS_SRC_DIR = "src/queues/extract-action-items/prompts";
 const PROMPTS_DIST_DIR = "dist-bin/prompts";
 
 // Maps each Keychain "account" (see keychain.ts / worker.ts) to the key it's read

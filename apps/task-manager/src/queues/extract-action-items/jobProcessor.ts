@@ -4,14 +4,14 @@
 // Studio in the loop.
 import type { ActionItem, EmailJobResult } from "./actionItem.js";
 import { noopActionItemJudge, type ActionItemJudge } from "./actionItemJudge.js";
-import { noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
+import { noopEventEmitter, type EventEmitter } from "../../axiomEvents.js";
 import type { EmailContent, EmailFetcher } from "./gmail.js";
 import {
   noopInspectionLogger,
   type InspectionLogger,
   type RejectedActionItem,
 } from "./inspectionLog.js";
-import { noopJobLogger, type JobLogger } from "./jobLogger.js";
+import { noopJobLogger, type JobLogger } from "../../jobLogger.js";
 import type { ActionItemExtractor } from "./lmStudio.js";
 
 export interface JobProcessorDeps {
