@@ -1,11 +1,11 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { isValidBearerToken } from "./auth.js";
-import type { GoogleTaskJobPayload } from "./queues/sync-google-tasks/googleTask.js";
+import type { GoogleTaskJobPayload } from "./modules/google-tasks/queues/sync-google-tasks/googleTask.js";
 import {
   GOOGLE_TASKS_QUEUE_NAME,
   type GoogleTasksJobsQueue,
-} from "./queues/sync-google-tasks/queue.js";
-import { QUEUE_NAME, type JobsQueue } from "./queues/extract-action-items/queue.js";
+} from "./modules/google-tasks/queues/sync-google-tasks/queue.js";
+import { QUEUE_NAME, type JobsQueue } from "./modules/email-processing/queues/extract-action-items/queue.js";
 import { toSimplifiedStatus, type SimplifiedStatus } from "./jobStatus.js";
 import { Sentry } from "./sentry.js";
 

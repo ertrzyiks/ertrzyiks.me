@@ -9,7 +9,7 @@
 // re-applies it, so it's safe (if slightly redundant) for every loan in a group to run this and
 // converge on the same result regardless of run order.
 import type { CalendarClient } from "../../googleCalendar.js";
-import { noopJobLogger, type JobLogger } from "../../jobLogger.js";
+import { noopJobLogger, type JobLogger } from "../../../../jobLogger.js";
 import type { LoansStore } from "../../loansStore.js";
 
 export interface LoanCalendarSyncDeps {

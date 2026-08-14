@@ -1,9 +1,9 @@
 // Fixture emails for eval/run.ts, chosen to exercise each rule in
-// src/queues/extract-action-items/prompts/extractActionItems.system.md's Phase 1/Phase 2
+// src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md's Phase 1/Phase 2
 // framework rather than to be a representative sample of a real inbox: one fixture per rule,
 // plus a couple that combine rules the way real mail does. Add a fixture here whenever the
 // prompt gains a new rule, or whenever a real email tricks it into misclassifying something.
-import type { EmailContent } from "../src/queues/extract-action-items/gmail.js";
+import type { EmailContent } from "../src/modules/email-processing/queues/extract-action-items/gmail.js";
 
 export interface ItemExpectation {
   // Substring/regex the item's title/description must contain. Deliberately loose —

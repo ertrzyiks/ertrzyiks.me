@@ -3,7 +3,7 @@
 // app.ts's `POST /jobs`.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
-import { DEFAULT_JOB_OPTIONS } from "../../retry.js";
+import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 export const QUEUE_NAME = "extract-action-items";
 

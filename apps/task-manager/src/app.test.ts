@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { createApp } from "./app.js";
-import type { GoogleTaskJobPayload } from "./queues/sync-google-tasks/googleTask.js";
-import type { GoogleTaskJobLike, GoogleTasksJobsQueue } from "./queues/sync-google-tasks/queue.js";
-import type { JobLike, JobsQueue } from "./queues/extract-action-items/queue.js";
+import type { GoogleTaskJobPayload } from "./modules/google-tasks/queues/sync-google-tasks/googleTask.js";
+import type { GoogleTaskJobLike, GoogleTasksJobsQueue } from "./modules/google-tasks/queues/sync-google-tasks/queue.js";
+import type { JobLike, JobsQueue } from "./modules/email-processing/queues/extract-action-items/queue.js";
 
 const BEARER_TOKEN = "test-token";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EventEmitter, TrendEvent } from "../../axiomEvents.js";
+import type { EventEmitter, TrendEvent } from "../../../../axiomEvents.js";
 import { processGoogleTaskJob } from "./googleTasksJobProcessor.js";
 import type { GoogleTasksClient } from "./googleTasksClient.js";
 import type { GoogleTaskJobPayload } from "./googleTask.js";

@@ -1,5 +1,5 @@
 // Local-only review UI for the inspection trail (see
-// src/queues/extract-action-items/inspectionLog.ts). Reads every JSON
+// src/modules/email-processing/queues/extract-action-items/inspectionLog.ts). Reads every JSON
 // file `WORKER_INSPECTION_DIR` accumulates (one per extract-action-items run — see worker.ts),
 // and serves a single-page UI to browse them and flag ones whose action items are wrong.
 //
@@ -24,9 +24,9 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import Fastify from "fastify";
-import type { ActionItem } from "../src/queues/extract-action-items/actionItem.js";
-import type { EmailContent } from "../src/queues/extract-action-items/gmail.js";
-import type { StoredInspectionRecord } from "../src/queues/extract-action-items/inspectionLog.js";
+import type { ActionItem } from "../src/modules/email-processing/queues/extract-action-items/actionItem.js";
+import type { EmailContent } from "../src/modules/email-processing/queues/extract-action-items/gmail.js";
+import type { StoredInspectionRecord } from "../src/modules/email-processing/queues/extract-action-items/inspectionLog.js";
 import type { ItemExpectation } from "../eval/fixtures.js";
 import { reviewedFixturesPath, type ReviewedFixture } from "../eval/reviewedFixtures.js";
 

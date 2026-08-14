@@ -7,7 +7,7 @@
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { GoogleTaskJobPayload } from "./googleTask.js";
-import { DEFAULT_JOB_OPTIONS } from "../../retry.js";
+import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 export const GOOGLE_TASKS_QUEUE_NAME = "sync-google-tasks";
 

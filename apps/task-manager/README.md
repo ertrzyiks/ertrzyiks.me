@@ -17,10 +17,18 @@ the "must never leave local processing" constraint that keeps the Mac worker on 
   event in sync with every currently-borrowed library book's return date. See "Library loan ->
   Google Calendar sync" below.
 
-## Queue layout
+## Module and queue layout
 
-Every queue in this package lives under `src/queues/<queue-name>/`, holding everything that
-belongs to that one queue and nothing else:
+`src/modules/<module-name>/` is the top-level grouping — one per business capability this package
+owns, not per queue:
+
+- `src/modules/email-processing/` — one queue, `extract-action-items` (Mac-only, see below).
+- `src/modules/google-tasks/` — one queue, `sync-google-tasks`.
+- `src/modules/loans/` — two queues, `refresh-library-loans` and `sync-loan-calendar` (see
+  "Library loan -> Google Calendar sync" below for how the two relate).
+
+Under each module, `queues/<queue-name>/` holds everything that belongs to that one queue and
+nothing else:
 
 - `queue.ts` — the queue name constant and a `createQueue(redisUrl)` factory returning a
   configured BullMQ `Queue` (shared `defaultJobOptions` retry policy, see `retry.ts`). Also holds
@@ -33,10 +41,16 @@ belongs to that one queue and nothing else:
   `libraryRefresh.ts`, `loanCalendarSync.ts`) and everything only *it* depends on (Gmail/LM
   Studio/Keychain for `extract-action-items`, the Google Tasks client for `sync-google-tasks`, the
   WBPG client for `refresh-library-loans`) — kept independent of BullMQ so it can be unit-tested
-  with fakes; `worker.ts` is only the wiring around it. A file only moves into a queue's folder if
-  that queue is its *only* consumer — `loansStore.ts` and `googleCalendar.ts`, for example, are
-  read/written by both `refresh-library-loans` and `sync-loan-calendar`, so they stay at `src/`
-  top level instead of picking one queue to live under.
+  with fakes; `worker.ts` is only the wiring around it.
+
+A file lives at a queue's `queues/<queue-name>/` level only if that queue is its *only* consumer;
+one level up, directly under the module (e.g. `src/modules/loans/loansStore.ts`,
+`.../googleCalendar.ts`, `.../libraryConfig.ts`), if more than one queue *in that module* shares
+it (both `loans` queues read/write the loans sqlite store and the calendar client, so those stay
+at the module level rather than picking one queue's folder to live under); and at `src/` top level
+only if it's shared across *modules* (`axiomEvents.ts`, `jobLogger.ts`, `sentry.ts`, `retry.ts`,
+`jobStatus.ts`, `auth.ts`, `bullBoard.ts`, `workerLogger.ts`) or is a process entrypoint spanning
+more than one module (`app.ts`, `server.ts`, `worker.ts`).
 
 `server.ts` and the Mac `worker.ts` entrypoint both just import `createQueue`/`createWorker` from
 these modules and wire in their own dependencies/logger (Fastify's `app.log` for the cloud side,
@@ -94,8 +108,8 @@ button always works — see `bullBoard.ts`), jobs just queue up unconsumed until
 
 `POST /google-tasks-jobs` schedules a job on the `sync-google-tasks` queue, consumed by a second
 `bullmq.Worker` started alongside the Jobs API server in `server.ts`
-(`src/queues/sync-google-tasks/googleTasksJobProcessor.ts` →
-`src/queues/sync-google-tasks/googleTasksClient.ts`, wrapping the Google Tasks API).
+(`src/modules/google-tasks/queues/sync-google-tasks/googleTasksJobProcessor.ts` →
+`src/modules/google-tasks/queues/sync-google-tasks/googleTasksClient.ts`, wrapping the Google Tasks API).
 `personal-assistant`'s sync loop
 (`src/googleTasksSyncer.ts`) is the only caller: it schedules a job for each action item without
 a `job_id` yet, then polls for completion and backfills `task_id` — see that package's README for
@@ -138,7 +152,7 @@ without a due date.
 | `WORKER_INSPECTION_DIR`   | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
 
 \* All four secrets are read from the macOS Keychain if not set as env vars (see `resolveSecret`
-in `src/queues/extract-action-items/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
+in `src/modules/email-processing/queues/extract-action-items/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
 Keychain. Setting them as env vars is a **local dev/CI convenience only** (this repo's Linux
 sandbox has no Keychain to fall back to); never set them in the LaunchAgent plist, which would put
 them back in plaintext. This includes `GMAIL_REFRESH_TOKEN` — the most sensitive of the four — so
@@ -156,12 +170,12 @@ not done, since this is additive and the Mac side isn't the primary way this get
 
 The worker reads all four secrets — the Gmail refresh token, `REDIS_URL`, `GMAIL_CLIENT_ID`, and
 `GMAIL_CLIENT_SECRET` — from the **macOS Keychain** at startup by shelling out to the `security`
-CLI (`security find-generic-password -a <account> -s <service> -w`, see `src/queues/extract-action-items/keychain.ts`). **This
+CLI (`security find-generic-password -a <account> -s <service> -w`, see `src/modules/email-processing/queues/extract-action-items/keychain.ts`). **This
 is macOS-only** — there is no cross-platform Node API for the Keychain — and the real Keychain read
 has never been exercised in this repo's CI or in the sandbox this worker was developed in, both of
-which are Linux. Likewise, the LM Studio HTTP call (`src/queues/extract-action-items/lmStudio.ts`) talks to a real local server
+which are Linux. Likewise, the LM Studio HTTP call (`src/modules/email-processing/queues/extract-action-items/lmStudio.ts`) talks to a real local server
 that isn't running in CI/sandbox either. Both are built behind small seams (`EmailFetcher`,
-`ActionItemExtractor`) so `src/queues/extract-action-items/jobProcessor.ts` — the actual "handle one job" logic — is
+`ActionItemExtractor`) so `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` — the actual "handle one job" logic — is
 unit-tested with fakes, independent of Keychain/Gmail/LM Studio availability. See the PR that
 introduced this file for what was and wasn't verified end-to-end.
 
@@ -222,7 +236,7 @@ reporting is opt-in via a local env var, not active in the production LaunchAgen
 
 Axiom and Sentry above answer "did the job succeed" and "what broke" — neither shows *what the LLM
 actually saw and produced*, which is what you need when judging extraction quality or debugging a
-bad set of action items. `src/queues/extract-action-items/inspectionLog.ts` writes one JSON file per `extract-action-items` run
+bad set of action items. `src/modules/email-processing/queues/extract-action-items/inspectionLog.ts` writes one JSON file per `extract-action-items` run
 to `WORKER_INSPECTION_DIR` (see the Mac worker env var table above; default `./audit`, resolved
 against the worker process's cwd — the repo checkout in dev, see "macOS LaunchAgent" below for
 prod) — `{ emailId, email, actionItems, rejectedActionItems? }` on success (`rejectedActionItems`
@@ -238,13 +252,13 @@ it must never end up committed).
 ### Action item judge
 
 Extraction (above) and judging are two separate LM Studio calls, not one bigger prompt: after
-`src/queues/extract-action-items/lmStudio.ts` turns an email into a list of action items, `src/queues/extract-action-items/actionItemJudge.ts` calls LM
+`src/modules/email-processing/queues/extract-action-items/lmStudio.ts` turns an email into a list of action items, `src/modules/email-processing/queues/extract-action-items/actionItemJudge.ts` calls LM
 Studio again **once per action item**, passing it the original email plus that one proposed item,
 and asks it to decide whether the item should actually be kept — see
-`src/queues/extract-action-items/prompts/judgeActionItem.system.md` for exactly what it's checking for (grounded in the email,
+`src/modules/email-processing/queues/extract-action-items/prompts/judgeActionItem.system.md` for exactly what it's checking for (grounded in the email,
 not just a call-to-action link, not from a newsletter/notification that shouldn't have produced
 anything, a real due date rather than a guess, one coherent action rather than a vague catch-all).
-`src/queues/extract-action-items/jobProcessor.ts` runs every item's judge call concurrently, drops whatever gets rejected
+`src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs every item's judge call concurrently, drops whatever gets rejected
 before the job result and Google Tasks sync ever see it, and records both halves — survivors and
 rejects, with the judge's stated reason — to the inspection log above, so a bad extraction that
 *would* have created a wrong task is visible in `npm run review` (below) instead of only the ones
@@ -258,7 +272,7 @@ the same way an extraction failure does (see `processEmailJob`'s catch block) ra
 falling back to "keep everything" — a job that failed outright is easier to notice and retry than
 one that quietly skipped a safety check.
 
-Both LM Studio calls share their HTTP plumbing (`src/queues/extract-action-items/lmStudioClient.ts`: model discovery, the
+Both LM Studio calls share their HTTP plumbing (`src/modules/email-processing/queues/extract-action-items/lmStudioClient.ts`: model discovery, the
 structured `response_format` request shape, error messages) so the two prompts differ only in
 *what* they ask, not in *how* they talk to LM Studio.
 
@@ -288,7 +302,7 @@ which `eval/reviewedFixtures.eval.test.ts` runs the real extractor against, same
 
 A freshly-flagged fixture is *expected* to fail (red) — that's the point, it's a checklist entry
 recording a real mistake, not a regression guard. Run `npm run eval` after flagging a few to see
-them fail, use them as a worklist while iterating on `src/queues/extract-action-items/prompts/extractActionItems.system.md`,
+them fail, use them as a worklist while iterating on `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md`,
 and re-run until they go green. "Unflag" in the UI (or deleting the entry from
 `eval/reviewed-fixtures.json` by hand) removes a fixture if it was flagged by mistake.
 
@@ -383,10 +397,10 @@ REDIS_URL=redis://localhost:6379 WORKER_FAKE_DEPS=true pnpm --filter task-manage
 ### Evaluating the extraction + judge pipeline (`eval/`)
 
 `eval/extractActionItems.eval.test.ts` and `eval/reviewedFixtures.eval.test.ts` are local-only eval
-harnesses for `src/queues/extract-action-items/prompts/extractActionItems.system.md` **and**
-`src/queues/extract-action-items/prompts/judgeActionItem.system.md` together — a set of fixture emails
+harnesses for `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md` **and**
+`src/modules/email-processing/queues/extract-action-items/prompts/judgeActionItem.system.md` together — a set of fixture emails
 (`eval/fixtures.ts`/`eval/reviewedFixtures.ts`) run through the exact same extract-then-judge
-pipeline `src/queues/extract-action-items/jobProcessor.ts` runs for a real job (real local LM Studio server, via the same
+pipeline `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs for a real job (real local LM Studio server, via the same
 `createLmStudioExtractor(...)`/`createLmStudioActionItemJudge(...)` the worker uses — see
 `eval/runFixtureSuite.ts`), each checked against expectations on how many action items should
 *survive both steps* and what they should say. It's for iterating on either prompt by hand: change
@@ -445,10 +459,10 @@ so it starts automatically at login and restarts itself if it crashes. The templ
   introduced `release-worker.mjs` for the fuller reasoning.
 - No secrets live in this plist. `EnvironmentVariables` isn't set at all — `REDIS_URL`,
   `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and the Gmail refresh token are all read from the
-  Keychain at startup (`src/queues/extract-action-items/keychain.ts`), provisioned by the release script below.
+  Keychain at startup (`src/modules/email-processing/queues/extract-action-items/keychain.ts`), provisioned by the release script below.
 - LM Studio itself (starting it, keeping a model loaded) is **not** managed by this LaunchAgent —
   that stays your manual responsibility; the worker just calls whatever LM Studio has loaded at
-  the time (`src/queues/extract-action-items/lmStudio.ts`).
+  the time (`src/modules/email-processing/queues/extract-action-items/lmStudio.ts`).
 
 ### 1. Create the local secrets file
 
@@ -549,7 +563,7 @@ This repo's CI/sandbox is Linux, so several pieces here have never run for real:
   have a hit for the exact Node patch version tried here, and cross-compiling isn't possible from
   Linux), `codesign`, `security` (Keychain provisioning), and `launchctl` (LaunchAgent
   bootstrap/reload) — none of those tools exist in this sandbox. Same verification gap as
-  `src/queues/extract-action-items/keychain.ts`'s real Keychain read always had (see the PR that introduced this file for what
+  `src/modules/email-processing/queues/extract-action-items/keychain.ts`'s real Keychain read always had (see the PR that introduced this file for what
   was and wasn't checked).
 
 ## Library loan -> Google Calendar sync
@@ -572,31 +586,31 @@ current loan onto the second queue, consumed by the second `Worker`.
 
 ### How it fits together
 
-- `src/queues/refresh-library-loans/library.ts` — the WBPG client (login, walk every linked sub-account via
+- `src/modules/loans/queues/refresh-library-loans/library.ts` — the WBPG client (login, walk every linked sub-account via
   `/api/auth/user/subusers` + `/api/auth/user/change`, collect current loans; also resolves branch
   ("filia") id -> name from the public `/api/setting/all`).
-- `src/loansStore.ts` — sqlite (`node:sqlite`, no native dependency, unlike `better-sqlite3` —
+- `src/modules/loans/loansStore.ts` — sqlite (`node:sqlite`, no native dependency, unlike `better-sqlite3` —
   matters here because `worker.ts` gets bundled into a standalone binary elsewhere in this
   package). Two tables: the current-loans snapshot, and one row per (filia, return-date day)
   group that's ever gotten a calendar event — see that file's header comment for why the event is
   keyed by *group*, not by individual loan (a prolongation can move a loan into a different
   group, and a per-loan pointer would go stale in a way that's easy to apply to the wrong event).
-- `src/googleCalendar.ts` — thin Google Calendar client (create/update/delete/check an event).
-- `src/queues/sync-loan-calendar/loanCalendarSync.ts` — the actual "sync one loan's event" decision logic, independent of
+- `src/modules/loans/googleCalendar.ts` — thin Google Calendar client (create/update/delete/check an event).
+- `src/modules/loans/queues/sync-loan-calendar/loanCalendarSync.ts` — the actual "sync one loan's event" decision logic, independent of
   BullMQ (mirrors `jobProcessor.ts`'s split) — one book due back at a filia joins whatever event
   already covers that filia+day, creating one if none exists yet; every run recomputes the whole
   group's description so it converges regardless of which loan's job happens to run first, no
   merge step needed even when a prolongation moves a book out of a shared event (see
   `loanCalendarSync.test.ts`'s "prolonged out of a group" test).
-- `src/queues/refresh-library-loans/libraryRefresh.ts` — the periodic "check WBPG, replace the loans snapshot, fan out one
+- `src/modules/loans/queues/refresh-library-loans/libraryRefresh.ts` — the periodic "check WBPG, replace the loans snapshot, fan out one
   `sync-loan-calendar` job per current loan, garbage-collect calendar events for groups no loan
   belongs to any more" logic (also independent of BullMQ).
-- `src/queues/refresh-library-loans/queue.ts`/`worker.ts` and
-  `src/queues/sync-loan-calendar/queue.ts`/`worker.ts` — the BullMQ wiring for the two queues this
+- `src/modules/loans/queues/refresh-library-loans/queue.ts`/`worker.ts` and
+  `src/modules/loans/queues/sync-loan-calendar/queue.ts`/`worker.ts` — the BullMQ wiring for the two queues this
   sync uses (the `Queue`/queue name, and the `Worker` that wraps `libraryRefresh.ts`/
   `loanCalendarSync.ts` above with its `ready`/`failed` listeners) — see "Queue layout" below for
   the convention every queue in this package follows.
-- `src/libraryConfig.ts` — typed env var loading for the five WBPG/Calendar vars plus their
+- `src/modules/loans/libraryConfig.ts` — typed env var loading for the five WBPG/Calendar vars plus their
   optional overrides, called from `server.ts` once all five are confirmed present.
 
 ### What is the schedule, and can it be run manually?

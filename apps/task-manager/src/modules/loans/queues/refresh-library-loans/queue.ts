@@ -5,7 +5,7 @@
 // neither WBPG login nor Google Calendar needs anything Mac-local.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
-import { DEFAULT_JOB_OPTIONS } from "../../retry.js";
+import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 export const LIBRARY_REFRESH_QUEUE_NAME = "refresh-library-loans";
 
