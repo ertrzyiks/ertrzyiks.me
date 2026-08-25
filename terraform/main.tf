@@ -186,6 +186,13 @@ resource "dokku_app" "personal_assistant" {
   }
 }
 
+# Kuga app (code lives in a separate repo, not under apps/)
+resource "dokku_app" "kuga" {
+  app_name = "kuga"
+
+  domains = ["kuga.ertrzyiks.me"]
+}
+
 # kstatus app (manually managed status page)
 resource "dokku_app" "kstatus" {
   app_name = "kstatus"
