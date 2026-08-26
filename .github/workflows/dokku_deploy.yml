@@ -1,0 +1,63 @@
+name: Dokku Deploy
+
+# Generic entry point: deploy an already-built docker image to a named Dokku app, without
+# building anything here. Unlike release_*.yml (which build the image from this repo's source),
+# this just does `git:from-image` against the given app. Two ways to trigger it:
+#
+#   - Manually from the Actions UI, or:
+#       gh workflow run dokku_deploy.yml -f app=<dokku-app> -f image=<fully-qualified-image-ref>
+#
+#   - From another repository's workflow, via `repository_dispatch`:
+#       - name: Trigger dokku deploy
+#         run: |
+#           gh api repos/ertrzyiks/ertrzyiks.me/dispatches \
+#             -f event_type=dokku-deploy \
+#             -F 'client_payload[app]=<dokku-app>' \
+#             -F 'client_payload[image]=ghcr.io/<owner>/<repo>/<app>@<digest>'
+#         env:
+#           GH_TOKEN: ${{ secrets.DOKKU_DEPLOY_DISPATCH_TOKEN }}
+#     The token needs to be a PAT (classic `repo` scope, or fine-grained with "Contents: write" and
+#     "Actions: read/write" on this repository) stored as a secret in the calling repo — the
+#     built-in GITHUB_TOKEN of the calling repo cannot dispatch into a different repository.
+#     `image` should be a reference the dokku host can pull on its own (public, or already
+#     authenticated on that host) — this workflow doesn't push or authenticate anything itself.
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Dokku app name (also the git remote path on the dokku host)"
+        type: string
+        required: true
+      image:
+        description: "Fully-qualified docker image reference to deploy (e.g. ghcr.io/org/repo/app@sha256:...)"
+        type: string
+        required: true
+  repository_dispatch:
+    types: [dokku-deploy]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency: dokku-deploy-${{ inputs.app || github.event.client_payload.app }}
+
+    steps:
+      - name: Resolve inputs
+        id: params
+        run: |
+          app="${{ inputs.app || github.event.client_payload.app }}"
+          image="${{ inputs.image || github.event.client_payload.image }}"
+
+          if [ -z "$app" ] || [ -z "$image" ]; then
+            echo "Both 'app' and 'image' are required (got app='$app', image='$image')" >&2
+            exit 1
+          fi
+
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Push to dokku
+        uses: dokku/github-action@v1.10.0
+        with:
+          git_remote_url: "ssh://dokku@167.71.190.115/${{ steps.params.outputs.app }}"
+          ssh_private_key: ${{ secrets.DOKKU_DEPLOY_KEY }}
+          deploy_docker_image: ${{ steps.params.outputs.image }}
