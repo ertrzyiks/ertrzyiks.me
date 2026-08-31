@@ -1,4 +1,4 @@
-// BullMQ wiring for the `extract-action-items` queue — the actual "fetch, extract, judge" logic
+// BullMQ wiring for the `extract-action-items` queue — the actual "fetch, extract" logic
 // lives in jobProcessor.ts, independent of BullMQ, so it can be unit-tested with fakes; this file
 // is only the `Worker` construction and its `ready`/`failed` listeners, extracted out of the
 // top-level worker.ts entrypoint so the queue/worker pairing matches every other queue under

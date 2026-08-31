@@ -1,8 +1,9 @@
-// Calls LM Studio's local OpenAI-compatible server to extract action items from
-// an email (#238). Never leaves the Mac — `baseUrl` defaults to localhost, and this
-// is one of two model calls the worker makes (the other, actionItemJudge.ts, judges what this
-// one extracts) — see lmStudioClient.ts for the HTTP plumbing both share.
-import type { ActionItem } from "./actionItem.js";
+// Calls LM Studio's local OpenAI-compatible server to extract action items and calendar events
+// from an email (#238, extended to also extract events per the follow-up that removed the action
+// item judge). Never leaves the Mac — `baseUrl` defaults to localhost, and this is the only model
+// call the worker makes now that judging (a second LM Studio call) is gone — see
+// lmStudioClient.ts for the HTTP plumbing this shares with nothing else today.
+import type { ActionItem, CalendarEvent } from "./actionItem.js";
 import type { EmailContent } from "./gmail.js";
 import {
   DEFAULT_LM_STUDIO_BASE_URL,
@@ -11,8 +12,13 @@ import {
   type LmStudioConfig,
 } from "./lmStudioClient.js";
 
+export interface ExtractionResult {
+  actionItems: ActionItem[];
+  events: CalendarEvent[];
+}
+
 export interface ActionItemExtractor {
-  extract(email: EmailContent): Promise<ActionItem[]>;
+  extract(email: EmailContent): Promise<ExtractionResult>;
 }
 
 export type { LmStudioConfig };
@@ -22,7 +28,7 @@ export type { LmStudioConfig };
 // for how this resolves both in dev and inside the packaged production binary.
 const systemPrompt = readSystemPrompt("extractActionItems.system.md");
 
-const actionItemsJsonSchema = {
+const extractionJsonSchema = {
   type: "object",
   properties: {
     actionItems: {
@@ -44,8 +50,27 @@ const actionItemsJsonSchema = {
         additionalProperties: false,
       },
     },
+    events: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+          // Required — see actionItem.ts's CalendarEvent comment: an event with no extractable
+          // start time isn't emitted at all, so this field is never null on an event that is.
+          startTime: { type: "string", pattern: "^\\d{2}:\\d{2}$" },
+          // Nullable — `pattern` is a no-op on `null` values, so "no end time/duration stated" is
+          // still expressed as `null`, not a magic string, same as dueDate/startTime above.
+          endTime: { type: ["string", "null"], pattern: "^\\d{2}:\\d{2}$" },
+        },
+        required: ["title", "description", "date", "startTime", "endTime"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["actionItems"],
+  required: ["actionItems", "events"],
   additionalProperties: false,
 } as const;
 
@@ -58,13 +83,16 @@ function buildPrompt(email: EmailContent): string {
   ].join("\n");
 }
 
-function parseActionItems(parsed: unknown): ActionItem[] {
-  const actionItems = (parsed as { actionItems?: unknown }).actionItems;
+function parseExtractionResult(parsed: unknown): ExtractionResult {
+  const { actionItems, events } = parsed as { actionItems?: unknown; events?: unknown };
   if (!Array.isArray(actionItems)) {
     throw new Error("LM Studio response was missing an actionItems array");
   }
+  if (!Array.isArray(events)) {
+    throw new Error("LM Studio response was missing an events array");
+  }
 
-  return actionItems as ActionItem[];
+  return { actionItems: actionItems as ActionItem[], events: events as CalendarEvent[] };
 }
 
 export function createLmStudioExtractor(config: LmStudioConfig = {}): ActionItemExtractor {
@@ -72,17 +100,17 @@ export function createLmStudioExtractor(config: LmStudioConfig = {}): ActionItem
   const fetchImpl = config.fetchImpl ?? fetch;
 
   return {
-    async extract(email: EmailContent): Promise<ActionItem[]> {
+    async extract(email: EmailContent): Promise<ExtractionResult> {
       const parsed = await requestStructuredCompletion({
         baseUrl,
         fetchImpl,
         systemPrompt,
         userPrompt: buildPrompt(email),
-        schemaName: "action_items",
-        jsonSchema: actionItemsJsonSchema,
+        schemaName: "action_items_and_events",
+        jsonSchema: extractionJsonSchema,
       });
 
-      return parseActionItems(parsed);
+      return parseExtractionResult(parsed);
     },
   };
 }

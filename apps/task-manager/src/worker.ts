@@ -6,9 +6,9 @@
 //
 // Consumes the `extract-action-items` queue: for each job, fetches the email via
 // the worker's own `gmail.readonly` credential (refresh token read from the macOS
-// Keychain, see keychain.ts), extracts action items via a local LM Studio server
-// (see lmStudio.ts), and returns `{ emailId, actionItems }` as the job result — or
-// lets the error propagate so BullMQ marks the job `failed`.
+// Keychain, see keychain.ts), extracts action items and calendar events via a local
+// LM Studio server (see lmStudio.ts), and returns `{ emailId, actionItems, events }` as
+// the job result — or lets the error propagate so BullMQ marks the job `failed`.
 //
 // In production this file isn't run directly — scripts/release-worker.mjs bundles
 // and packages it into a standalone executable (dist-bin/task-manager-worker) so the
@@ -18,11 +18,6 @@
 // esbuild/pkg's module loader has spottier support for top-level await than plain
 // `node dist/worker.js` (still how this file runs in local/CI dev, see README) does.
 import { Redis } from "ioredis";
-import {
-  createLmStudioActionItemJudge,
-  noopActionItemJudge,
-  type ActionItemJudge,
-} from "./modules/email-processing/queues/extract-action-items/actionItemJudge.js";
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { createGmailFetcher, type EmailFetcher } from "./modules/email-processing/queues/extract-action-items/gmail.js";
 import {
@@ -60,8 +55,8 @@ const events: EventEmitter =
 initSentry(process.env.SENTRY_DSN);
 
 // On-disk inspection trail (see inspectionLog.ts): every extraction's email content and
-// resulting action items (or error), one JSON file per run — on by default (`./audit`, resolved
-// against wherever the worker process's cwd happens to be, the repo checkout in dev, see
+// resulting action items/events (or error), one JSON file per run — on by default (`./audit`,
+// resolved against wherever the worker process's cwd happens to be, the repo checkout in dev, see
 // README's "macOS LaunchAgent" section for prod), same as every other unqualified path this
 // worker touches. Set WORKER_INSPECTION_DIR to point it elsewhere, or to "" to turn it off
 // entirely (falls back to noopInspectionLogger).
@@ -70,12 +65,6 @@ const inspectionDir = inspectionDirEnv === undefined ? "./audit" : inspectionDir
 const inspectionLogger: InspectionLogger = inspectionDir
   ? createFileInspectionLogger(inspectionDir)
   : noopInspectionLogger;
-
-// Second LM Studio call per extracted action item (see actionItemJudge.ts) — on by default, same
-// as the inspection log above, since a bad extraction is exactly the kind of thing this exists to
-// catch. Set to "false" to skip judging entirely and keep everything the extractor returns, e.g.
-// while comparing extraction-only vs. judged output during prompt iteration.
-const judgeActionItemsEnabled = process.env.WORKER_JUDGE_ACTION_ITEMS !== "false";
 
 // Escape hatch for manual smoke-testing against a real Redis/BullMQ queue in
 // environments without macOS Keychain or a running LM Studio (e.g. this repo's
@@ -87,7 +76,6 @@ const useFakeDeps = process.env.WORKER_FAKE_DEPS === "true";
 async function buildDependencies(): Promise<{
   emailFetcher: EmailFetcher;
   actionItemExtractor: ActionItemExtractor;
-  actionItemJudge: ActionItemJudge;
 }> {
   if (useFakeDeps) {
     return {
@@ -108,26 +96,17 @@ async function buildDependencies(): Promise<{
         },
       },
       actionItemExtractor: {
-        async extract(email) {
-          // Same `emailId`-keyed trigger pattern as the fetcher's failure case above — posting a
-          // job for "trigger-fake-rejection" produces an item with that title, which the fake
-          // judge below always rejects, so the reject-and-filter path can be exercised end to end
-          // in a manual smoke test too.
-          return [
-            {
-              title: email.id === "trigger-fake-rejection" ? "trigger-fake-rejection" : "Send the report",
-              description: "Send the Q3 report as requested",
-              dueDate: null,
-            },
-          ];
-        },
-      },
-      actionItemJudge: {
-        async judge(_email, actionItem) {
-          if (actionItem.title === "trigger-fake-rejection") {
-            return { keep: false, reason: "[fake] simulated judge rejection" };
-          }
-          return { keep: true, reason: "[fake] approved" };
+        async extract() {
+          return {
+            actionItems: [
+              {
+                title: "Send the report",
+                description: "Send the Q3 report as requested",
+                dueDate: null,
+              },
+            ],
+            events: [],
+          };
         },
       },
     };
@@ -159,9 +138,6 @@ async function buildDependencies(): Promise<{
       refreshToken,
     }),
     actionItemExtractor: createLmStudioExtractor({ baseUrl: lmStudioBaseUrl }),
-    actionItemJudge: judgeActionItemsEnabled
-      ? createLmStudioActionItemJudge({ baseUrl: lmStudioBaseUrl })
-      : noopActionItemJudge,
   };
 }
 
@@ -170,11 +146,11 @@ async function main() {
   // integrations get faked, BullMQ always needs somewhere real to consume jobs from.
   const redisUrl = await resolveSecret(macKeychainReader, "redis-url", keychainService, "REDIS_URL");
 
-  const { emailFetcher, actionItemExtractor, actionItemJudge } = await buildDependencies();
+  const { emailFetcher, actionItemExtractor } = await buildDependencies();
 
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 
-  createWorker(connection, { emailFetcher, actionItemExtractor, actionItemJudge, events, inspectionLogger });
+  createWorker(connection, { emailFetcher, actionItemExtractor, events, inspectionLogger });
 }
 
 main().catch((error) => {

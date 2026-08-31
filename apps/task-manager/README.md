@@ -8,11 +8,15 @@ The Mac worker that actually processes jobs (`src/worker.ts`, colocated in this 
 built in #249) consumes the same queue. It never runs on Dokku/CI — it's started locally on the
 user's Mac (via a LaunchAgent, see #243) and is the only thing that ever reads email content.
 
-Two more queues run right here in `server.ts` (cloud), unlike `extract-action-items` — neither has
+Three more queues run right here in `server.ts` (cloud), unlike `extract-action-items` — none has
 the "must never leave local processing" constraint that keeps the Mac worker on the Mac:
 
 - `sync-google-tasks` keeps `personal-assistant`'s `action_items` table in sync with Google Tasks.
   See "Google Tasks sync" below.
+- `sync-calendar-events` keeps `personal-assistant`'s `calendar_events` table in sync with Google
+  Calendar — the calendar-event counterpart to `sync-google-tasks`, for events extracted alongside
+  action items (see `extract-action-items`'s `CalendarEvent` type). See "Calendar event sync"
+  below.
 - `sync-loan-calendar` (plus `refresh-library-loans`, which feeds it) keeps a Google Calendar
   event in sync with every currently-borrowed library book's return date. See "Library loan ->
   Google Calendar sync" below.
@@ -24,6 +28,7 @@ owns, not per queue:
 
 - `src/modules/email-processing/` — one queue, `extract-action-items` (Mac-only, see below).
 - `src/modules/google-tasks/` — one queue, `sync-google-tasks`.
+- `src/modules/google-calendar/` — one queue, `sync-calendar-events`.
 - `src/modules/loans/` — two queues, `refresh-library-loans` and `sync-loan-calendar` (see
   "Library loan -> Google Calendar sync" below for how the two relate).
 
@@ -38,19 +43,21 @@ nothing else:
 - `worker.ts` — a `createWorker(connection, deps)` factory returning a configured BullMQ `Worker`:
   the job-processor callback plus its `ready`/`failed` listeners (Sentry reporting included).
 - The actual "handle one job" logic (`jobProcessor.ts`, `googleTasksJobProcessor.ts`,
-  `libraryRefresh.ts`, `loanCalendarSync.ts`) and everything only *it* depends on (Gmail/LM
-  Studio/Keychain for `extract-action-items`, the Google Tasks client for `sync-google-tasks`, the
-  WBPG client for `refresh-library-loans`) — kept independent of BullMQ so it can be unit-tested
-  with fakes; `worker.ts` is only the wiring around it.
+  `calendarEventJobProcessor.ts`, `libraryRefresh.ts`, `loanCalendarSync.ts`) and everything only
+  *it* depends on (Gmail/LM Studio/Keychain for `extract-action-items`, the Google Tasks client
+  for `sync-google-tasks`, the WBPG client for `refresh-library-loans`) — kept independent of
+  BullMQ so it can be unit-tested with fakes; `worker.ts` is only the wiring around it.
 
 A file lives at a queue's `queues/<queue-name>/` level only if that queue is its *only* consumer;
 one level up, directly under the module (e.g. `src/modules/loans/loansStore.ts`,
-`.../googleCalendar.ts`, `.../libraryConfig.ts`), if more than one queue *in that module* shares
-it (both `loans` queues read/write the loans sqlite store and the calendar client, so those stay
-at the module level rather than picking one queue's folder to live under); and at `src/` top level
-only if it's shared across *modules* (`axiomEvents.ts`, `jobLogger.ts`, `sentry.ts`, `retry.ts`,
-`jobStatus.ts`, `auth.ts`, `bullBoard.ts`, `workerLogger.ts`) or is a process entrypoint spanning
-more than one module (`app.ts`, `server.ts`, `worker.ts`).
+`.../libraryConfig.ts`), if more than one queue *in that module* shares it (both `loans` queues
+read/write the loans sqlite store, so that stays at the module level rather than picking one
+queue's folder to live under); and at `src/` top level only if it's shared across *modules*
+(`axiomEvents.ts`, `jobLogger.ts`, `sentry.ts`, `retry.ts`, `jobStatus.ts`, `auth.ts`,
+`bullBoard.ts`, `workerLogger.ts`, `googleCalendarClient.ts` — the last one moved here from
+`modules/loans/` once `sync-calendar-events` needed the same Google Calendar client the library
+sync already had) or is a process entrypoint spanning more than one module (`app.ts`, `server.ts`,
+`worker.ts`).
 
 `server.ts` and the Mac `worker.ts` entrypoint both just import `createQueue`/`createWorker` from
 these modules and wire in their own dependencies/logger (Fastify's `app.log` for the cloud side,
@@ -73,15 +80,17 @@ plain `console` for the Mac LaunchAgent) rather than constructing `Queue`/`Worke
 | `GOOGLE_TASKS_LIST_ID`                            | no       | Google Tasks list to create tasks in (default `@default`, the user's default list) |
 | `GOOGLE_TASKS_RATE_LIMIT_MAX`                     | no       | Max `sync-google-tasks` jobs processed per `GOOGLE_TASKS_RATE_LIMIT_DURATION_MS` window (default `5`) |
 | `GOOGLE_TASKS_RATE_LIMIT_DURATION_MS`             | no       | Window length in ms for the rate limit above (default `1000`)|
-| `WBPG_USERNAME`                                   | no\*\*\* | WBPG library card number / login, for the library sync workers                |
-| `WBPG_PASSWORD`                                   | no\*\*\* | WBPG password                                                                 |
 | `GOOGLE_CALENDAR_CLIENT_ID`                       | no\*\*\* | OAuth client id for the `calendar.events` credential (shared across gmail/tasks/calendar, #343) |
 | `GOOGLE_CALENDAR_CLIENT_SECRET`                   | no\*\*\* | OAuth client secret for the same credential                                   |
 | `GOOGLE_CALENDAR_REFRESH_TOKEN`                   | no\*\*\* | Refresh token for the same credential                                         |
+| `GOOGLE_CALENDAR_ID`                              | no       | Which calendar to write to (default `primary`, i.e. the refresh token's own account's main calendar) — shared by `sync-calendar-events` and the library sync below |
+| `GOOGLE_CALENDAR_TIMEZONE`                        | no       | IANA zone events are created in (default `Europe/Warsaw`) — shared by `sync-calendar-events` and the library sync below |
+| `CALENDAR_EVENTS_RATE_LIMIT_MAX`                  | no       | Max `sync-calendar-events` jobs processed per `CALENDAR_EVENTS_RATE_LIMIT_DURATION_MS` window (default `5`) |
+| `CALENDAR_EVENTS_RATE_LIMIT_DURATION_MS`          | no       | Window length in ms for the rate limit above (default `1000`)|
+| `WBPG_USERNAME`                                   | no\*\*\*\* | WBPG library card number / login, for the library sync workers                |
+| `WBPG_PASSWORD`                                   | no\*\*\*\* | WBPG password                                                                 |
 | `DATABASE_PATH`                                   | no       | Where the sqlite loans DB lives (default `/app/data/library.sqlite`, matching the Dokku storage mount — see terraform/main.tf) |
 | `WBPG_BASE_URL`                                   | no       | Overrides the WBPG catalog base URL (default `https://katalog.wbpg.org.pl`)   |
-| `GOOGLE_CALENDAR_ID`                              | no       | Which calendar to write to (default `primary`, i.e. the refresh token's own account's main calendar) |
-| `GOOGLE_CALENDAR_TIMEZONE`                        | no       | IANA zone events are created in (default `Europe/Warsaw`)                     |
 | `LIBRARY_REFRESH_CRON_PATTERN`                    | no       | Cron pattern for how often to re-check WBPG (default `0 7 * * *`, daily 07:00 Europe/Warsaw) |
 | `AXIOM_TOKEN`                                     | no       | Axiom API token for trend-event ingestion (#315), used by the `sync-google-tasks` worker here |
 | `AXIOM_DATASET`                                   | no       | Axiom dataset to ingest into (e.g. `task-manager-events`)                     |
@@ -96,10 +105,20 @@ once all three are set. Unset — the state before `scripts/google-tasks-oauth` 
 the Jobs API still accepts `/google-tasks-jobs` requests, they just queue up unconsumed until the
 worker starts.
 
-\*\*\* The `refresh-library-loans`/`sync-loan-calendar` workers (also started inside this same
-process) only start once all five are set — same optional-at-startup pattern as the Google Tasks
-vars above. Unset, Bull Board still shows both queues (registered unconditionally so its "Add Job"
-button always works — see `bullBoard.ts`), jobs just queue up unconsumed until the workers start.
+\*\*\* The `sync-calendar-events` worker only starts once all three are set — same
+optional-at-startup pattern as the Google Tasks vars above, and independent of the WBPG vars
+below: an install with no library sync configured at all still gets email-derived calendar events.
+Unset, the Jobs API still accepts `/calendar-event-jobs` requests, they just queue up unconsumed
+until the worker starts. The `refresh-library-loans`/`sync-loan-calendar` workers *also* need these
+three (see the next footnote) — when both features are configured, each starts its own
+`createGoogleCalendarClient` against the same credential rather than sharing one instance, which is
+harmless (both just talk to the same Calendar API).
+
+\*\*\*\* The `refresh-library-loans`/`sync-loan-calendar` workers (also started inside this same
+process) only start once these two **and** the three `GOOGLE_CALENDAR_*` vars above are all set —
+same optional-at-startup pattern as the Google Tasks vars above. Unset, Bull Board still shows both
+queues (registered unconditionally so its "Add Job" button always works — see `bullBoard.ts`),
+jobs just queue up unconsumed until the workers start.
 
 `AXIOM_TOKEN`/`AXIOM_DATASET` are independent of each other and of everything above — see
 "Historical/trend observability" below.
@@ -132,6 +151,29 @@ task creation outright either: `googleTasksClient.ts` drops it rather than sendi
 it'll reject with "Request contains an invalid argument", so the task is still created, just
 without a due date.
 
+## Calendar event sync
+
+The calendar-event counterpart to Google Tasks sync above — same shape, different destination.
+`POST /calendar-event-jobs` schedules a job on the `sync-calendar-events` queue, consumed by a
+third `bullmq.Worker` started alongside the Jobs API server in `server.ts`
+(`src/modules/google-calendar/queues/sync-calendar-events/calendarEventJobProcessor.ts` →
+`src/googleCalendarClient.ts`, wrapping the Google Calendar API — the same client the library-loan
+sync below uses). `personal-assistant`'s sync loop (`src/calendarEventSyncer.ts`) is the only
+caller: it schedules a job for each calendar event without a `job_id` yet, then polls for
+completion and backfills `google_event_id` — see that package's README for the full loop, and
+`extract-action-items`'s `CalendarEvent` type (`actionItem.ts`) for where the events themselves
+come from.
+
+This worker reads the same `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET`/`_REFRESH_TOKEN` credential as the
+library-loan sync (see "Library loan -> Google Calendar sync" below) and the same
+`GOOGLE_CALENDAR_ID`/`_TIMEZONE` target, but starts independently of it — see the env var table's
+footnotes above. Since a `CalendarEvent`'s `startTime` is required but `endTime` is optional (see
+`extractActionItems.system.md`'s Phase 3), `calendarEventJobProcessor.ts` gives an event with no
+stated end time a flat one-hour default duration rather than creating a zero-length event — Google
+Calendar's API requires a real `end`. Same `limiter` treatment as Google Tasks above
+(`CALENDAR_EVENTS_RATE_LIMIT_MAX`/`_DURATION_MS`), tuned separately since the two APIs have
+separate quotas.
+
 ### Mac worker (`worker.ts`)
 
 | Variable                 | Required | Description                                                                 |
@@ -143,13 +185,12 @@ without a due date.
 | `GMAIL_KEYCHAIN_SERVICE`  | no       | macOS Keychain "service" all four secrets above are read from (default `task-manager-worker`) |
 | `GMAIL_KEYCHAIN_ACCOUNT`  | no       | macOS Keychain "account" the refresh token specifically is read from (default `gmail-refresh-token`) |
 | `LM_STUDIO_BASE_URL`      | no       | Base URL of the local LM Studio server (default `http://localhost:1234`)      |
-| `WORKER_JUDGE_ACTION_ITEMS` | no     | Set to `"false"` to skip the action item judge (see "Action item judge" below) and keep everything the extractor returns — on by default |
 | `WORKER_FAKE_DEPS`        | no       | `"true"` swaps in canned fake Gmail/LM Studio implementations instead of the real ones — **manual smoke-testing only, never set in production** (see below) |
 | `AXIOM_TOKEN`             | no\*\*   | Axiom API token for trend-event ingestion (#315), used by `extract-action-items` jobs here |
 | `AXIOM_DATASET`           | no\*\*   | Axiom dataset to ingest into (e.g. `task-manager-events`, same dataset the cloud side uses) |
 | `SENTRY_DSN`              | no\*\*   | Sentry DSN for error monitoring (see "Error monitoring" below), same value as the Jobs API server's above |
 | `SENTRY_ENVIRONMENT`      | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
-| `WORKER_INSPECTION_DIR`   | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
+| `WORKER_INSPECTION_DIR`   | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items/events, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
 
 \* All four secrets are read from the macOS Keychain if not set as env vars (see `resolveSecret`
 in `src/modules/email-processing/queues/extract-action-items/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
@@ -186,9 +227,10 @@ inspect. It deliberately doesn't show trends over time (a failure spike an hour 
 queue overnight). That's what [Axiom](https://axiom.co) is for: `src/axiomEvents.ts`
 fire-and-forget POSTs a `{ service: "task-manager", entity, entityId, status, _time, error? }`
 event to Axiom's ingest API at each job's `active`/`completed`/`failed` transition — emitted
-inline in `jobProcessor.ts` (`entity: "extract-action-items"`, `entityId` = the email id) and
-`googleTasksJobProcessor.ts` (`entity: "sync-google-tasks"`, `entityId` = the action item id),
-right where each transition already happens, rather than a separate BullMQ `QueueEvents`
+inline in `jobProcessor.ts` (`entity: "extract-action-items"`, `entityId` = the email id),
+`googleTasksJobProcessor.ts` (`entity: "sync-google-tasks"`, `entityId` = the action item id), and
+`calendarEventJobProcessor.ts` (`entity: "sync-calendar-events"`, `entityId` = the calendar event
+id), right where each transition already happens, rather than a separate BullMQ `QueueEvents`
 Redis-pubsub listener — simpler, no new listener lifecycle to manage.
 
 Fully best-effort: `emit()` never throws or awaits into the job pipeline it's describing (fire the
@@ -198,7 +240,8 @@ not a job failure. A no-op (`noopEventEmitter`) until both `AXIOM_TOKEN`/`AXIOM_
 (see the env var tables above) — this is purely additive on both the Mac worker and cloud sides.
 Both processes share the same `task-manager-events` Axiom dataset (`personal-assistant` has its
 own separate one, `personal-assistant-events` — see that package's README); the `entity` field is
-what distinguishes `extract-action-items` from `sync-google-tasks` jobs within it.
+what distinguishes `extract-action-items`, `sync-google-tasks`, and `sync-calendar-events` jobs
+within it.
 
 ## Error monitoring (Sentry)
 
@@ -212,17 +255,19 @@ Wired at process/queue boundaries, not into every internal try/catch:
 
 - Both entrypoints' global uncaught-exception/unhandled-rejection handlers — installed
   automatically by `Sentry.init` itself, no extra code here.
-- Every `bullmq.Worker`'s `"failed"` event (`sync-google-tasks`, the two library sync queues in
-  `server.ts`, and `extract-action-items` in `worker.ts`) — alongside the `app.log.error`/
-  `console.error` call already there, `Sentry.captureException(error, { tags: { queue, jobId } })`.
+- Every `bullmq.Worker`'s `"failed"` event (`sync-google-tasks`, `sync-calendar-events`, the two
+  library sync queues in `server.ts`, and `extract-action-items` in `worker.ts`) — alongside the
+  `app.log.error`/`console.error` call already there,
+  `Sentry.captureException(error, { tags: { queue, jobId } })`.
 - `server.ts`'s Fastify app: `Sentry.setupFastifyErrorHandler(app)` (in `app.ts`) reports any
   route handler exception that reaches Fastify's own error handling — every route already returns
   its own 400/401/404 explicitly rather than throwing, so this only ever fires on a genuine bug.
 - Both entrypoints' own startup-failure catch blocks (`app.listen()` in `server.ts`,
   `main().catch()` in `worker.ts`).
 
-Deliberately *not* duplicated into `jobProcessor.ts`/`googleTasksJobProcessor.ts`'s own catch
-blocks — those already rethrow into the `Worker` that's running them, so the `"failed"` handlers
+Deliberately *not* duplicated into `jobProcessor.ts`/`googleTasksJobProcessor.ts`/
+`calendarEventJobProcessor.ts`'s own catch blocks — those already rethrow into the `Worker` that's
+running them, so the `"failed"` handlers
 above already see the same error once, not once per internal failure site. This keeps one Sentry
 event per job failure rather than multiplying against Sentry's free-tier event quota.
 
@@ -236,45 +281,17 @@ reporting is opt-in via a local env var, not active in the production LaunchAgen
 
 Axiom and Sentry above answer "did the job succeed" and "what broke" — neither shows *what the LLM
 actually saw and produced*, which is what you need when judging extraction quality or debugging a
-bad set of action items. `src/modules/email-processing/queues/extract-action-items/inspectionLog.ts` writes one JSON file per `extract-action-items` run
+bad set of action items/events. `src/modules/email-processing/queues/extract-action-items/inspectionLog.ts` writes one JSON file per `extract-action-items` run
 to `WORKER_INSPECTION_DIR` (see the Mac worker env var table above; default `./audit`, resolved
 against the worker process's cwd — the repo checkout in dev, see "macOS LaunchAgent" below for
-prod) — `{ emailId, email, actionItems, rejectedActionItems? }` on success (`rejectedActionItems`
-only present when the judge below actually rejected something), `{ emailId, email, error }` if
-extraction or judging failed (fetch failures aren't logged here, there's no email content yet to
-inspect). One file per run rather than one per `emailId` on purpose: re-running/regenerating action
-items for the same email appends another file instead of overwriting the last one, so every
-attempt stays available for comparison. Set `WORKER_INSPECTION_DIR=""` to turn this off entirely —
-see `createFileInspectionLogger`'s no-op sibling, `noopInspectionLogger`. `./audit` is gitignored
+prod) — `{ emailId, email, actionItems, events }` on success, `{ emailId, email, error }` if
+extraction failed (fetch failures aren't logged here, there's no email content yet to inspect). One
+file per run rather than one per `emailId` on purpose: re-running/regenerating action items for the
+same email appends another file instead of overwriting the last one, so every attempt stays
+available for comparison. Set `WORKER_INSPECTION_DIR=""` to turn this off entirely — see
+`createFileInspectionLogger`'s no-op sibling, `noopInspectionLogger`. `./audit` is gitignored
 (unlike `AXIOM_TOKEN`/`SENTRY_DSN`, this one really is on by default — it's real email content, so
 it must never end up committed).
-
-### Action item judge
-
-Extraction (above) and judging are two separate LM Studio calls, not one bigger prompt: after
-`src/modules/email-processing/queues/extract-action-items/lmStudio.ts` turns an email into a list of action items, `src/modules/email-processing/queues/extract-action-items/actionItemJudge.ts` calls LM
-Studio again **once per action item**, passing it the original email plus that one proposed item,
-and asks it to decide whether the item should actually be kept — see
-`src/modules/email-processing/queues/extract-action-items/prompts/judgeActionItem.system.md` for exactly what it's checking for (grounded in the email,
-not just a call-to-action link, not from a newsletter/notification that shouldn't have produced
-anything, a real due date rather than a guess, one coherent action rather than a vague catch-all).
-`src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs every item's judge call concurrently, drops whatever gets rejected
-before the job result and Google Tasks sync ever see it, and records both halves — survivors and
-rejects, with the judge's stated reason — to the inspection log above, so a bad extraction that
-*would* have created a wrong task is visible in `npm run review` (below) instead of only the ones
-that made it through.
-
-On by default, same "never leaves the Mac" constraint as extraction itself (it's still the only
-local LM Studio server involved, just a second call to it) — set `WORKER_JUDGE_ACTION_ITEMS=false`
-to skip it and keep everything the extractor returns unfiltered, e.g. while comparing
-extraction-only vs. judged output during prompt iteration. A judging failure fails the whole job
-the same way an extraction failure does (see `processEmailJob`'s catch block) rather than silently
-falling back to "keep everything" — a job that failed outright is easier to notice and retry than
-one that quietly skipped a safety check.
-
-Both LM Studio calls share their HTTP plumbing (`src/modules/email-processing/queues/extract-action-items/lmStudioClient.ts`: model discovery, the
-structured `response_format` request shape, error messages) so the two prompts differ only in
-*what* they ask, not in *how* they talk to LM Studio.
 
 ### Reviewing extractions (`npm run review`)
 
@@ -289,11 +306,9 @@ npm run review
 npm run review -- --dir ./audit --port 4600
 ```
 
-It lists every run newest-first (subject/from, collapsible body, extracted action items or the
-error) — action items the judge rejected are shown too, struck through with its stated reason, so
-you can tell a clean extraction from one the judge had to clean up after. Clicking "This is
-wrong…" on a run opens a form to describe what the extraction *should* have produced (against the
-kept items only — the judge already agreed the rejected ones shouldn't count) — the same loose
+It lists every run newest-first (subject/from, collapsible body, extracted action items and events,
+or the error). Clicking "This is wrong…" on a run opens a form to describe what the extraction
+*should* have produced (action items only — flagging doesn't cover events yet) — the same loose
 `{ count, items: [{ titleContains, descriptionContains, dueDate }] }`
 shape `eval/fixtures.ts`'s hand-picked fixtures use (see that file's `ItemExpectation`). Saving
 writes a fixture to `eval/reviewed-fixtures.json` (read/exported by `eval/reviewedFixtures.ts`),
@@ -308,7 +323,8 @@ and re-run until they go green. "Unflag" in the UI (or deleting the entry from
 
 ## Endpoints
 
-All `/jobs*` and `/google-tasks-jobs*` endpoints require `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
+All `/jobs*`, `/google-tasks-jobs*`, and `/calendar-event-jobs*` endpoints require
+`Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
 
 - `POST /jobs` — `{ emailId }` → `201 { jobId }`
 - `GET /jobs/:jobId` — `200 { jobId, status, result?, error? }`, `404` if unknown
@@ -316,6 +332,9 @@ All `/jobs*` and `/google-tasks-jobs*` endpoints require `Authorization: Bearer 
 - `POST /google-tasks-jobs` — `{ actionItemId, title, description?, dueDate? }` → `201 { jobId }`
 - `GET /google-tasks-jobs/:jobId` — `200 { jobId, status, result?, error? }` (`result` is `{ actionItemId, googleTaskId }` on success), `404` if unknown
 - `POST /google-tasks-jobs/status` — `{ jobIds: [...] }` → `200 { results: [...] }`, same shape as `/jobs/status`
+- `POST /calendar-event-jobs` — `{ calendarEventId, title, date, startTime, description?, endTime? }` → `201 { jobId }`
+- `GET /calendar-event-jobs/:jobId` — `200 { jobId, status, result?, error? }` (`result` is `{ calendarEventId, googleEventId }` on success), `404` if unknown
+- `POST /calendar-event-jobs/status` — `{ jobIds: [...] }` → `200 { results: [...] }`, same shape as `/jobs/status`
 
 `status` is one of `pending | active | completed | failed`, collapsing BullMQ's internal states
 per the contract in #241.
@@ -394,22 +413,21 @@ pnpm --filter task-manager worker
 REDIS_URL=redis://localhost:6379 WORKER_FAKE_DEPS=true pnpm --filter task-manager worker
 ```
 
-### Evaluating the extraction + judge pipeline (`eval/`)
+### Evaluating the extraction prompt (`eval/`)
 
 `eval/extractActionItems.eval.test.ts` and `eval/reviewedFixtures.eval.test.ts` are local-only eval
-harnesses for `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md` **and**
-`src/modules/email-processing/queues/extract-action-items/prompts/judgeActionItem.system.md` together — a set of fixture emails
-(`eval/fixtures.ts`/`eval/reviewedFixtures.ts`) run through the exact same extract-then-judge
-pipeline `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs for a real job (real local LM Studio server, via the same
-`createLmStudioExtractor(...)`/`createLmStudioActionItemJudge(...)` the worker uses — see
-`eval/runFixtureSuite.ts`), each checked against expectations on how many action items should
-*survive both steps* and what they should say. It's for iterating on either prompt by hand: change
-the wording, rerun, see which fixtures moved — a failure doesn't say by itself which prompt is at
-fault, only that the pipeline's final output disagrees with the fixture's `expect`.
+harnesses for `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md` — a set of
+fixture emails (`eval/fixtures.ts`/`eval/reviewedFixtures.ts`) run through the exact same
+extraction call `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs for a real job (real local
+LM Studio server, via the same `createLmStudioExtractor(...)` the worker uses — see
+`eval/runFixtureSuite.ts`), each checked against expectations on how many action items should come
+back and what they should say (`events` isn't asserted on here yet — see `eval/fixtures.ts`'s
+`EvalFixture` shape). It's for iterating on the prompt by hand: change the wording, rerun, see
+which fixtures moved.
 
 It **never runs in CI** — it's outside `vitest`'s `src/**/*.{test,spec}.ts` include glob and outside
 `tsc`'s `include` (`src` only), and it needs a real LM Studio server, same reason the real LM Studio
-calls are excluded from `lmStudio.test.ts`/`actionItemJudge.test.ts`. Run it by hand, with LM Studio
+calls are excluded from `lmStudio.test.ts`. Run it by hand, with LM Studio
 running locally and a model loaded:
 
 ```bash
@@ -436,8 +454,8 @@ loose on purpose — the model's wording varies run to run — so failures shoul
 a fixture or two flipping between runs is expected; treat it as a trend to watch across a prompt
 change, not a hard CI-style gate. Exits non-zero if any fixture had a failing assertion.
 
-Add a fixture whenever `extractActionItems.system.md` or `judgeActionItem.system.md` gains a new
-rule, or whenever a real email turns out to trick either step into misclassifying something.
+Add a fixture whenever `extractActionItems.system.md` gains a new rule, or whenever a real email
+turns out to trick extraction into misclassifying something.
 
 ## macOS LaunchAgent (#251)
 
@@ -595,7 +613,9 @@ current loan onto the second queue, consumed by the second `Worker`.
   group that's ever gotten a calendar event — see that file's header comment for why the event is
   keyed by *group*, not by individual loan (a prolongation can move a loan into a different
   group, and a per-loan pointer would go stale in a way that's easy to apply to the wrong event).
-- `src/modules/loans/googleCalendar.ts` — thin Google Calendar client (create/update/delete/check an event).
+- `src/googleCalendarClient.ts` — thin Google Calendar client (create/update/delete/check an
+  event); shared with `sync-calendar-events` (see "Calendar event sync" above), not loans-specific
+  despite being written for this feature first.
 - `src/modules/loans/queues/sync-loan-calendar/loanCalendarSync.ts` — the actual "sync one loan's event" decision logic, independent of
   BullMQ (mirrors `jobProcessor.ts`'s split) — one book due back at a filia joins whatever event
   already covers that filia+day, creating one if none exists yet; every run recomputes the whole
@@ -658,10 +678,11 @@ processes every job on that queue identically, scheduled or manual). It fans out
   `tsc`/`vitest`/`pnpm --filter task-manager build` all pass clean with these workers included;
   `server.ts` itself boots against a real local Redis with dummy WBPG/Calendar credentials and
   Bull Board correctly reports both library queues.
-- **Not verified**: `googleCalendar.ts`'s actual calls against real Google Calendar infrastructure
-  (same situation `gmail.ts`'s `createGmailFetcher` has always been in — nothing to talk to in
-  CI/sandbox); the full pipeline end-to-end against a real WBPG account and real Google Calendar
-  together; the terraform/1Password wiring above, which references six 1Password items that don't
-  exist yet — `terraform plan`/`apply` will fail until they're created by hand (same manual step
+- **Not verified**: `googleCalendarClient.ts`'s actual calls against real Google Calendar
+  infrastructure (same situation `gmail.ts`'s `createGmailFetcher` has always been in — nothing to
+  talk to in CI/sandbox; also unverified for its other caller, `sync-calendar-events` — see
+  "Calendar event sync" above); the full pipeline end-to-end against a real WBPG account and real
+  Google Calendar together; the terraform/1Password wiring above, which references six 1Password
+  items that don't exist yet — `terraform plan`/`apply` will fail until they're created by hand (same manual step
   this repo's other integrations have always needed, e.g. `scripts/gmail-oauth/README.md`'s own
   1Password step).

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { syncLoanCalendarEvent } from "./loanCalendarSync.js";
 import { createStore, type LibraryLoanInput, type LoansStore } from "../../loansStore.js";
-import type { CalendarClient, CalendarEventInput } from "../../googleCalendar.js";
+import type { CalendarClient, CalendarEventInput } from "../../../../googleCalendarClient.js";
 
 function loanInput(overrides: Partial<LibraryLoanInput> = {}): LibraryLoanInput {
   return {

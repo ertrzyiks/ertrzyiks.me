@@ -6,7 +6,7 @@ import type { LibraryClient } from "./library.js";
 import type { LoanSyncQueue } from "../sync-loan-calendar/queue.js";
 import { noopJobLogger, type JobLogger } from "../../../../jobLogger.js";
 import type { LoansStore } from "../../loansStore.js";
-import type { CalendarClient } from "../../googleCalendar.js";
+import type { CalendarClient } from "../../../../googleCalendarClient.js";
 
 export interface LibraryRefreshDeps {
   libraryClient: LibraryClient;

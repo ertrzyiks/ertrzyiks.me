@@ -8,9 +8,21 @@ export interface ActionItemPayload {
   dueDate?: string;
 }
 
+// Mirrors task-manager's actionItem.ts `CalendarEvent` — one calendar-worthy event extracted
+// alongside action items. `startTime` is required there (extraction never emits an event without
+// one, see extractActionItems.system.md's Phase 3), `endTime` optional.
+export interface CalendarEventPayload {
+  title: string;
+  description?: string;
+  date: string;
+  startTime: string;
+  endTime?: string;
+}
+
 export interface JobResultPayload {
   emailId: string;
   actionItems: ActionItemPayload[];
+  events: CalendarEventPayload[];
 }
 
 export interface JobStatusResult {
@@ -41,6 +53,29 @@ export interface GoogleTaskJobStatusResult {
   error?: string;
 }
 
+// Payload/result shapes for the sync-calendar-events queue's Jobs API endpoints
+// (`/calendar-event-jobs*`), mirroring the sync-google-tasks ones above.
+export interface CalendarEventJobPayload {
+  calendarEventId: number;
+  title: string;
+  description?: string;
+  date: string;
+  startTime: string;
+  endTime?: string;
+}
+
+export interface CalendarEventJobResultPayload {
+  calendarEventId: number;
+  googleEventId: string;
+}
+
+export interface CalendarEventJobStatusResult {
+  jobId: string;
+  status: JobStatusName;
+  result?: CalendarEventJobResultPayload;
+  error?: string;
+}
+
 export interface JobsApiClient {
   scheduleJob(emailId: string): Promise<{ jobId: string }>;
   /** Batch status lookup. Unknown job IDs are simply omitted from the result (per #241/task-manager). */
@@ -49,6 +84,10 @@ export interface JobsApiClient {
   scheduleGoogleTaskJob(item: GoogleTaskPayload): Promise<{ jobId: string }>;
   /** Batch status lookup for sync-google-tasks jobs. Unknown job IDs are omitted, same as getJobStatuses. */
   getGoogleTaskJobStatuses(jobIds: string[]): Promise<GoogleTaskJobStatusResult[]>;
+  /** Schedules a job on the sync-calendar-events queue for one calendar event. */
+  scheduleCalendarEventJob(item: CalendarEventJobPayload): Promise<{ jobId: string }>;
+  /** Batch status lookup for sync-calendar-events jobs. Unknown job IDs are omitted, same as getJobStatuses. */
+  getCalendarEventJobStatuses(jobIds: string[]): Promise<CalendarEventJobStatusResult[]>;
 }
 
 export interface JobsApiClientConfig {
@@ -100,6 +139,18 @@ export function createJobsApiClient(config: JobsApiClientConfig): JobsApiClient 
       if (jobIds.length === 0) return [];
       const body = (await request("/google-tasks-jobs/status", { jobIds })) as {
         results: GoogleTaskJobStatusResult[];
+      };
+      return body.results;
+    },
+
+    async scheduleCalendarEventJob(item) {
+      return (await request("/calendar-event-jobs", item)) as { jobId: string };
+    },
+
+    async getCalendarEventJobStatuses(jobIds) {
+      if (jobIds.length === 0) return [];
+      const body = (await request("/calendar-event-jobs/status", { jobIds })) as {
+        results: CalendarEventJobStatusResult[];
       };
       return body.results;
     },

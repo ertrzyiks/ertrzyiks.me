@@ -1,7 +1,13 @@
-// Google Calendar client for the library-loan sync job. Talks to real Google infrastructure so
-// it can't be exercised in CI/sandbox — same situation as gmail.ts's createGmailFetcher (see
-// that file's header comment). loanCalendarSync.ts is the pure, unit-tested seam that covers the
-// actual sync decision logic against a fake CalendarClient instead.
+// Google Calendar client, shared by every queue that needs to create/update calendar events —
+// originally written for the library-loan sync job (loanCalendarSync.ts) and reused as-is by
+// calendarEventJobProcessor.ts (sync-calendar-events) once that queue needed the exact same
+// create/update/delete/exists shape against the same "calendar.events" OAuth credential (#343).
+// Kept at src/ top level (not under modules/loans/ where it started) because it's now shared
+// across modules — see README's "Module and queue layout" section. Talks to real Google
+// infrastructure so it can't be exercised in CI/sandbox — same situation as gmail.ts's
+// createGmailFetcher (see that file's header comment). Each caller's own pure, unit-tested sync
+// logic (loanCalendarSync.ts, calendarEventJobProcessor.ts) covers the actual sync decision
+// against a fake CalendarClient instead.
 import { OAuth2Client } from "google-auth-library";
 import { google } from "googleapis";
 
@@ -31,7 +37,8 @@ export interface GoogleCalendarConfig {
   refreshToken: string;
   calendarId?: string;
   /** IANA zone the naive CalendarEventInput.start/end are interpreted in. Defaults to
-   * "Europe/Warsaw" — this client only ever exists to serve a Polish library's return dates. */
+   * "Europe/Warsaw" — this client's first caller (the library-loan sync) only ever served a
+   * Polish library's return dates; every other caller passes its own zone. */
   timeZone?: string;
 }
 

@@ -119,6 +119,88 @@ describe("store (in-memory)", () => {
     });
   });
 
+  describe("Calendar event sync (job_id/google_event_id)", () => {
+    beforeEach(() => {
+      store.insertQueuedEmail("email-1");
+      store.setJobId("email-1", "job-1");
+    });
+
+    it("has no unsynced calendar events until one exists", () => {
+      expect(store.getUnsyncedCalendarEvents()).toEqual([]);
+    });
+
+    it("lists a completed calendar event as unsynced until a sync job id is attached", () => {
+      store.markEmailCompleted(
+        "email-1",
+        [],
+        [{ title: "Team offsite", description: "Quarterly offsite", date: "2026-09-10", startTime: "09:00", endTime: "17:00" }],
+      );
+
+      expect(store.getUnsyncedCalendarEvents()).toEqual([
+        {
+          id: 1,
+          title: "Team offsite",
+          description: "Quarterly offsite",
+          date: "2026-09-10",
+          startTime: "09:00",
+          endTime: "17:00",
+        },
+      ]);
+      expect(store.getCalendarEventsAwaitingSync()).toEqual([]);
+    });
+
+    it("moves a calendar event from unsynced to awaiting-sync once a sync job id is attached", () => {
+      store.markEmailCompleted("email-1", [], [{ title: "Team offsite", date: "2026-09-10", startTime: "09:00" }]);
+
+      store.setCalendarEventJobId(1, "gcal-job-1");
+
+      expect(store.getUnsyncedCalendarEvents()).toEqual([]);
+      expect(store.getCalendarEventsAwaitingSync()).toEqual([{ id: 1, jobId: "gcal-job-1" }]);
+    });
+
+    it("removes a calendar event from awaiting-sync once a Google event id is backfilled", () => {
+      store.markEmailCompleted("email-1", [], [{ title: "Team offsite", date: "2026-09-10", startTime: "09:00" }]);
+      store.setCalendarEventJobId(1, "gcal-job-1");
+
+      store.setCalendarEventGoogleEventId(1, "gcal-1");
+
+      expect(store.getCalendarEventsAwaitingSync()).toEqual([]);
+      expect(store.getUnsyncedCalendarEvents()).toEqual([]);
+    });
+
+    it("keeps unrelated calendar events untouched", () => {
+      store.markEmailCompleted(
+        "email-1",
+        [],
+        [
+          { title: "Team offsite", date: "2026-09-10", startTime: "09:00" },
+          { title: "Dentist", date: "2026-09-12", startTime: "10:00" },
+        ],
+      );
+      store.setCalendarEventJobId(1, "gcal-job-1");
+
+      expect(store.getUnsyncedCalendarEvents()).toEqual([
+        { id: 2, title: "Dentist", description: null, date: "2026-09-12", startTime: "10:00", endTime: null },
+      ]);
+      expect(store.getCalendarEventsAwaitingSync()).toEqual([{ id: 1, jobId: "gcal-job-1" }]);
+    });
+
+    it("keeps action items and calendar events from the same email independent", () => {
+      store.markEmailCompleted(
+        "email-1",
+        [{ title: "Reply to invoice" }],
+        [{ title: "Team offsite", date: "2026-09-10", startTime: "09:00" }],
+      );
+
+      expect(store.getUnsyncedActionItems()).toEqual([
+        { id: 1, title: "Reply to invoice", description: null, dueDate: null },
+      ]);
+      expect(store.getUnsyncedCalendarEvents()).toEqual([
+        { id: 1, title: "Team offsite", description: null, date: "2026-09-10", startTime: "09:00", endTime: null },
+      ]);
+    });
+  });
+
   describe("getStatusCounts", () => {
     it("returns no rows when there are no emails", () => {
       expect(store.getStatusCounts()).toEqual([]);
@@ -277,6 +359,58 @@ describe("store (file-backed)", () => {
     });
     // Fresh rows start unsynced — no sync job scheduled yet, per getUnsyncedActionItems above.
     expect(actionItemRows[0]).toMatchObject({ job_id: null, task_id: null });
+  });
+
+  it("stores calendar_events rows alongside action_items, and marks the email completed", () => {
+    store.insertQueuedEmail("email-1");
+    store.setJobId("email-1", "job-1");
+
+    store.markEmailCompleted(
+      "email-1",
+      [{ title: "Reply to invoice" }],
+      [
+        {
+          title: "Team offsite",
+          description: "Quarterly offsite",
+          date: "2026-09-10",
+          startTime: "09:00",
+          endTime: "17:00",
+        },
+        { title: "Dentist", date: "2026-09-12", startTime: "10:00" },
+      ],
+    );
+
+    const db = new DatabaseSync(dbPath);
+    const emailRow = db.prepare("SELECT * FROM emails WHERE id = ?").get("email-1") as Record<
+      string,
+      unknown
+    >;
+    const calendarEventRows = db
+      .prepare("SELECT * FROM calendar_events WHERE email_id = ? ORDER BY id")
+      .all("email-1") as Record<string, unknown>[];
+    db.close();
+
+    expect(emailRow.status).toBe("completed");
+
+    expect(calendarEventRows).toHaveLength(2);
+    expect(calendarEventRows[0]).toMatchObject({
+      email_id: "email-1",
+      title: "Team offsite",
+      description: "Quarterly offsite",
+      date: "2026-09-10",
+      start_time: "09:00",
+      end_time: "17:00",
+    });
+    expect(calendarEventRows[1]).toMatchObject({
+      email_id: "email-1",
+      title: "Dentist",
+      description: null,
+      date: "2026-09-12",
+      start_time: "10:00",
+      end_time: null,
+    });
+    // Fresh rows start unsynced — no sync job scheduled yet, per getUnsyncedCalendarEvents above.
+    expect(calendarEventRows[0]).toMatchObject({ job_id: null, google_event_id: null });
   });
 
   it("migrates an action_items table created before job_id/task_id existed", () => {

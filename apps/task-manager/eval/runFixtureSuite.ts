@@ -1,33 +1,23 @@
 // Shared Vitest suite-generation logic for eval/*.eval.test.ts. Both
 // extractActionItems.eval.test.ts (fixtures.ts, hand-picked to exercise one prompt rule each) and
 // reviewedFixtures.eval.test.ts (reviewedFixtures.ts, real emails flagged wrong via `npm run
-// review`, see that script's header) run the exact same fixture -> extraction[-> judge] ->
-// assertions shape, just against a different fixture list and (in principle) a different
-// extractor/judge — pulled out so neither file has to duplicate it.
+// review`, see that script's header) run the exact same fixture -> extraction -> assertions shape,
+// just against a different fixture list and (in principle) a different extractor — pulled out so
+// neither file has to duplicate it.
 import { beforeAll, describe, expect, it } from "vitest";
 import type { ActionItem } from "../src/modules/email-processing/queues/extract-action-items/actionItem.js";
-import type { ActionItemJudge } from "../src/modules/email-processing/queues/extract-action-items/actionItemJudge.js";
-import { judgeActionItems } from "../src/modules/email-processing/queues/extract-action-items/jobProcessor.js";
 import type { ActionItemExtractor } from "../src/modules/email-processing/queues/extract-action-items/lmStudio.js";
 import type { EvalFixture } from "./fixtures.js";
 
-// `judge` is optional so callers that only want to eval the extraction prompt in isolation still
-// can — but every current caller passes one, since a real job always runs both steps and asserting
-// only on raw extraction would eval a pipeline nothing in production actually uses. When passed,
-// this is the exact same extract-then-judge-then-filter logic src/jobProcessor.ts runs for a real
-// job (see judgeActionItems there), so a fixture's `expect` is checked against what would actually
-// have reached Google Tasks, not an intermediate result.
-export function runFixtureSuite(
-  fixtures: EvalFixture[],
-  extractor: ActionItemExtractor,
-  judge?: ActionItemJudge,
-): void {
+// This is the exact same extraction call src/jobProcessor.ts runs for a real job, so a fixture's
+// `expect` is checked against what would actually have reached Google Tasks, not an intermediate
+// result. Only asserts on `actionItems` today — `events` isn't part of `EvalFixture` yet.
+export function runFixtureSuite(fixtures: EvalFixture[], extractor: ActionItemExtractor): void {
   describe.each(fixtures)("$name — $rule", (fixture) => {
     let actionItems: ActionItem[];
 
     beforeAll(async () => {
-      const extracted = await extractor.extract(fixture.email);
-      actionItems = judge ? (await judgeActionItems(fixture.email, extracted, judge)).kept : extracted;
+      ({ actionItems } = await extractor.extract(fixture.email));
     });
 
     const { count, items = [] } = fixture.expect;
