@@ -58,9 +58,11 @@ const extractionJsonSchema = {
           title: { type: "string" },
           description: { type: "string" },
           date: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
-          // Nullable, same rationale as dueDate above — an email can name a day without naming a
-          // time span (e.g. "the conference is on the 12th"), and `pattern` is a no-op on `null`.
-          startTime: { type: ["string", "null"], pattern: "^\\d{2}:\\d{2}$" },
+          // Required — see actionItem.ts's CalendarEvent comment: an event with no extractable
+          // start time isn't emitted at all, so this field is never null on an event that is.
+          startTime: { type: "string", pattern: "^\\d{2}:\\d{2}$" },
+          // Nullable — `pattern` is a no-op on `null` values, so "no end time/duration stated" is
+          // still expressed as `null`, not a magic string, same as dueDate/startTime above.
           endTime: { type: ["string", "null"], pattern: "^\\d{2}:\\d{2}$" },
         },
         required: ["title", "description", "date", "startTime", "endTime"],

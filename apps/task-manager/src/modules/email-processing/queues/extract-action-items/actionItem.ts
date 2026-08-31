@@ -13,8 +13,10 @@ export interface ActionItem {
 // specific time) as opposed to an ActionItem, which is a task the receiver needs to do with no
 // fixed slot on the calendar. `date`/`startTime`/`endTime` are kept separate (rather than one
 // combined datetime) so the extraction schema can constrain each independently — see
-// lmStudio.ts's eventsJsonSchema. `startTime`/`endTime` are nullable for an event that only names
-// a day (e.g. "the conference is on the 12th") with no specific time span. A later phase (not
+// lmStudio.ts's extractionJsonSchema. `date`/`startTime` are both required — an event with no
+// known start time isn't extracted at all (see extractActionItems.system.md's Phase 3), so there
+// is no "day only" event to represent. `endTime` stays nullable: a real duration/end time is
+// nice-to-have, not something worth guessing when the email doesn't state one. A later phase (not
 // this one) turns a kept event into an actual Google Calendar entry — see
 // src/modules/loans/googleCalendar.ts's CalendarEventInput for the closest existing precedent of
 // that shape.
@@ -23,9 +25,9 @@ export interface CalendarEvent {
   description: string;
   /** ISO 8601 `yyyy-mm-dd`. */
   date: string;
-  /** ISO 8601 `HH:mm`, or null when the email doesn't name a specific time. */
-  startTime: string | null;
-  /** ISO 8601 `HH:mm`, or null when the email doesn't name a specific time. */
+  /** ISO 8601 `HH:mm`. Required — see the header comment above. */
+  startTime: string;
+  /** ISO 8601 `HH:mm`, or null when the email doesn't state an end time/duration. */
   endTime: string | null;
 }
 
