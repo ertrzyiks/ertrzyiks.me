@@ -38,11 +38,10 @@ export function createGmailClient(
       const response = await gmailApi.users.messages.list({
         userId: "me",
         maxResults: config.maxResults ?? 50,
-        // Restricts discovery to mail Gmail itself has marked important, rather than every
-        // message in the mailbox — Gmail's importance markers (its own ML model plus any manual
-        // "mark as important"/"never important" the user applies) are exposed as a regular search
-        // operator, so this is just a `q` filter, not a separate API surface.
-        q: "is:important",
+        // Restricts discovery to mail the user has starred, rather than every message in the
+        // mailbox — starring is an explicit, user-driven signal, and it's exposed as a regular
+        // search operator, so this is just a `q` filter, not a separate API surface.
+        q: "is:starred",
       });
 
       return (response.data.messages ?? [])
