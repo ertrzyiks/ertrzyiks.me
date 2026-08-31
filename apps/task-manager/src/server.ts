@@ -10,7 +10,9 @@ import { createApp } from "./app.js";
 import { isValidBasicAuth } from "./auth.js";
 import { createAxiomEventEmitter, noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { BULL_BOARD_BASE_PATH, registerBullBoard } from "./bullBoard.js";
-import { createGoogleCalendarClient } from "./modules/loans/googleCalendar.js";
+import { createGoogleCalendarClient } from "./googleCalendarClient.js";
+import { createQueue as createCalendarEventsQueue } from "./modules/google-calendar/queues/sync-calendar-events/queue.js";
+import { createWorker as createCalendarEventsWorker } from "./modules/google-calendar/queues/sync-calendar-events/worker.js";
 import { createGoogleTasksClient } from "./modules/google-tasks/queues/sync-google-tasks/googleTasksClient.js";
 import { createLibraryClient } from "./modules/loans/queues/refresh-library-loans/library.js";
 import { loadLibraryWorkerConfig } from "./modules/loans/libraryConfig.js";
@@ -43,6 +45,12 @@ const wbpgPassword = process.env.WBPG_PASSWORD;
 const googleCalendarClientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
 const googleCalendarClientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
 const googleCalendarRefreshToken = process.env.GOOGLE_CALENDAR_REFRESH_TOKEN;
+const googleCalendarId = process.env.GOOGLE_CALENDAR_ID;
+const googleCalendarTimeZone = process.env.GOOGLE_CALENDAR_TIMEZONE;
+const calendarEventsRateLimitMax = Number(process.env.CALENDAR_EVENTS_RATE_LIMIT_MAX ?? 5);
+const calendarEventsRateLimitDurationMs = Number(
+  process.env.CALENDAR_EVENTS_RATE_LIMIT_DURATION_MS ?? 1000,
+);
 const axiomToken = process.env.AXIOM_TOKEN;
 const axiomDataset = process.env.AXIOM_DATASET;
 const sentryDsn = process.env.SENTRY_DSN;
@@ -66,7 +74,8 @@ const events: EventEmitter =
 
 const queue = createExtractActionItemsQueue(redisUrl);
 const googleTasksQueue = createGoogleTasksQueue(redisUrl);
-const app = createApp(queue, googleTasksQueue, bearerToken);
+const calendarEventsQueue = createCalendarEventsQueue(redisUrl);
+const app = createApp(queue, googleTasksQueue, calendarEventsQueue, bearerToken);
 
 // Registered here (rather than only inside the "library sync workers" block below) so Bull
 // Board below always shows these two queues and — since Bull Board isn't read-only — offers an
@@ -90,10 +99,22 @@ if (bullBoardUsername && bullBoardPassword) {
       }
     });
 
-    await registerBullBoard(bullBoardApp, [queue, googleTasksQueue, libraryRefreshQueue, librarySyncQueue]);
+    await registerBullBoard(bullBoardApp, [
+      queue,
+      googleTasksQueue,
+      calendarEventsQueue,
+      libraryRefreshQueue,
+      librarySyncQueue,
+    ]);
   });
 } else {
-  await registerBullBoard(app, [queue, googleTasksQueue, libraryRefreshQueue, librarySyncQueue]);
+  await registerBullBoard(app, [
+    queue,
+    googleTasksQueue,
+    calendarEventsQueue,
+    libraryRefreshQueue,
+    librarySyncQueue,
+  ]);
 }
 
 // The `sync-google-tasks` worker runs right here, in the same cloud process as the Jobs API —
@@ -133,6 +154,40 @@ if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
   app.log.warn(
     "GOOGLE_TASKS_CLIENT_ID/GOOGLE_TASKS_CLIENT_SECRET/GOOGLE_TASKS_REFRESH_TOKEN not fully set — " +
       "sync-google-tasks worker not started, jobs will queue up unconsumed",
+  );
+}
+
+// The `sync-calendar-events` worker runs right here too, same reasoning as sync-google-tasks
+// above — pushing an already-extracted calendar event has no Mac-local constraint either.
+// Deliberately independent of the library sync block below even though both ultimately talk to
+// the same Google Calendar credential (#343): gating this on WBPG being configured too would mean
+// an email-derived event could never reach the calendar on an install that has no library sync
+// set up at all. Optional at startup like Google Tasks above — the Jobs API still accepts
+// `/calendar-event-jobs` either way, jobs just queue up unconsumed until the worker starts.
+if (googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefreshToken) {
+  const calendarClient = createGoogleCalendarClient({
+    clientId: googleCalendarClientId,
+    clientSecret: googleCalendarClientSecret,
+    refreshToken: googleCalendarRefreshToken,
+    calendarId: googleCalendarId,
+    timeZone: googleCalendarTimeZone,
+  });
+
+  // Same quota-protection reasoning as sync-google-tasks's limiter above, tuned by its own pair
+  // of env vars rather than reusing the Tasks ones — the two APIs have separate quotas.
+  const calendarEventsConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  createCalendarEventsWorker(
+    calendarEventsConnection,
+    { calendarClient, events },
+    {
+      limiter: { max: calendarEventsRateLimitMax, duration: calendarEventsRateLimitDurationMs },
+      logger: app.log,
+    },
+  );
+} else {
+  app.log.warn(
+    "GOOGLE_CALENDAR_CLIENT_ID/GOOGLE_CALENDAR_CLIENT_SECRET/GOOGLE_CALENDAR_REFRESH_TOKEN not fully set — " +
+      "sync-calendar-events worker not started, jobs will queue up unconsumed",
   );
 }
 

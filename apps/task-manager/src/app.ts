@@ -1,5 +1,10 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { isValidBearerToken } from "./auth.js";
+import type { CalendarEventJobPayload } from "./modules/google-calendar/queues/sync-calendar-events/calendarEvent.js";
+import {
+  CALENDAR_EVENTS_QUEUE_NAME,
+  type CalendarEventJobsQueue,
+} from "./modules/google-calendar/queues/sync-calendar-events/queue.js";
 import type { GoogleTaskJobPayload } from "./modules/google-tasks/queues/sync-google-tasks/googleTask.js";
 import {
   GOOGLE_TASKS_QUEUE_NAME,
@@ -16,9 +21,9 @@ interface JobStatusResponse {
   error?: string;
 }
 
-// Minimal shape both JobsQueue and GoogleTasksJobsQueue's `getJob` satisfy — lets the two queues
-// share this lookup instead of duplicating it per queue (their JobLike/GoogleTaskJobLike types
-// differ only in an unused `id` field).
+// Minimal shape JobsQueue, GoogleTasksJobsQueue, and CalendarEventJobsQueue's `getJob` all
+// satisfy — lets every queue share this lookup instead of duplicating it per queue (their
+// JobLike/GoogleTaskJobLike/CalendarEventJobLike types differ only in an unused `id` field).
 interface JobLookupQueue {
   getJob(jobId: string): Promise<
     { getState(): Promise<string>; returnvalue: unknown; failedReason?: string } | undefined
@@ -44,6 +49,7 @@ async function buildJobStatusResponse(
 export function createApp(
   queue: JobsQueue,
   googleTasksQueue: GoogleTasksJobsQueue,
+  calendarEventsQueue: CalendarEventJobsQueue,
   bearerToken: string,
 ): FastifyInstance {
   // Fastify's logger defaults to disabled (a silent no-op `app.log`), which
@@ -133,6 +139,50 @@ export function createApp(
 
       const results = (
         await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(googleTasksQueue, jobId)))
+      ).filter((result): result is JobStatusResponse => result !== null);
+
+      return reply.send({ results });
+    });
+
+    api.post<{ Body: Partial<CalendarEventJobPayload> }>("/calendar-event-jobs", async (request, reply) => {
+      const { calendarEventId, title, description, date, startTime, endTime } = request.body ?? {};
+      if (
+        typeof calendarEventId !== "number" ||
+        typeof title !== "string" ||
+        title.length === 0 ||
+        typeof date !== "string" ||
+        date.length === 0 ||
+        typeof startTime !== "string" ||
+        startTime.length === 0
+      ) {
+        return reply.code(400).send({ error: "calendarEventId, title, date, and startTime are required" });
+      }
+
+      const job = await calendarEventsQueue.add(CALENDAR_EVENTS_QUEUE_NAME, {
+        calendarEventId,
+        title,
+        description,
+        date,
+        startTime,
+        endTime,
+      });
+      return reply.code(201).send({ jobId: job.id });
+    });
+
+    api.get<{ Params: { jobId: string } }>("/calendar-event-jobs/:jobId", async (request, reply) => {
+      const response = await buildJobStatusResponse(calendarEventsQueue, request.params.jobId);
+      if (!response) return reply.code(404).send();
+      return reply.send(response);
+    });
+
+    api.post<{ Body: { jobIds?: string[] } }>("/calendar-event-jobs/status", async (request, reply) => {
+      const jobIds = request.body?.jobIds;
+      if (!Array.isArray(jobIds) || jobIds.some((id) => typeof id !== "string")) {
+        return reply.code(400).send({ error: "jobIds must be an array of strings" });
+      }
+
+      const results = (
+        await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(calendarEventsQueue, jobId)))
       ).filter((result): result is JobStatusResponse => result !== null);
 
       return reply.send({ results });

@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EventEmitter, TrendEvent } from "./axiomEvents.js";
 import type { GmailClient } from "./gmailClient.js";
 import type {
+  CalendarEventJobPayload,
+  CalendarEventJobStatusResult,
   GoogleTaskJobStatusResult,
   GoogleTaskPayload,
   JobStatusResult,
@@ -27,6 +29,10 @@ class FakeJobsApiClient implements JobsApiClient {
   scheduledGoogleTaskItems: GoogleTaskPayload[] = [];
   googleTaskStatuses = new Map<string, GoogleTaskJobStatusResult>();
   private nextGoogleTaskJobId = 1;
+
+  scheduledCalendarEventItems: CalendarEventJobPayload[] = [];
+  calendarEventStatuses = new Map<string, CalendarEventJobStatusResult>();
+  private nextCalendarEventJobId = 1;
 
   async scheduleJob(emailId: string) {
     this.scheduledEmailIds.push(emailId);
@@ -55,6 +61,19 @@ class FakeJobsApiClient implements JobsApiClient {
     return jobIds
       .map((jobId) => this.googleTaskStatuses.get(jobId))
       .filter((status): status is GoogleTaskJobStatusResult => status !== undefined);
+  }
+
+  async scheduleCalendarEventJob(item: CalendarEventJobPayload) {
+    this.scheduledCalendarEventItems.push(item);
+    const jobId = `gcal-job-${this.nextCalendarEventJobId++}`;
+    this.calendarEventStatuses.set(jobId, { jobId, status: "pending" });
+    return { jobId };
+  }
+
+  async getCalendarEventJobStatuses(jobIds: string[]) {
+    return jobIds
+      .map((jobId) => this.calendarEventStatuses.get(jobId))
+      .filter((status): status is CalendarEventJobStatusResult => status !== undefined);
   }
 }
 
@@ -162,7 +181,7 @@ describe("poller", () => {
       expect(called).toBe(false);
     });
 
-    it("stores action items and marks the email completed", async () => {
+    it("stores action items and calendar events, and marks the email completed", async () => {
       store.insertQueuedEmail("email-1");
       store.setJobId("email-1", "job-1");
       const jobsApi = new FakeJobsApiClient();
@@ -172,10 +191,18 @@ describe("poller", () => {
         result: {
           emailId: "email-1",
           actionItems: [{ title: "Reply", description: "to the sender", dueDate: "2026-08-10" }],
+          events: [{ title: "Team offsite", date: "2026-09-10", startTime: "09:00" }],
         },
       });
 
       await pollPendingJobStatuses({ gmail: new FakeGmailClient([]), jobsApi, store });
+
+      expect(store.getUnsyncedActionItems()).toEqual([
+        { id: 1, title: "Reply", description: "to the sender", dueDate: "2026-08-10" },
+      ]);
+      expect(store.getUnsyncedCalendarEvents()).toEqual([
+        { id: 1, title: "Team offsite", description: null, date: "2026-09-10", startTime: "09:00", endTime: null },
+      ]);
 
       expect(store.getQueuedEmailsWithJobId()).toEqual([]);
     });
@@ -198,7 +225,7 @@ describe("poller", () => {
       jobsApi.statuses.set("job-1", {
         jobId: "job-1",
         status: "completed",
-        result: { emailId: "email-1", actionItems: [] },
+        result: { emailId: "email-1", actionItems: [], events: [] },
       });
       const events = recordingEmitter();
 
@@ -268,7 +295,7 @@ describe("poller", () => {
       jobsApi.statuses.set("job-1", {
         jobId: "job-1",
         status: "completed",
-        result: { emailId: "email-1", actionItems: [{ title: "Do the thing" }] },
+        result: { emailId: "email-1", actionItems: [{ title: "Do the thing" }], events: [] },
       });
       await runPollCycle({ gmail: new FakeGmailClient([]), jobsApi, store });
 

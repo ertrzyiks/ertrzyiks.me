@@ -5,6 +5,8 @@ import {
   scheduleUnsyncedActionItems,
 } from "./googleTasksSyncer.js";
 import type {
+  CalendarEventJobPayload,
+  CalendarEventJobStatusResult,
   GoogleTaskJobStatusResult,
   GoogleTaskPayload,
   JobStatusResult,
@@ -40,6 +42,14 @@ class FakeJobsApiClient implements JobsApiClient {
     return jobIds
       .map((jobId) => this.googleTaskStatuses.get(jobId))
       .filter((status): status is GoogleTaskJobStatusResult => status !== undefined);
+  }
+
+  async scheduleCalendarEventJob(_item: CalendarEventJobPayload) {
+    return { jobId: "unused" };
+  }
+
+  async getCalendarEventJobStatuses(_jobIds: string[]) {
+    return [] as CalendarEventJobStatusResult[];
   }
 }
 

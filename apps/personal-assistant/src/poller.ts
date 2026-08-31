@@ -1,4 +1,5 @@
 import { noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
+import { runCalendarEventSyncCycle } from "./calendarEventSyncer.js";
 import type { GmailClient } from "./gmailClient.js";
 import { runGoogleTasksSyncCycle } from "./googleTasksSyncer.js";
 import type { JobsApiClient } from "./jobsApiClient.js";
@@ -52,8 +53,8 @@ export async function discoverAndScheduleNewEmails(deps: PollDeps): Promise<void
 
 /**
  * Polls the Jobs API for the status of every email still queued with a job attached, and
- * stores the outcome: action items + status='completed' on success, status='failed' +
- * error_message on failure. Still-pending/active jobs are left untouched.
+ * stores the outcome: action items + calendar events + status='completed' on success,
+ * status='failed' + error_message on failure. Still-pending/active jobs are left untouched.
  */
 export async function pollPendingJobStatuses(deps: PollDeps): Promise<void> {
   const { jobsApi, store, logger = noopLogger, events = noopEventEmitter } = deps;
@@ -69,9 +70,12 @@ export async function pollPendingJobStatuses(deps: PollDeps): Promise<void> {
     if (!status) continue; // Unknown to the Jobs API — leave queued, try again next cycle.
 
     if (status.status === "completed") {
-      store.markEmailCompleted(emailId, status.result?.actionItems ?? []);
+      store.markEmailCompleted(emailId, status.result?.actionItems ?? [], status.result?.events ?? []);
       events.emit({ entity: "email", entityId: emailId, status: "completed" });
-      logger.info(`email ${emailId} completed with ${status.result?.actionItems.length ?? 0} action item(s)`);
+      logger.info(
+        `email ${emailId} completed with ${status.result?.actionItems.length ?? 0} action item(s) ` +
+          `and ${status.result?.events?.length ?? 0} event(s)`,
+      );
     } else if (status.status === "failed") {
       const error = status.error ?? "job failed with no error message";
       store.markEmailFailed(emailId, error);
@@ -90,4 +94,7 @@ export async function runPollCycle(deps: PollDeps): Promise<void> {
   // on this same cycle/interval (runner.ts) rather than its own, since it shares this cycle's
   // `store`/`jobsApi` deps and there's no reason for a separate timer yet.
   await runGoogleTasksSyncCycle(deps);
+  // Same loop as above, for calendar_events -> Google Calendar instead of action_items -> Google
+  // Tasks (calendarEventSyncer.ts) — see that file's header comment.
+  await runCalendarEventSyncCycle(deps);
 }

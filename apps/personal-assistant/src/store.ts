@@ -8,6 +8,17 @@ export interface ActionItemInput {
   dueDate?: string;
 }
 
+// Mirrors ActionItemInput's role, for the events extract-action-items returns alongside action
+// items (see task-manager's actionItem.ts `CalendarEvent`) — `startTime` is required there
+// (extraction never emits an event without one), `endTime` optional.
+export interface CalendarEventInput {
+  title: string;
+  description?: string;
+  date: string;
+  startTime: string;
+  endTime?: string;
+}
+
 export interface QueuedEmail {
   emailId: string;
   jobId: string;
@@ -27,6 +38,23 @@ export interface QueuedActionItem {
   jobId: string;
 }
 
+/** One calendar event not yet scheduled for a sync-calendar-events job (job_id IS NULL). */
+export interface UnsyncedCalendarEvent {
+  id: number;
+  title: string;
+  description: string | null;
+  date: string;
+  startTime: string;
+  endTime: string | null;
+}
+
+/** One calendar event with a sync job scheduled but not yet backfilled (job_id set,
+ * google_event_id NULL). */
+export interface QueuedCalendarEvent {
+  id: number;
+  jobId: string;
+}
+
 /** One row of the snapshot dashboard's status breakdown (#297/#312). */
 export interface StatusCount {
   status: string;
@@ -42,7 +70,12 @@ export interface FailedEmail {
 
 // Schema exactly as specified in #250/#242, plus job_id/task_id on action_items for the Google
 // Tasks sync loop (googleTasksSyncer.ts): job_id is set once a sync job has been scheduled,
-// task_id is backfilled with the Google Tasks task ID once that job completes.
+// task_id is backfilled with the Google Tasks task ID once that job completes. calendar_events
+// mirrors that same job_id/<result column> shape for the calendar-event sync loop
+// (calendarEventSyncer.ts) — job_id/google_event_id instead of job_id/task_id — but is a brand
+// new table (this feature shipped with it from the start), so unlike action_items it needs no
+// migration/backfill story: `CREATE TABLE IF NOT EXISTS` alone is enough for both a fresh
+// database and an existing one that predates this table.
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS emails (
   id TEXT PRIMARY KEY,
@@ -63,6 +96,19 @@ CREATE TABLE IF NOT EXISTS action_items (
   created_at TEXT NOT NULL,
   job_id TEXT,
   task_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS calendar_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email_id TEXT NOT NULL REFERENCES emails(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  date TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT,
+  created_at TEXT NOT NULL,
+  job_id TEXT,
+  google_event_id TEXT
 );
 `;
 
@@ -115,8 +161,14 @@ export interface Store {
   setJobId(emailId: string, jobId: string): void;
   /** Marks an email failed, either because scheduling or extraction failed. */
   markEmailFailed(emailId: string, errorMessage: string): void;
-  /** Stores the extracted action items and marks the email completed. */
-  markEmailCompleted(emailId: string, actionItems: ActionItemInput[]): void;
+  /** Stores the extracted action items and calendar events, and marks the email completed.
+   * `calendarEvents` defaults to `[]` so existing callers/tests that only care about action items
+   * are unaffected by omitting it. */
+  markEmailCompleted(
+    emailId: string,
+    actionItems: ActionItemInput[],
+    calendarEvents?: CalendarEventInput[],
+  ): void;
   /** Emails still awaiting a job result (status='queued' with a job already scheduled). */
   getQueuedEmailsWithJobId(): QueuedEmail[];
   /** Action items not yet scheduled for a Google Tasks sync job (job_id IS NULL). */
@@ -127,6 +179,15 @@ export interface Store {
   getActionItemsAwaitingTaskSync(): QueuedActionItem[];
   /** Backfills the Google Tasks task ID once the sync job completes. */
   setActionItemTaskId(id: number, taskId: string): void;
+  /** Calendar events not yet scheduled for a sync-calendar-events job (job_id IS NULL). */
+  getUnsyncedCalendarEvents(): UnsyncedCalendarEvent[];
+  /** Attaches the sync-calendar-events job ID once scheduling succeeded. */
+  setCalendarEventJobId(id: number, jobId: string): void;
+  /** Calendar events with a sync job scheduled but not yet completed (job_id set,
+   * google_event_id NULL). */
+  getCalendarEventsAwaitingSync(): QueuedCalendarEvent[];
+  /** Backfills the Google Calendar event ID once the sync job completes. */
+  setCalendarEventGoogleEventId(id: number, googleEventId: string): void;
   /** Current counts of emails grouped by status, for the snapshot dashboard (#297/#312). */
   getStatusCounts(): StatusCount[];
   /** The most recently updated failed emails, capped at `limit` (#297/#312). */
@@ -157,6 +218,9 @@ export function createStore(path: string): Store {
   const insertActionItemStmt = db.prepare(
     "INSERT INTO action_items (email_id, title, description, due_date, created_at) VALUES (?, ?, ?, ?, ?)",
   );
+  const insertCalendarEventStmt = db.prepare(
+    "INSERT INTO calendar_events (email_id, title, description, date, start_time, end_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
   const queuedWithJobStmt = db.prepare(
     "SELECT id, job_id FROM emails WHERE status = 'queued' AND job_id IS NOT NULL",
   );
@@ -168,6 +232,16 @@ export function createStore(path: string): Store {
     "SELECT id, job_id FROM action_items WHERE job_id IS NOT NULL AND task_id IS NULL",
   );
   const setActionItemTaskIdStmt = db.prepare("UPDATE action_items SET task_id = ? WHERE id = ?");
+  const unsyncedCalendarEventsStmt = db.prepare(
+    "SELECT id, title, description, date, start_time, end_time FROM calendar_events WHERE job_id IS NULL",
+  );
+  const setCalendarEventJobIdStmt = db.prepare("UPDATE calendar_events SET job_id = ? WHERE id = ?");
+  const calendarEventsAwaitingSyncStmt = db.prepare(
+    "SELECT id, job_id FROM calendar_events WHERE job_id IS NOT NULL AND google_event_id IS NULL",
+  );
+  const setCalendarEventGoogleEventIdStmt = db.prepare(
+    "UPDATE calendar_events SET google_event_id = ? WHERE id = ?",
+  );
   const statusCountsStmt = db.prepare("SELECT status, COUNT(*) as count FROM emails GROUP BY status");
   const recentFailuresStmt = db.prepare(
     "SELECT id, error_message, updated_at FROM emails WHERE status = 'failed' ORDER BY updated_at DESC LIMIT ?",
@@ -191,7 +265,7 @@ export function createStore(path: string): Store {
       failEmailStmt.run(errorMessage, new Date().toISOString(), emailId);
     },
 
-    markEmailCompleted(emailId, actionItems) {
+    markEmailCompleted(emailId, actionItems, calendarEvents = []) {
       const now = new Date().toISOString();
       db.exec("BEGIN");
       try {
@@ -201,6 +275,17 @@ export function createStore(path: string): Store {
             item.title,
             item.description ?? null,
             item.dueDate ?? null,
+            now,
+          );
+        }
+        for (const event of calendarEvents) {
+          insertCalendarEventStmt.run(
+            emailId,
+            event.title,
+            event.description ?? null,
+            event.date,
+            event.startTime,
+            event.endTime ?? null,
             now,
           );
         }
@@ -243,6 +328,38 @@ export function createStore(path: string): Store {
 
     setActionItemTaskId(id, taskId) {
       setActionItemTaskIdStmt.run(taskId, id);
+    },
+
+    getUnsyncedCalendarEvents() {
+      const rows = unsyncedCalendarEventsStmt.all() as {
+        id: number;
+        title: string;
+        description: string | null;
+        date: string;
+        start_time: string;
+        end_time: string | null;
+      }[];
+      return rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        date: row.date,
+        startTime: row.start_time,
+        endTime: row.end_time,
+      }));
+    },
+
+    setCalendarEventJobId(id, jobId) {
+      setCalendarEventJobIdStmt.run(jobId, id);
+    },
+
+    getCalendarEventsAwaitingSync() {
+      const rows = calendarEventsAwaitingSyncStmt.all() as { id: number; job_id: string }[];
+      return rows.map((row) => ({ id: row.id, jobId: row.job_id }));
+    },
+
+    setCalendarEventGoogleEventId(id, googleEventId) {
+      setCalendarEventGoogleEventIdStmt.run(googleEventId, id);
     },
 
     getStatusCounts() {

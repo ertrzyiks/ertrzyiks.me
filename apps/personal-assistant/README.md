@@ -1,9 +1,9 @@
 # personal-assistant
 
 Orchestration service for the email → action-items automation (see [#250](https://github.com/ertrzyiks/ertrzyiks.me/issues/250)).
-Polls Gmail for new message IDs, schedules action-item extraction jobs against the Jobs API
-(`apps/task-manager`), and stores the results in SQLite. No UI — this is a background poller;
-the SQLite database it writes to is the queryable end product.
+Polls Gmail for new message IDs, schedules action-item/calendar-event extraction jobs against the
+Jobs API (`apps/task-manager`), and stores the results in SQLite. No UI — this is a background
+poller; the SQLite database it writes to is the queryable end product.
 
 The Mac worker that actually extracts action items from email content (colocated in
 `apps/task-manager`, see [#249](https://github.com/ertrzyiks/ertrzyiks.me/issues/249)) is a
@@ -25,9 +25,10 @@ For each poll cycle:
    against the Jobs API. If scheduling fails, the email is marked `status='failed'` right away
    (retry/alerting policy is deferred — see Tasks in #250).
 4. For every email still `status='queued'` with a job attached: `POST /jobs/status` (batched) to
-   check progress. On `completed`, the returned action items are inserted into `action_items` and
-   the email is marked `status='completed'`. On `failed`, the email is marked `status='failed'`
-   with `error_message` set. `pending`/`active` jobs are left alone until the next cycle.
+   check progress. On `completed`, the returned action items are inserted into `action_items`, the
+   returned calendar events into `calendar_events`, and the email is marked `status='completed'`.
+   On `failed`, the email is marked `status='failed'` with `error_message` set. `pending`/`active`
+   jobs are left alone until the next cycle.
 5. Google Tasks sync (`src/googleTasksSyncer.ts`), same cycle: for every action item with no
    `job_id` yet, `POST /google-tasks-jobs` against the Jobs API's `sync-google-tasks` queue and
    record the returned job ID. For every action item with a `job_id` but no `task_id` yet,
@@ -36,12 +37,18 @@ For each poll cycle:
    failure is logged and left stuck (`job_id` set, `task_id` never filled) — this feature has no
    per-item error column, unlike `emails.error_message`, so both are best-effort rather than a
    real retry/alerting policy (same "explicitly deferred" stance as step 3 above).
+6. Calendar event sync (`src/calendarEventSyncer.ts`), same cycle, structurally identical to step 5
+   above but for `calendar_events` → Google Calendar instead of `action_items` → Google Tasks:
+   `POST /calendar-event-jobs` against the Jobs API's `sync-calendar-events` queue for every
+   unscheduled event, then `POST /calendar-event-jobs/status` (batched) and backfill
+   `google_event_id` on `completed`. Same best-effort, no-retry-policy stance as step 5.
 
 ## SQLite schema
 
 Exactly as specified in [#242](https://github.com/ertrzyiks/ertrzyiks.me/issues/242), plus
-`job_id`/`task_id` on `action_items` for the Google Tasks sync loop above. Created (and migrated,
-for `job_id`/`task_id` on a database file that predates them) at startup:
+`job_id`/`task_id` on `action_items` for the Google Tasks sync loop above, and `calendar_events`
+for the calendar-event sync loop. Created (and migrated, for `job_id`/`task_id` on a database file
+that predates them) at startup:
 
 ```sql
 CREATE TABLE emails (
@@ -64,6 +71,19 @@ CREATE TABLE action_items (
   job_id TEXT,                            -- sync-google-tasks job ID, once scheduled
   task_id TEXT                            -- Google Tasks task ID, once the job completes
 );
+
+CREATE TABLE calendar_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email_id TEXT NOT NULL REFERENCES emails(id),
+  title TEXT NOT NULL,
+  description TEXT,
+  date TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT,
+  created_at TEXT NOT NULL,
+  job_id TEXT,                            -- sync-calendar-events job ID, once scheduled
+  google_event_id TEXT                    -- Google Calendar event ID, once the job completes
+);
 ```
 
 The `job_id`/`task_id` migration (`migrateActionItemsColumns` in `store.ts`) stamps every
@@ -76,6 +96,10 @@ API "quota exceeded" error in production. The sentinel value is never a real job
 permanently excludes the row from both `getUnsyncedActionItems` and `getActionItemsAwaitingTaskSync`.
 A genuinely new action item's `job_id`/`task_id` stay `NULL` until the sync loop actually touches
 them, so this only affects rows that predate the migration.
+
+`calendar_events` needs no equivalent migration/backfill — this feature shipped with the table
+from the start, so `CREATE TABLE IF NOT EXISTS` alone is enough for both a fresh database and an
+existing one that predates it; there's no historical backlog of rows to retroactively exclude.
 
 ## Environment variables
 
@@ -203,3 +227,8 @@ pnpm --filter personal-assistant test
   calls both. `src/logger.ts` holds the shared `Logger`/`noopLogger` (split out of `poller.ts`)
   so `googleTasksSyncer.ts` can use them without poller.ts/googleTasksSyncer.ts importing each
   other.
+- `src/calendarEventSyncer.ts` is `googleTasksSyncer.ts`'s calendar-event counterpart — same
+  schedule-unsynced/poll-pending/run-cycle shape, same `Logger` split, pointed at
+  `calendar_events`/`sync-calendar-events` instead of `action_items`/`sync-google-tasks`.
+  `runPollCycle` calls all three (discover+poll, Google Tasks sync, calendar event sync) in one
+  cycle.
