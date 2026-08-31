@@ -8,6 +8,7 @@ import { Worker } from "bullmq";
 import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
 import { processEmailJob, type JobProcessorDeps } from "./jobProcessor.js";
 import { jobLoggerFor } from "../../../../jobLogger.js";
+import { logConnectionErrors } from "../../../../redisResilience.js";
 import { Sentry } from "../../../../sentry.js";
 import type { WorkerLogger } from "../../../../workerLogger.js";
 import { QUEUE_NAME } from "./queue.js";
@@ -40,6 +41,10 @@ export function createWorker(
     logger.error(`Job ${job?.id ?? "<unknown>"} failed:`, error);
     Sentry.captureException(error, { tags: { queue: QUEUE_NAME, jobId: job?.id } });
   });
+
+  // Keeps a Redis disconnect (e.g. the Mac worker briefly losing network) from crashing this
+  // process — see redisResilience.ts.
+  logConnectionErrors(worker, `worker "${QUEUE_NAME}"`, logger);
 
   return worker;
 }

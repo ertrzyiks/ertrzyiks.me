@@ -3,7 +3,9 @@ import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 // See ../../email-processing/queues/extract-action-items/queue.test.ts's header comment — same
 // mocking rationale.
-const QueueMock = vi.fn();
+const QueueMock = vi.fn(function () {
+  return { on: vi.fn() };
+});
 vi.mock("bullmq", () => ({ Queue: QueueMock }));
 vi.mock("ioredis", () => ({ Redis: vi.fn() }));
 

@@ -10,6 +10,7 @@ import {
   type CalendarEventJobProcessorDeps,
 } from "./calendarEventJobProcessor.js";
 import { jobLoggerFor } from "../../../../jobLogger.js";
+import { logConnectionErrors } from "../../../../redisResilience.js";
 import { Sentry } from "../../../../sentry.js";
 import type { WorkerLogger } from "../../../../workerLogger.js";
 import { CALENDAR_EVENTS_QUEUE_NAME } from "./queue.js";
@@ -44,6 +45,9 @@ export function createWorker(
     logger.error(`Calendar event sync job ${job?.id ?? "<unknown>"} failed: ${error}`);
     Sentry.captureException(error, { tags: { queue: CALENDAR_EVENTS_QUEUE_NAME, jobId: job?.id } });
   });
+
+  // Keeps a Redis disconnect from crashing this process — see redisResilience.ts.
+  logConnectionErrors(worker, `worker "${CALENDAR_EVENTS_QUEUE_NAME}"`, logger);
 
   return worker;
 }

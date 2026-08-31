@@ -5,6 +5,7 @@
 // neither WBPG login nor Google Calendar needs anything Mac-local.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
+import { logConnectionErrors } from "../../../../redisResilience.js";
 import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 export const LIBRARY_REFRESH_QUEUE_NAME = "refresh-library-loans";
@@ -12,5 +13,7 @@ export const LIBRARY_REFRESH_QUEUE_NAME = "refresh-library-loans";
 // `defaultJobOptions` (#348) — see retry.ts for the shared policy every queue in this app applies.
 export function createQueue(redisUrl: string): Queue {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  return new Queue(LIBRARY_REFRESH_QUEUE_NAME, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+  const queue = new Queue(LIBRARY_REFRESH_QUEUE_NAME, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+  logConnectionErrors(queue, `queue "${LIBRARY_REFRESH_QUEUE_NAME}"`);
+  return queue;
 }
