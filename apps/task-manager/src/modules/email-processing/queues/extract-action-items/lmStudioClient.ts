@@ -1,10 +1,9 @@
 // Shared LM Studio HTTP client plumbing — model discovery plus a structured chat completion
-// helper — used by every LM Studio caller in this package: src/lmStudio.ts (action item
-// extraction, #238) and src/actionItemJudge.ts (judging each extracted action item). Split out
-// once a second caller needed the exact same "read a prompt file next to this bundle, discover
-// the loaded model, POST a JSON-schema-constrained chat completion" plumbing lmStudio.ts already
-// had, so the request shape and error messages stay identical across both call sites instead of
-// drifting apart as separate copies.
+// helper — used by lmStudio.ts (action item + calendar event extraction, #238). Originally split
+// out once a second caller (a since-removed action item judge, a separate LM Studio call) needed
+// the exact same "read a prompt file next to this bundle, discover the loaded model, POST a
+// JSON-schema-constrained chat completion" plumbing lmStudio.ts already had; kept split out even
+// with one caller today since lmStudio.ts reads better without this HTTP plumbing inline.
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,9 +66,9 @@ interface LmStudioChatCompletionResponse {
 }
 
 // Posts one structured chat completion — a system + user turn, constrained to `jsonSchema` via LM
-// Studio's OpenAI-compatible `response_format` — and returns the parsed JSON content. Callers
-// validate the returned `unknown` into their own shape (extractor: an `actionItems` array; judge:
-// a `keep`/`reason` verdict) since that's the one thing that differs between them.
+// Studio's OpenAI-compatible `response_format` — and returns the parsed JSON content. The caller
+// validates the returned `unknown` into its own shape (lmStudio.ts: `actionItems`/`events`
+// arrays).
 export async function requestStructuredCompletion(params: {
   baseUrl: string;
   fetchImpl: typeof fetch;

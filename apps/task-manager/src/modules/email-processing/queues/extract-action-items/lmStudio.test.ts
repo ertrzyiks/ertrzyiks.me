@@ -43,6 +43,15 @@ describe("createLmStudioExtractor", () => {
                   actionItems: [
                     { title: "Send the report", description: "Send the Q3 report", dueDate: null },
                   ],
+                  events: [
+                    {
+                      title: "Planning sync",
+                      description: "Quarterly planning sync",
+                      date: "2026-09-10",
+                      startTime: "09:00",
+                      endTime: "10:00",
+                    },
+                  ],
                 }),
               },
             },
@@ -53,22 +62,35 @@ describe("createLmStudioExtractor", () => {
     });
 
     const extractor = createLmStudioExtractor({ fetchImpl: fetchImpl as unknown as typeof fetch });
-    const actionItems = await extractor.extract(EMAIL);
+    const result = await extractor.extract(EMAIL);
 
-    expect(actionItems).toEqual([
-      { title: "Send the report", description: "Send the Q3 report", dueDate: null },
-    ]);
+    expect(result).toEqual({
+      actionItems: [
+        { title: "Send the report", description: "Send the Q3 report", dueDate: null },
+      ],
+      events: [
+        {
+          title: "Planning sync",
+          description: "Quarterly planning sync",
+          date: "2026-09-10",
+          startTime: "09:00",
+          endTime: "10:00",
+        },
+      ],
+    });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
-  it("returns an empty array when the model reports no action items", async () => {
+  it("returns empty arrays when the model reports no action items or events", async () => {
     const fetchImpl = vi.fn(async (url: string | URL) => {
       if (String(url).endsWith("/v1/models")) return jsonResponse({ data: [{ id: "m" }] });
-      return jsonResponse({ choices: [{ message: { content: JSON.stringify({ actionItems: [] }) } }] });
+      return jsonResponse({
+        choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
+      });
     });
 
     const extractor = createLmStudioExtractor({ fetchImpl: fetchImpl as unknown as typeof fetch });
-    expect(await extractor.extract(EMAIL)).toEqual([]);
+    expect(await extractor.extract(EMAIL)).toEqual({ actionItems: [], events: [] });
   });
 
   it("throws when no model is currently loaded in LM Studio", async () => {
@@ -108,17 +130,33 @@ describe("createLmStudioExtractor", () => {
   it("throws when the response is missing an actionItems array", async () => {
     const fetchImpl = vi.fn(async (url: string | URL) => {
       if (String(url).endsWith("/v1/models")) return jsonResponse({ data: [{ id: "m" }] });
-      return jsonResponse({ choices: [{ message: { content: JSON.stringify({ foo: "bar" }) } }] });
+      return jsonResponse({
+        choices: [{ message: { content: JSON.stringify({ events: [] }) } }],
+      });
     });
 
     const extractor = createLmStudioExtractor({ fetchImpl: fetchImpl as unknown as typeof fetch });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an actionItems array");
   });
 
+  it("throws when the response is missing an events array", async () => {
+    const fetchImpl = vi.fn(async (url: string | URL) => {
+      if (String(url).endsWith("/v1/models")) return jsonResponse({ data: [{ id: "m" }] });
+      return jsonResponse({
+        choices: [{ message: { content: JSON.stringify({ actionItems: [] }) } }],
+      });
+    });
+
+    const extractor = createLmStudioExtractor({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an events array");
+  });
+
   it("defaults to http://localhost:1234 as the base URL", async () => {
     const fetchImpl = vi.fn(async (url: string | URL) => {
       if (String(url).endsWith("/v1/models")) return jsonResponse({ data: [{ id: "m" }] });
-      return jsonResponse({ choices: [{ message: { content: JSON.stringify({ actionItems: [] }) } }] });
+      return jsonResponse({
+        choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
+      });
     });
 
     const extractor = createLmStudioExtractor({ fetchImpl: fetchImpl as unknown as typeof fetch });

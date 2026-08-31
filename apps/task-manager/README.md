@@ -143,13 +143,12 @@ without a due date.
 | `GMAIL_KEYCHAIN_SERVICE`  | no       | macOS Keychain "service" all four secrets above are read from (default `task-manager-worker`) |
 | `GMAIL_KEYCHAIN_ACCOUNT`  | no       | macOS Keychain "account" the refresh token specifically is read from (default `gmail-refresh-token`) |
 | `LM_STUDIO_BASE_URL`      | no       | Base URL of the local LM Studio server (default `http://localhost:1234`)      |
-| `WORKER_JUDGE_ACTION_ITEMS` | no     | Set to `"false"` to skip the action item judge (see "Action item judge" below) and keep everything the extractor returns — on by default |
 | `WORKER_FAKE_DEPS`        | no       | `"true"` swaps in canned fake Gmail/LM Studio implementations instead of the real ones — **manual smoke-testing only, never set in production** (see below) |
 | `AXIOM_TOKEN`             | no\*\*   | Axiom API token for trend-event ingestion (#315), used by `extract-action-items` jobs here |
 | `AXIOM_DATASET`           | no\*\*   | Axiom dataset to ingest into (e.g. `task-manager-events`, same dataset the cloud side uses) |
 | `SENTRY_DSN`              | no\*\*   | Sentry DSN for error monitoring (see "Error monitoring" below), same value as the Jobs API server's above |
 | `SENTRY_ENVIRONMENT`      | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
-| `WORKER_INSPECTION_DIR`   | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
+| `WORKER_INSPECTION_DIR`   | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items/events, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
 
 \* All four secrets are read from the macOS Keychain if not set as env vars (see `resolveSecret`
 in `src/modules/email-processing/queues/extract-action-items/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
@@ -236,45 +235,17 @@ reporting is opt-in via a local env var, not active in the production LaunchAgen
 
 Axiom and Sentry above answer "did the job succeed" and "what broke" — neither shows *what the LLM
 actually saw and produced*, which is what you need when judging extraction quality or debugging a
-bad set of action items. `src/modules/email-processing/queues/extract-action-items/inspectionLog.ts` writes one JSON file per `extract-action-items` run
+bad set of action items/events. `src/modules/email-processing/queues/extract-action-items/inspectionLog.ts` writes one JSON file per `extract-action-items` run
 to `WORKER_INSPECTION_DIR` (see the Mac worker env var table above; default `./audit`, resolved
 against the worker process's cwd — the repo checkout in dev, see "macOS LaunchAgent" below for
-prod) — `{ emailId, email, actionItems, rejectedActionItems? }` on success (`rejectedActionItems`
-only present when the judge below actually rejected something), `{ emailId, email, error }` if
-extraction or judging failed (fetch failures aren't logged here, there's no email content yet to
-inspect). One file per run rather than one per `emailId` on purpose: re-running/regenerating action
-items for the same email appends another file instead of overwriting the last one, so every
-attempt stays available for comparison. Set `WORKER_INSPECTION_DIR=""` to turn this off entirely —
-see `createFileInspectionLogger`'s no-op sibling, `noopInspectionLogger`. `./audit` is gitignored
+prod) — `{ emailId, email, actionItems, events }` on success, `{ emailId, email, error }` if
+extraction failed (fetch failures aren't logged here, there's no email content yet to inspect). One
+file per run rather than one per `emailId` on purpose: re-running/regenerating action items for the
+same email appends another file instead of overwriting the last one, so every attempt stays
+available for comparison. Set `WORKER_INSPECTION_DIR=""` to turn this off entirely — see
+`createFileInspectionLogger`'s no-op sibling, `noopInspectionLogger`. `./audit` is gitignored
 (unlike `AXIOM_TOKEN`/`SENTRY_DSN`, this one really is on by default — it's real email content, so
 it must never end up committed).
-
-### Action item judge
-
-Extraction (above) and judging are two separate LM Studio calls, not one bigger prompt: after
-`src/modules/email-processing/queues/extract-action-items/lmStudio.ts` turns an email into a list of action items, `src/modules/email-processing/queues/extract-action-items/actionItemJudge.ts` calls LM
-Studio again **once per action item**, passing it the original email plus that one proposed item,
-and asks it to decide whether the item should actually be kept — see
-`src/modules/email-processing/queues/extract-action-items/prompts/judgeActionItem.system.md` for exactly what it's checking for (grounded in the email,
-not just a call-to-action link, not from a newsletter/notification that shouldn't have produced
-anything, a real due date rather than a guess, one coherent action rather than a vague catch-all).
-`src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs every item's judge call concurrently, drops whatever gets rejected
-before the job result and Google Tasks sync ever see it, and records both halves — survivors and
-rejects, with the judge's stated reason — to the inspection log above, so a bad extraction that
-*would* have created a wrong task is visible in `npm run review` (below) instead of only the ones
-that made it through.
-
-On by default, same "never leaves the Mac" constraint as extraction itself (it's still the only
-local LM Studio server involved, just a second call to it) — set `WORKER_JUDGE_ACTION_ITEMS=false`
-to skip it and keep everything the extractor returns unfiltered, e.g. while comparing
-extraction-only vs. judged output during prompt iteration. A judging failure fails the whole job
-the same way an extraction failure does (see `processEmailJob`'s catch block) rather than silently
-falling back to "keep everything" — a job that failed outright is easier to notice and retry than
-one that quietly skipped a safety check.
-
-Both LM Studio calls share their HTTP plumbing (`src/modules/email-processing/queues/extract-action-items/lmStudioClient.ts`: model discovery, the
-structured `response_format` request shape, error messages) so the two prompts differ only in
-*what* they ask, not in *how* they talk to LM Studio.
 
 ### Reviewing extractions (`npm run review`)
 
@@ -289,11 +260,9 @@ npm run review
 npm run review -- --dir ./audit --port 4600
 ```
 
-It lists every run newest-first (subject/from, collapsible body, extracted action items or the
-error) — action items the judge rejected are shown too, struck through with its stated reason, so
-you can tell a clean extraction from one the judge had to clean up after. Clicking "This is
-wrong…" on a run opens a form to describe what the extraction *should* have produced (against the
-kept items only — the judge already agreed the rejected ones shouldn't count) — the same loose
+It lists every run newest-first (subject/from, collapsible body, extracted action items and events,
+or the error). Clicking "This is wrong…" on a run opens a form to describe what the extraction
+*should* have produced (action items only — flagging doesn't cover events yet) — the same loose
 `{ count, items: [{ titleContains, descriptionContains, dueDate }] }`
 shape `eval/fixtures.ts`'s hand-picked fixtures use (see that file's `ItemExpectation`). Saving
 writes a fixture to `eval/reviewed-fixtures.json` (read/exported by `eval/reviewedFixtures.ts`),
@@ -394,22 +363,21 @@ pnpm --filter task-manager worker
 REDIS_URL=redis://localhost:6379 WORKER_FAKE_DEPS=true pnpm --filter task-manager worker
 ```
 
-### Evaluating the extraction + judge pipeline (`eval/`)
+### Evaluating the extraction prompt (`eval/`)
 
 `eval/extractActionItems.eval.test.ts` and `eval/reviewedFixtures.eval.test.ts` are local-only eval
-harnesses for `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md` **and**
-`src/modules/email-processing/queues/extract-action-items/prompts/judgeActionItem.system.md` together — a set of fixture emails
-(`eval/fixtures.ts`/`eval/reviewedFixtures.ts`) run through the exact same extract-then-judge
-pipeline `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs for a real job (real local LM Studio server, via the same
-`createLmStudioExtractor(...)`/`createLmStudioActionItemJudge(...)` the worker uses — see
-`eval/runFixtureSuite.ts`), each checked against expectations on how many action items should
-*survive both steps* and what they should say. It's for iterating on either prompt by hand: change
-the wording, rerun, see which fixtures moved — a failure doesn't say by itself which prompt is at
-fault, only that the pipeline's final output disagrees with the fixture's `expect`.
+harnesses for `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md` — a set of
+fixture emails (`eval/fixtures.ts`/`eval/reviewedFixtures.ts`) run through the exact same
+extraction call `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs for a real job (real local
+LM Studio server, via the same `createLmStudioExtractor(...)` the worker uses — see
+`eval/runFixtureSuite.ts`), each checked against expectations on how many action items should come
+back and what they should say (`events` isn't asserted on here yet — see `eval/fixtures.ts`'s
+`EvalFixture` shape). It's for iterating on the prompt by hand: change the wording, rerun, see
+which fixtures moved.
 
 It **never runs in CI** — it's outside `vitest`'s `src/**/*.{test,spec}.ts` include glob and outside
 `tsc`'s `include` (`src` only), and it needs a real LM Studio server, same reason the real LM Studio
-calls are excluded from `lmStudio.test.ts`/`actionItemJudge.test.ts`. Run it by hand, with LM Studio
+calls are excluded from `lmStudio.test.ts`. Run it by hand, with LM Studio
 running locally and a model loaded:
 
 ```bash
@@ -436,8 +404,8 @@ loose on purpose — the model's wording varies run to run — so failures shoul
 a fixture or two flipping between runs is expected; treat it as a trend to watch across a prompt
 change, not a hard CI-style gate. Exits non-zero if any fixture had a failing assertion.
 
-Add a fixture whenever `extractActionItems.system.md` or `judgeActionItem.system.md` gains a new
-rule, or whenever a real email turns out to trick either step into misclassifying something.
+Add a fixture whenever `extractActionItems.system.md` gains a new rule, or whenever a real email
+turns out to trick extraction into misclassifying something.
 
 ## macOS LaunchAgent (#251)
 

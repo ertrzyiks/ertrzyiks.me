@@ -24,7 +24,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import Fastify from "fastify";
-import type { ActionItem } from "../src/modules/email-processing/queues/extract-action-items/actionItem.js";
+import type { ActionItem, CalendarEvent } from "../src/modules/email-processing/queues/extract-action-items/actionItem.js";
 import type { EmailContent } from "../src/modules/email-processing/queues/extract-action-items/gmail.js";
 import type { StoredInspectionRecord } from "../src/modules/email-processing/queues/extract-action-items/inspectionLog.js";
 import type { ItemExpectation } from "../eval/fixtures.js";
@@ -47,8 +47,8 @@ interface Run {
   emailId: string;
   email: EmailContent;
   actionItems?: ActionItem[];
+  events?: CalendarEvent[];
   error?: string;
-  rejectedActionItems?: Array<{ actionItem: ActionItem; reason: string }>;
 }
 
 async function loadRuns(dir: string): Promise<Run[]> {
@@ -241,13 +241,16 @@ function itemsHtml(items) {
   ).join("") + "</ul>";
 }
 
-function rejectedItemsHtml(rejected) {
-  if (!rejected || rejected.length === 0) return "";
-  return "<p class=\"meta\">Rejected by the judge:</p><ul class=\"items rejected\">" +
-    rejected.map(r =>
-      "<li><strong>" + escapeHtml(r.actionItem.title) + "</strong>" +
-      " — <em>" + escapeHtml(r.reason) + "</em></li>"
-    ).join("") + "</ul>";
+function eventsHtml(events) {
+  if (!events || events.length === 0) return "<p><em>No events extracted.</em></p>";
+  return "<ul class=\"items\">" + events.map(ev => {
+    const when = ev.startTime
+      ? escapeHtml(ev.date) + " " + escapeHtml(ev.startTime) + (ev.endTime ? "–" + escapeHtml(ev.endTime) : "")
+      : escapeHtml(ev.date);
+    return "<li><strong>" + escapeHtml(ev.title) + "</strong>" +
+      (ev.description ? " — " + escapeHtml(ev.description) : "") +
+      " <em>(" + when + ")</em></li>";
+  }).join("") + "</ul>";
 }
 
 function escapeHtml(s) {
@@ -265,7 +268,7 @@ function runHtml(run, i) {
     '<div class="email-body">' + escapeHtml(run.email?.body ?? "") + '</div>' +
     (run.error
       ? '<p class="error">Extraction failed: ' + escapeHtml(run.error) + '</p>'
-      : itemsHtml(run.actionItems) + rejectedItemsHtml(run.rejectedActionItems)) +
+      : itemsHtml(run.actionItems) + '<p class="meta">Events:</p>' + eventsHtml(run.events)) +
     '<div class="actions">' +
     (run.reviewed
       ? '<button class="ghost unflag">Unflag</button>'
