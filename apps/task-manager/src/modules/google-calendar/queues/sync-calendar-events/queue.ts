@@ -8,6 +8,7 @@
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import type { CalendarEventJobPayload } from "./calendarEvent.js";
+import { logConnectionErrors } from "../../../../redisResilience.js";
 import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 export const CALENDAR_EVENTS_QUEUE_NAME = "sync-calendar-events";
@@ -15,7 +16,12 @@ export const CALENDAR_EVENTS_QUEUE_NAME = "sync-calendar-events";
 // `defaultJobOptions` (#348) — see retry.ts for the shared policy every queue in this app applies.
 export function createQueue(redisUrl: string): Queue<CalendarEventJobPayload> {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  return new Queue(CALENDAR_EVENTS_QUEUE_NAME, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+  const queue = new Queue<CalendarEventJobPayload>(CALENDAR_EVENTS_QUEUE_NAME, {
+    connection,
+    defaultJobOptions: DEFAULT_JOB_OPTIONS,
+  });
+  logConnectionErrors(queue, `queue "${CALENDAR_EVENTS_QUEUE_NAME}"`);
+  return queue;
 }
 
 // Mirrors ../../google-tasks/queues/sync-google-tasks/queue.ts's GoogleTaskJobLike/

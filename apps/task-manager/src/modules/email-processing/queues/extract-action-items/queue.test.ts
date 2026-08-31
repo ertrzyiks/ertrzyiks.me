@@ -4,7 +4,9 @@ import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 // bullmq/ioredis are mocked rather than exercised for real — this only asserts *this file's*
 // wiring (defaultJobOptions is passed through to `new Queue(...)`, #348), not BullMQ's or
 // ioredis's own behavior. Mirrors sentry.test.ts's treatment of @sentry/node.
-const QueueMock = vi.fn();
+const QueueMock = vi.fn(function () {
+  return { on: vi.fn() };
+});
 vi.mock("bullmq", () => ({ Queue: QueueMock }));
 vi.mock("ioredis", () => ({ Redis: vi.fn() }));
 

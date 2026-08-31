@@ -15,11 +15,9 @@ capable of it (see [#236](https://github.com/ertrzyiks/ertrzyiks.me/issues/236))
 
 For each poll cycle:
 
-1. `messages.list` against Gmail, filtered to `q: "is:important"` → message IDs. Gmail marks
-   messages important itself (an ML classifier informed by the account's read/reply/star/archive
-   history) and a user can override that per-message via "Mark as important"/"Mark as not
-   important" — `is:important` reflects both, so scoping to it keeps this service from scheduling
-   a job for every message that lands in the mailbox.
+1. `messages.list` against Gmail, filtered to `q: "is:starred"` → message IDs. Starring is an
+   explicit, user-driven signal — scoping to it keeps this service from scheduling a job for every
+   message that lands in the mailbox.
 2. Dedup against the `emails` table — only IDs not already recorded are new.
 3. For each new ID: insert into `emails` with `status='queued'`, then `POST /jobs { emailId }`
    against the Jobs API. If scheduling fails, the email is marked `status='failed'` right away

@@ -3,6 +3,7 @@
 // app.ts's `POST /jobs`.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
+import { logConnectionErrors } from "../../../../redisResilience.js";
 import { DEFAULT_JOB_OPTIONS } from "../../../../retry.js";
 
 export const QUEUE_NAME = "extract-action-items";
@@ -12,7 +13,9 @@ export const QUEUE_NAME = "extract-action-items";
 // without every call site needing to remember to pass it itself.
 export function createQueue(redisUrl: string): Queue {
   const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  return new Queue(QUEUE_NAME, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+  const queue = new Queue(QUEUE_NAME, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+  logConnectionErrors(queue, `queue "${QUEUE_NAME}"`);
+  return queue;
 }
 
 // Narrow seam app.ts depends on instead of the full BullMQ `Queue` — lets its job-status

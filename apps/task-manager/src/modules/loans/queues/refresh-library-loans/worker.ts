@@ -6,6 +6,7 @@ import type { ConnectionOptions } from "bullmq";
 import { Worker } from "bullmq";
 import { refreshLibraryLoans, type LibraryRefreshDeps } from "./libraryRefresh.js";
 import { jobLoggerFor } from "../../../../jobLogger.js";
+import { logConnectionErrors } from "../../../../redisResilience.js";
 import { Sentry } from "../../../../sentry.js";
 import type { WorkerLogger } from "../../../../workerLogger.js";
 import { LIBRARY_REFRESH_QUEUE_NAME } from "./queue.js";
@@ -43,6 +44,9 @@ export function createWorker(
     logger.error(`Library sync job ${job?.id ?? "<unknown>"} on "${LIBRARY_REFRESH_QUEUE_NAME}" failed: ${error}`);
     Sentry.captureException(error, { tags: { queue: LIBRARY_REFRESH_QUEUE_NAME, jobId: job?.id } });
   });
+
+  // Keeps a Redis disconnect from crashing this process — see redisResilience.ts.
+  logConnectionErrors(worker, `worker "${LIBRARY_REFRESH_QUEUE_NAME}"`, logger);
 
   return worker;
 }
