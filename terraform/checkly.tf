@@ -11,45 +11,46 @@ resource "checkly_check_group" "uptime" {
   locations = ["eu-central-1"]
 }
 
-# Public pages: a plain 200 on `/` is enough to prove the app is served.
+# Public pages: browser checks, not plain API 200s — these are the actual public entry points,
+# so we want to catch a page that responds 200 but fails to render/hydrate in a real browser too.
 resource "checkly_check" "blog" {
   name                      = "blog"
-  type                      = "API"
+  type                      = "BROWSER"
   activated                 = true
   frequency                 = 10
   use_global_alert_settings = true
   group_id                  = checkly_check_group.uptime.id
   tags                      = ["uptime", "blog"]
+  runtime_id                = "2026.04"
 
-  request {
-    url = "https://blog.ertrzyiks.me/"
+  script = <<-EOT
+    const { expect, test } = require('@playwright/test')
 
-    assertion {
-      source     = "STATUS_CODE"
-      comparison = "EQUALS"
-      target     = "200"
-    }
-  }
+    test('blog homepage loads', async ({ page }) => {
+      const response = await page.goto('https://blog.ertrzyiks.me/')
+      expect(response.status()).toBe(200)
+    })
+  EOT
 }
 
 resource "checkly_check" "home" {
   name                      = "home"
-  type                      = "API"
+  type                      = "BROWSER"
   activated                 = true
   frequency                 = 10
   use_global_alert_settings = true
   group_id                  = checkly_check_group.uptime.id
   tags                      = ["uptime", "home"]
+  runtime_id                = "2026.04"
 
-  request {
-    url = "https://ertrzyiks.me/"
+  script = <<-EOT
+    const { expect, test } = require('@playwright/test')
 
-    assertion {
-      source     = "STATUS_CODE"
-      comparison = "EQUALS"
-      target     = "200"
-    }
-  }
+    test('home page loads', async ({ page }) => {
+      const response = await page.goto('https://ertrzyiks.me/')
+      expect(response.status()).toBe(200)
+    })
+  EOT
 }
 
 # task-manager has no unauthenticated route — every /jobs* route sits behind the bearer-auth
