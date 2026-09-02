@@ -13,12 +13,18 @@ on:
         required: true
       OP_SERVICE_ACCOUNT_TOKEN:
         required: true
+      CHECKLY_API_TOKEN:
+        required: true
+      CHECKLY_ACCOUNT_ID:
+        required: true
 
 jobs:
   apply:
     runs-on: ubuntu-latest
     env:
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      TF_VAR_checkly_api_key: ${{ secrets.CHECKLY_API_TOKEN }}
+      TF_VAR_checkly_account_id: ${{ secrets.CHECKLY_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
