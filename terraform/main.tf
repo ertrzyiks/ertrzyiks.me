@@ -9,6 +9,11 @@ terraform {
       source  = "1Password/onepassword"
       version = "3.3.1"
     }
+
+    checkly = {
+      source  = "checkly/checkly"
+      version = "1.27.0"
+    }
   }
 
   backend "remote"  {
@@ -26,6 +31,11 @@ provider "dokku" {
   ssh_user = var.dokku_ssh_user
   ssh_port = var.dokku_ssh_port
   ssh_cert = var.dokku_ssh_cert
+}
+
+provider "checkly" {
+  api_key    = var.checkly_api_key
+  account_id = var.checkly_account_id
 }
 
 # NOTE: Terraform only manages resources defined in this configuration.

@@ -20,3 +20,14 @@ variable "dokku_ssh_cert" {
   type        = string
   sensitive   = true
 }
+
+variable "checkly_api_key" {
+  description = "Checkly user API key, used to manage uptime checks (see checkly.tf)"
+  type        = string
+  sensitive   = true
+}
+
+variable "checkly_account_id" {
+  description = "Checkly account ID that owns the checks in checkly.tf"
+  type        = string
+}

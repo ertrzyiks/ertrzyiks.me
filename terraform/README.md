@@ -8,6 +8,17 @@ This configuration creates two Dokku apps:
 - **blog** - The blog application (blog.ertrzyiks.me)
 - **home** - The home application (ertrzyiks.me)
 
+See `main.tf` for the full list of Dokku apps actually managed here (task-manager,
+personal-assistant, kuga, kstatus, etc.) — this section only calls out the first two the
+project was originally set up for.
+
+## Monitoring
+
+`checkly.tf` provisions Checkly uptime checks (one per app, grouped under a single check group)
+for blog, home, task-manager, and personal-assistant — see that file for what each check hits and
+why. Requires a `checkly_api_key`/`checkly_account_id` pair (see "Configure Variables" above); in
+CI these come from the `CHECKLY_API_TOKEN`/`CHECKLY_ACCOUNT_ID` repo secrets.
+
 ## Prerequisites
 
 1. [Terraform](https://www.terraform.io/downloads.html) installed (version 1.0 or later)
