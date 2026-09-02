@@ -65,6 +65,13 @@ export function createApp(
   // called), Sentry's own client is a no-op, so this hook is inert.
   Sentry.setupFastifyErrorHandler(app);
 
+  // Plain liveness check, no auth required — registered directly on `app`, not inside the
+  // bearer-auth-scoped plugin below, so the hook there doesn't cover it (same sibling-route
+  // mechanism the "auth" describe block in app.test.ts pins). Exists so Checkly/Dokku have an
+  // unauthenticated route to hit instead of relying on a 401 from a real route as a liveness
+  // signal. No dependency check behind it, matching personal-assistant's GET /health.
+  app.get("/health", async () => ({ status: "ok" }));
+
   // The bearer-auth hook is scoped to this encapsulated plugin rather than
   // added on `app` directly, so it only covers the routes below. Fastify
   // hooks cascade to nested `register()` contexts but not to siblings — this
