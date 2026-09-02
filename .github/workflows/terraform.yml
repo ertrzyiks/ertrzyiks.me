@@ -15,3 +15,5 @@ jobs:
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
       DOKKU_DEPLOY_KEY: ${{ secrets.DOKKU_DEPLOY_KEY }}
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+      CHECKLY_API_TOKEN: ${{ secrets.CHECKLY_API_TOKEN }}
+      CHECKLY_ACCOUNT_ID: ${{ secrets.CHECKLY_ACCOUNT_ID }}

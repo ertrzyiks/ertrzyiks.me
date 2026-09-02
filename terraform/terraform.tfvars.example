@@ -2,3 +2,9 @@
 # dokku_ssh_cert = "file:~/.ssh/id_rsa"
 # Or directly paste your private key as a string (not recommended for production)
 dokku_ssh_cert = "your-ssh-private-key"
+
+# Checkly credentials (checkly.tf) — API key from https://app.checklyhq.com/settings/user/api-keys,
+# account id from https://app.checklyhq.com/settings/account/general. In CI these come from the
+# CHECKLY_API_TOKEN/CHECKLY_ACCOUNT_ID repo secrets instead (see terraform_apply.yml).
+checkly_api_key    = "your-checkly-api-key"
+checkly_account_id = "your-checkly-account-id"
