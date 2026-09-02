@@ -126,6 +126,15 @@ describe("task-manager app", () => {
     app = createApp(queue, googleTasksQueue, calendarEventsQueue, BEARER_TOKEN);
   });
 
+  describe("GET /health", () => {
+    it("returns 200 without requiring a bearer token", async () => {
+      const response = await app.inject({ method: "GET", url: "/health" });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ status: "ok" });
+    });
+  });
+
   describe("auth", () => {
     it("rejects requests without a valid bearer token", async () => {
       const response = await app.inject({

@@ -1,5 +1,6 @@
 # Checkly uptime checks for the apps declared in main.tf above (see #360). One check per app,
 # sharing location/concurrency defaults via a single check group rather than repeating them.
+# frequency = 720 (minutes) on every check below means each runs every 12h.
 resource "checkly_check_group" "uptime" {
   name        = "ertrzyiks.me uptime"
   activated   = true
@@ -17,7 +18,7 @@ resource "checkly_check" "blog" {
   name                      = "blog"
   type                      = "BROWSER"
   activated                 = true
-  frequency                 = 10
+  frequency                 = 720
   use_global_alert_settings = true
   group_id                  = checkly_check_group.uptime.id
   tags                      = ["uptime", "blog"]
@@ -37,7 +38,7 @@ resource "checkly_check" "home" {
   name                      = "home"
   type                      = "BROWSER"
   activated                 = true
-  frequency                 = 10
+  frequency                 = 720
   use_global_alert_settings = true
   group_id                  = checkly_check_group.uptime.id
   tags                      = ["uptime", "home"]
@@ -53,29 +54,36 @@ resource "checkly_check" "home" {
   EOT
 }
 
-# task-manager has no unauthenticated route — every /jobs* route sits behind the bearer-auth
-# hook in isValidBearerToken (apps/task-manager/src/app.ts), which returns 401 before looking
-# anything up. Hitting one with no Authorization header still proves the Fastify process is up
-# and routing correctly: 401 means "alive, auth working as designed"; a timeout/502/other code
-# means it's actually down. Deliberately not spending the production JOBS_API_BEARER_TOKEN here
-# so this check doesn't depend on that secret too.
+# task-manager's only unauthenticated route: GET /health, added specifically for liveness checks
+# like this one (see apps/task-manager/src/app.ts) — every other route sits behind the
+# bearer-auth hook (isValidBearerToken), which previously left no unauthenticated route to hit;
+# hitting one with no Authorization header and asserting the resulting 401 stood in for a real
+# liveness check, but Checkly counts a 401 as a failed check regardless of the assertion passing,
+# so it never actually worked as uptime monitoring. /health sidesteps that: a real 200 with no
+# auth required, and no dependency on the production JOBS_API_BEARER_TOKEN either.
 resource "checkly_check" "task_manager" {
   name                      = "task-manager"
   type                      = "API"
   activated                 = true
-  frequency                 = 10
+  frequency                 = 720
   use_global_alert_settings = true
   group_id                  = checkly_check_group.uptime.id
   tags                      = ["uptime", "task-manager"]
 
   request {
-    url    = "https://task-manager.ertrzyiks.me/jobs/checkly-uptime-probe"
-    method = "GET"
+    url = "https://task-manager.ertrzyiks.me/health"
 
     assertion {
       source     = "STATUS_CODE"
       comparison = "EQUALS"
-      target     = "401"
+      target     = "200"
+    }
+
+    assertion {
+      source     = "JSON_BODY"
+      property   = "$.status"
+      comparison = "EQUALS"
+      target     = "ok"
     }
   }
 }
@@ -86,7 +94,7 @@ resource "checkly_check" "personal_assistant" {
   name                      = "personal-assistant"
   type                      = "API"
   activated                 = true
-  frequency                 = 10
+  frequency                 = 720
   use_global_alert_settings = true
   group_id                  = checkly_check_group.uptime.id
   tags                      = ["uptime", "personal-assistant"]
