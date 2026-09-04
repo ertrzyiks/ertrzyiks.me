@@ -1,9 +1,9 @@
 // Shared job payload/result types for the `sync-calendar-events` queue — mirrors
-// google-tasks/queues/sync-google-tasks/googleTask.ts's role for that queue.
+// todoist/queues/sync-todoist/todoistTask.ts's role for that queue.
 // `calendarEventJobProcessor.ts` (this package's consumer) and `app.ts` (the producer/Jobs API
 // side) import these directly. Field names mirror actionItem.ts's `CalendarEvent` (the extraction
 // result personal-assistant reads a row of this payload from) rather than reusing that type
-// outright, same as `GoogleTaskJobPayload` mirrors `ActionItem` instead of importing it.
+// outright, same as `TodoistJobPayload` mirrors `ActionItem` instead of importing it.
 
 export interface CalendarEventJobPayload {
   calendarEventId: number;

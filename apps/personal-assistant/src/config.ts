@@ -16,7 +16,7 @@ export interface Config {
     password: string;
   };
   /** Trend-event emission to Axiom (#315) — null when either var is unset, same optional-at-
-   * startup treatment as task-manager's Google Tasks/library sync credentials: this service
+   * startup treatment as task-manager's Todoist/library sync credentials: this service
    * runs the same either way, events are just a no-op until both are provisioned. */
   axiom: {
     token: string;

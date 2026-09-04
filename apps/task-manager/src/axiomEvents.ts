@@ -1,6 +1,6 @@
 // Fire-and-forget trend-event emission to Axiom (#315) — historical/trend visibility over job
 // status, supplementing (not replacing) Bull Board's live snapshot view. Emitted inline at each
-// job's active/completed/failed transition (jobProcessor.ts/googleTasksJobProcessor.ts), mirroring
+// job's active/completed/failed transition (jobProcessor.ts/todoistJobProcessor.ts), mirroring
 // how personal-assistant's poller.ts emits from its own store.ts call sites, rather than a
 // separate BullMQ QueueEvents Redis-pubsub listener — simpler, no new listener lifecycle to
 // manage, per #315's resolution.

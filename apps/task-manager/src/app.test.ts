@@ -6,8 +6,8 @@ import type {
   CalendarEventJobLike,
   CalendarEventJobsQueue,
 } from "./modules/google-calendar/queues/sync-calendar-events/queue.js";
-import type { GoogleTaskJobPayload } from "./modules/google-tasks/queues/sync-google-tasks/googleTask.js";
-import type { GoogleTaskJobLike, GoogleTasksJobsQueue } from "./modules/google-tasks/queues/sync-google-tasks/queue.js";
+import type { TodoistJobPayload } from "./modules/todoist/queues/sync-todoist/todoistTask.js";
+import type { TodoistJobLike, TodoistJobsQueue } from "./modules/todoist/queues/sync-todoist/queue.js";
 import type { JobLike, JobsQueue } from "./modules/email-processing/queues/extract-action-items/queue.js";
 
 const BEARER_TOKEN = "test-token";
@@ -44,8 +44,8 @@ class FakeQueue implements JobsQueue {
 }
 
 // Same shape as FakeJob/FakeQueue above, kept separate rather than shared/generic to match this
-// codebase's existing per-queue file convention (see googleTasksJobsQueue.ts).
-class FakeGoogleTaskJob implements GoogleTaskJobLike {
+// codebase's existing per-queue file convention (see todoistQueue.ts).
+class FakeTodoistJob implements TodoistJobLike {
   id: string;
   state: string;
   returnvalue: unknown;
@@ -61,12 +61,12 @@ class FakeGoogleTaskJob implements GoogleTaskJobLike {
   }
 }
 
-class FakeGoogleTasksQueue implements GoogleTasksJobsQueue {
-  jobs = new Map<string, FakeGoogleTaskJob>();
+class FakeTodoistQueue implements TodoistJobsQueue {
+  jobs = new Map<string, FakeTodoistJob>();
   private nextId = 1;
 
-  async add(_name: string, _data: GoogleTaskJobPayload) {
-    const job = new FakeGoogleTaskJob(String(this.nextId++));
+  async add(_name: string, _data: TodoistJobPayload) {
+    const job = new FakeTodoistJob(String(this.nextId++));
     this.jobs.set(job.id, job);
     return job;
   }
@@ -115,15 +115,15 @@ function authHeader() {
 
 describe("task-manager app", () => {
   let queue: FakeQueue;
-  let googleTasksQueue: FakeGoogleTasksQueue;
+  let todoistQueue: FakeTodoistQueue;
   let calendarEventsQueue: FakeCalendarEventsQueue;
   let app: FastifyInstance;
 
   beforeEach(() => {
     queue = new FakeQueue();
-    googleTasksQueue = new FakeGoogleTasksQueue();
+    todoistQueue = new FakeTodoistQueue();
     calendarEventsQueue = new FakeCalendarEventsQueue();
-    app = createApp(queue, googleTasksQueue, calendarEventsQueue, BEARER_TOKEN);
+    app = createApp(queue, todoistQueue, calendarEventsQueue, BEARER_TOKEN);
   });
 
   describe("GET /health", () => {
@@ -294,11 +294,11 @@ describe("task-manager app", () => {
     });
   });
 
-  describe("POST /google-tasks-jobs", () => {
+  describe("POST /todoist-jobs", () => {
     it("schedules a job and returns its id", async () => {
       const response = await app.inject({
         method: "POST",
-        url: "/google-tasks-jobs",
+        url: "/todoist-jobs",
         headers: authHeader(),
         payload: { actionItemId: 1, title: "Send the report" },
       });
@@ -310,7 +310,7 @@ describe("task-manager app", () => {
     it("rejects a missing title", async () => {
       const response = await app.inject({
         method: "POST",
-        url: "/google-tasks-jobs",
+        url: "/todoist-jobs",
         headers: authHeader(),
         payload: { actionItemId: 1 },
       });
@@ -321,7 +321,7 @@ describe("task-manager app", () => {
     it("rejects a missing actionItemId", async () => {
       const response = await app.inject({
         method: "POST",
-        url: "/google-tasks-jobs",
+        url: "/todoist-jobs",
         headers: authHeader(),
         payload: { title: "Send the report" },
       });
@@ -330,11 +330,11 @@ describe("task-manager app", () => {
     });
   });
 
-  describe("GET /google-tasks-jobs/:jobId", () => {
+  describe("GET /todoist-jobs/:jobId", () => {
     it("returns 404 for an unknown job", async () => {
       const response = await app.inject({
         method: "GET",
-        url: "/google-tasks-jobs/missing",
+        url: "/todoist-jobs/missing",
         headers: authHeader(),
       });
 
@@ -342,40 +342,40 @@ describe("task-manager app", () => {
     });
 
     it("includes the result for a completed job", async () => {
-      const job = new FakeGoogleTaskJob("1", "completed");
-      job.returnvalue = { actionItemId: 1, googleTaskId: "gtask-1" };
-      googleTasksQueue.jobs.set("1", job);
+      const job = new FakeTodoistJob("1", "completed");
+      job.returnvalue = { actionItemId: 1, todoistTaskId: "todoist-1" };
+      todoistQueue.jobs.set("1", job);
 
       const response = await app.inject({
         method: "GET",
-        url: "/google-tasks-jobs/1",
+        url: "/todoist-jobs/1",
         headers: authHeader(),
       });
 
       expect(response.json()).toEqual({
         jobId: "1",
         status: "completed",
-        result: { actionItemId: 1, googleTaskId: "gtask-1" },
+        result: { actionItemId: 1, todoistTaskId: "todoist-1" },
       });
     });
   });
 
-  describe("POST /google-tasks-jobs/status", () => {
+  describe("POST /todoist-jobs/status", () => {
     it("returns results for known jobs and omits unknown ones", async () => {
-      const job = new FakeGoogleTaskJob("1", "completed");
-      job.returnvalue = { actionItemId: 1, googleTaskId: "gtask-1" };
-      googleTasksQueue.jobs.set("1", job);
+      const job = new FakeTodoistJob("1", "completed");
+      job.returnvalue = { actionItemId: 1, todoistTaskId: "todoist-1" };
+      todoistQueue.jobs.set("1", job);
 
       const response = await app.inject({
         method: "POST",
-        url: "/google-tasks-jobs/status",
+        url: "/todoist-jobs/status",
         headers: authHeader(),
         payload: { jobIds: ["1", "missing"] },
       });
 
       expect(response.json()).toEqual({
         results: [
-          { jobId: "1", status: "completed", result: { actionItemId: 1, googleTaskId: "gtask-1" } },
+          { jobId: "1", status: "completed", result: { actionItemId: 1, todoistTaskId: "todoist-1" } },
         ],
       });
     });
@@ -383,7 +383,7 @@ describe("task-manager app", () => {
     it("rejects a non-array jobIds", async () => {
       const response = await app.inject({
         method: "POST",
-        url: "/google-tasks-jobs/status",
+        url: "/todoist-jobs/status",
         headers: authHeader(),
         payload: { jobIds: "not-an-array" },
       });

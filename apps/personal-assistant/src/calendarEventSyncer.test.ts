@@ -7,7 +7,7 @@ import {
 import type {
   CalendarEventJobPayload,
   CalendarEventJobStatusResult,
-  GoogleTaskJobStatusResult,
+  TodoistJobStatusResult,
   JobStatusResult,
   JobsApiClient,
 } from "./jobsApiClient.js";
@@ -27,12 +27,12 @@ class FakeJobsApiClient implements JobsApiClient {
     return [] as JobStatusResult[];
   }
 
-  async scheduleGoogleTaskJob() {
+  async scheduleTodoistJob() {
     return { jobId: "unused" };
   }
 
-  async getGoogleTaskJobStatuses(_jobIds: string[]) {
-    return [] as GoogleTaskJobStatusResult[];
+  async getTodoistJobStatuses(_jobIds: string[]) {
+    return [] as TodoistJobStatusResult[];
   }
 
   async scheduleCalendarEventJob(item: CalendarEventJobPayload) {

@@ -12,7 +12,7 @@
 // from here so call sites don't need their own `@sentry/node` import.
 //
 // Deliberately *not* wired into every per-item try/catch this package already has (e.g. inside
-// `googleTasksJobProcessor.ts`/`jobProcessor.ts`'s own catch blocks) — those already throw back
+// `todoistJobProcessor.ts`/`jobProcessor.ts`'s own catch blocks) — those already throw back
 // out to the `bullmq.Worker` that's running them, which is where capture actually happens (see
 // the `worker.on("failed", ...)` handlers in `server.ts`/`worker.ts`): one capture per job
 // failure, not one per failure *site* inside a job. Scoped this way so a burst of failures from

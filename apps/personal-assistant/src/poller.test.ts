@@ -4,8 +4,8 @@ import type { GmailClient } from "./gmailClient.js";
 import type {
   CalendarEventJobPayload,
   CalendarEventJobStatusResult,
-  GoogleTaskJobStatusResult,
-  GoogleTaskPayload,
+  TodoistJobStatusResult,
+  TodoistPayload,
   JobStatusResult,
   JobsApiClient,
 } from "./jobsApiClient.js";
@@ -26,9 +26,9 @@ class FakeJobsApiClient implements JobsApiClient {
   private nextJobId = 1;
   scheduleShouldFailFor = new Set<string>();
 
-  scheduledGoogleTaskItems: GoogleTaskPayload[] = [];
-  googleTaskStatuses = new Map<string, GoogleTaskJobStatusResult>();
-  private nextGoogleTaskJobId = 1;
+  scheduledTodoistItems: TodoistPayload[] = [];
+  todoistStatuses = new Map<string, TodoistJobStatusResult>();
+  private nextTodoistJobId = 1;
 
   scheduledCalendarEventItems: CalendarEventJobPayload[] = [];
   calendarEventStatuses = new Map<string, CalendarEventJobStatusResult>();
@@ -50,17 +50,17 @@ class FakeJobsApiClient implements JobsApiClient {
       .filter((status): status is JobStatusResult => status !== undefined);
   }
 
-  async scheduleGoogleTaskJob(item: GoogleTaskPayload) {
-    this.scheduledGoogleTaskItems.push(item);
-    const jobId = `gtask-job-${this.nextGoogleTaskJobId++}`;
-    this.googleTaskStatuses.set(jobId, { jobId, status: "pending" });
+  async scheduleTodoistJob(item: TodoistPayload) {
+    this.scheduledTodoistItems.push(item);
+    const jobId = `todoist-job-${this.nextTodoistJobId++}`;
+    this.todoistStatuses.set(jobId, { jobId, status: "pending" });
     return { jobId };
   }
 
-  async getGoogleTaskJobStatuses(jobIds: string[]) {
+  async getTodoistJobStatuses(jobIds: string[]) {
     return jobIds
-      .map((jobId) => this.googleTaskStatuses.get(jobId))
-      .filter((status): status is GoogleTaskJobStatusResult => status !== undefined);
+      .map((jobId) => this.todoistStatuses.get(jobId))
+      .filter((status): status is TodoistJobStatusResult => status !== undefined);
   }
 
   async scheduleCalendarEventJob(item: CalendarEventJobPayload) {

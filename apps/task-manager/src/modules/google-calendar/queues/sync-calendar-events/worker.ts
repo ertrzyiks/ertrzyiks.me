@@ -1,7 +1,7 @@
 // BullMQ wiring for the `sync-calendar-events` queue — the actual "create one Google Calendar
 // event" logic lives in calendarEventJobProcessor.ts, independent of BullMQ; this file is only
 // the `Worker` construction, its rate limiter, and its `ready`/`failed` listeners — mirrors
-// ../../../google-tasks/queues/sync-google-tasks/worker.ts exactly.
+// ../../../todoist/queues/sync-todoist/worker.ts exactly.
 import type { ConnectionOptions } from "bullmq";
 import { Worker } from "bullmq";
 import type { CalendarEventJobPayload, CalendarEventJobResult } from "./calendarEvent.js";
@@ -17,7 +17,7 @@ import { CALENDAR_EVENTS_QUEUE_NAME } from "./queue.js";
 
 export interface CreateWorkerOptions {
   /** Throttles how fast this worker drains the queue (max jobs per `duration` ms) — same
-   * quota-protection reasoning as sync-google-tasks's worker.ts. */
+   * quota-protection reasoning as sync-todoist's worker.ts. */
   limiter?: { max: number; duration: number };
   /** Where "ready"/"failed" get logged — defaults to `console`; server.ts passes Fastify's
    * `app.log` instead, matching every other worker started in that process. */

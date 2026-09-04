@@ -10,12 +10,12 @@ vi.mock("ioredis", () => ({ Redis: vi.fn() }));
 
 describe("createQueue", () => {
   it("applies the shared retry policy (#348) as defaultJobOptions", async () => {
-    const { createQueue, GOOGLE_TASKS_QUEUE_NAME } = await import("./queue.js");
+    const { createQueue, TODOIST_QUEUE_NAME } = await import("./queue.js");
 
     createQueue("redis://localhost:6379");
 
     expect(QueueMock).toHaveBeenCalledWith(
-      GOOGLE_TASKS_QUEUE_NAME,
+      TODOIST_QUEUE_NAME,
       expect.objectContaining({ defaultJobOptions: DEFAULT_JOB_OPTIONS }),
     );
   });

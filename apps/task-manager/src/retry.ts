@@ -1,7 +1,7 @@
 import type { DefaultJobOptions } from "bullmq";
 
 // Shared retry policy (#348) for every queue in this app — `extract-action-items`,
-// `sync-google-tasks`, `refresh-library-loans`, `sync-loan-calendar` (see queue.ts and
+// `sync-todoist`, `refresh-library-loans`, `sync-loan-calendar` (see queue.ts and
 // librarySyncQueue.ts, both of which pass this as `defaultJobOptions`). One place to tune instead
 // of four queues drifting apart.
 //

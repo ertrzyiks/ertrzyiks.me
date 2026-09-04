@@ -12,7 +12,7 @@
 // from here so call sites don't need their own `@sentry/node` import.
 //
 // Deliberately *not* wired into every per-item try/catch this package already has (e.g. inside
-// `poller.ts`/`googleTasksSyncer.ts`'s own catch blocks for a single email/action item) — those
+// `poller.ts`/`todoistSyncer.ts`'s own catch blocks for a single email/action item) — those
 // are expected, already-tracked business outcomes (stored as `status='failed'`/`error_message`
 // in SQLite, and for `poller.ts`'s two sites, also an Axiom trend event), not bugs. Scoped
 // instead to the poll cycle's own outer catch (`runner.ts`) and this package's small HTTP

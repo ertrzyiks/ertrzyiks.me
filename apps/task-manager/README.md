@@ -11,10 +11,10 @@ user's Mac (via a LaunchAgent, see #243) and is the only thing that ever reads e
 Three more queues run right here in `server.ts` (cloud), unlike `extract-action-items` — none has
 the "must never leave local processing" constraint that keeps the Mac worker on the Mac:
 
-- `sync-google-tasks` keeps `personal-assistant`'s `action_items` table in sync with Google Tasks.
-  See "Google Tasks sync" below.
+- `sync-todoist` keeps `personal-assistant`'s `action_items` table in sync with Todoist.
+  See "Todoist sync" below.
 - `sync-calendar-events` keeps `personal-assistant`'s `calendar_events` table in sync with Google
-  Calendar — the calendar-event counterpart to `sync-google-tasks`, for events extracted alongside
+  Calendar — the calendar-event counterpart to `sync-todoist`, for events extracted alongside
   action items (see `extract-action-items`'s `CalendarEvent` type). See "Calendar event sync"
   below.
 - `sync-loan-calendar` (plus `refresh-library-loans`, which feeds it) keeps a Google Calendar
@@ -27,7 +27,7 @@ the "must never leave local processing" constraint that keeps the Mac worker on 
 owns, not per queue:
 
 - `src/modules/email-processing/` — one queue, `extract-action-items` (Mac-only, see below).
-- `src/modules/google-tasks/` — one queue, `sync-google-tasks`.
+- `src/modules/todoist/` — one queue, `sync-todoist`.
 - `src/modules/google-calendar/` — one queue, `sync-calendar-events`.
 - `src/modules/loans/` — two queues, `refresh-library-loans` and `sync-loan-calendar` (see
   "Library loan -> Google Calendar sync" below for how the two relate).
@@ -42,10 +42,10 @@ nothing else:
   fan-out adapter that `libraryRefresh.ts` enqueues through).
 - `worker.ts` — a `createWorker(connection, deps)` factory returning a configured BullMQ `Worker`:
   the job-processor callback plus its `ready`/`failed` listeners (Sentry reporting included).
-- The actual "handle one job" logic (`jobProcessor.ts`, `googleTasksJobProcessor.ts`,
+- The actual "handle one job" logic (`jobProcessor.ts`, `todoistJobProcessor.ts`,
   `calendarEventJobProcessor.ts`, `libraryRefresh.ts`, `loanCalendarSync.ts`) and everything only
-  *it* depends on (Gmail/LM Studio/Keychain for `extract-action-items`, the Google Tasks client
-  for `sync-google-tasks`, the WBPG client for `refresh-library-loans`) — kept independent of
+  *it* depends on (Gmail/LM Studio/Keychain for `extract-action-items`, the Todoist client
+  for `sync-todoist`, the WBPG client for `refresh-library-loans`) — kept independent of
   BullMQ so it can be unit-tested with fakes; `worker.ts` is only the wiring around it.
 
 A file lives at a queue's `queues/<queue-name>/` level only if that queue is its *only* consumer;
@@ -74,12 +74,10 @@ plain `console` for the Mac LaunchAgent) rather than constructing `Queue`/`Worke
 | `PORT`                                            | no       | HTTP port to listen on (default `3000`)                    |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME`     | no\*     | Basic Auth username guarding the Bull Board UI (`/admin/queues`) |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD`     | no\*     | Basic Auth password guarding the Bull Board UI              |
-| `GOOGLE_TASKS_CLIENT_ID`                          | no\*\*   | OAuth client id for the `sync-google-tasks` worker's `tasks` credential (shared across gmail/tasks/calendar, #343) |
-| `GOOGLE_TASKS_CLIENT_SECRET`                      | no\*\*   | OAuth client secret for the same credential                 |
-| `GOOGLE_TASKS_REFRESH_TOKEN`                      | no\*\*   | Refresh token for the same credential (from `scripts/google-tasks-oauth`) |
-| `GOOGLE_TASKS_LIST_ID`                            | no       | Google Tasks list to create tasks in (default `@default`, the user's default list) |
-| `GOOGLE_TASKS_RATE_LIMIT_MAX`                     | no       | Max `sync-google-tasks` jobs processed per `GOOGLE_TASKS_RATE_LIMIT_DURATION_MS` window (default `5`) |
-| `GOOGLE_TASKS_RATE_LIMIT_DURATION_MS`             | no       | Window length in ms for the rate limit above (default `1000`)|
+| `TODOIST_API_TOKEN`                               | no\*\*   | Personal API token for the `sync-todoist` worker (Settings > Integrations > Developer in the Todoist app — no OAuth dance needed) |
+| `TODOIST_PROJECT_ID`                              | no       | Todoist project to create tasks in (default: the user's Inbox) |
+| `TODOIST_RATE_LIMIT_MAX`                          | no       | Max `sync-todoist` jobs processed per `TODOIST_RATE_LIMIT_DURATION_MS` window (default `5`) |
+| `TODOIST_RATE_LIMIT_DURATION_MS`                  | no       | Window length in ms for the rate limit above (default `1000`)|
 | `GOOGLE_CALENDAR_CLIENT_ID`                       | no\*\*\* | OAuth client id for the `calendar.events` credential (shared across gmail/tasks/calendar, #343) |
 | `GOOGLE_CALENDAR_CLIENT_SECRET`                   | no\*\*\* | OAuth client secret for the same credential                                   |
 | `GOOGLE_CALENDAR_REFRESH_TOKEN`                   | no\*\*\* | Refresh token for the same credential                                         |
@@ -92,7 +90,7 @@ plain `console` for the Mac LaunchAgent) rather than constructing `Queue`/`Worke
 | `DATABASE_PATH`                                   | no       | Where the sqlite loans DB lives (default `/app/data/library.sqlite`, matching the Dokku storage mount — see terraform/main.tf) |
 | `WBPG_BASE_URL`                                   | no       | Overrides the WBPG catalog base URL (default `https://katalog.wbpg.org.pl`)   |
 | `LIBRARY_REFRESH_CRON_PATTERN`                    | no       | Cron pattern for how often to re-check WBPG (default `0 7 * * *`, daily 07:00 Europe/Warsaw) |
-| `AXIOM_TOKEN`                                     | no       | Axiom API token for trend-event ingestion (#315), used by the `sync-google-tasks` worker here |
+| `AXIOM_TOKEN`                                     | no       | Axiom API token for trend-event ingestion (#315), used by the `sync-todoist` worker here |
 | `AXIOM_DATASET`                                   | no       | Axiom dataset to ingest into (e.g. `task-manager-events`)                     |
 | `SENTRY_DSN`                                      | no       | Sentry DSN for error monitoring (see "Error monitoring" below), shared with `worker.ts` below |
 | `SENTRY_ENVIRONMENT`                              | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
@@ -100,13 +98,12 @@ plain `console` for the Mac LaunchAgent) rather than constructing `Queue`/`Worke
 \* Bull Board is always mounted, but the Basic Auth check only applies when **both** vars are set —
 unset (the default locally) leaves it open. Production always sets both via Terraform (#313).
 
-\*\* The `sync-google-tasks` worker (started inside this same process, see below) only starts
-once all three are set. Unset — the state before `scripts/google-tasks-oauth` has been run once —
-the Jobs API still accepts `/google-tasks-jobs` requests, they just queue up unconsumed until the
-worker starts.
+\*\* The `sync-todoist` worker (started inside this same process, see below) only starts once
+`TODOIST_API_TOKEN` is set. Unset, the Jobs API still accepts `/todoist-jobs` requests, they just
+queue up unconsumed until the worker starts.
 
 \*\*\* The `sync-calendar-events` worker only starts once all three are set — same
-optional-at-startup pattern as the Google Tasks vars above, and independent of the WBPG vars
+optional-at-startup pattern as `TODOIST_API_TOKEN` above, and independent of the WBPG vars
 below: an install with no library sync configured at all still gets email-derived calendar events.
 Unset, the Jobs API still accepts `/calendar-event-jobs` requests, they just queue up unconsumed
 until the worker starts. The `refresh-library-loans`/`sync-loan-calendar` workers *also* need these
@@ -116,44 +113,42 @@ harmless (both just talk to the same Calendar API).
 
 \*\*\*\* The `refresh-library-loans`/`sync-loan-calendar` workers (also started inside this same
 process) only start once these two **and** the three `GOOGLE_CALENDAR_*` vars above are all set —
-same optional-at-startup pattern as the Google Tasks vars above. Unset, Bull Board still shows both
+same optional-at-startup pattern as `TODOIST_API_TOKEN` above. Unset, Bull Board still shows both
 queues (registered unconditionally so its "Add Job" button always works — see `bullBoard.ts`),
 jobs just queue up unconsumed until the workers start.
 
 `AXIOM_TOKEN`/`AXIOM_DATASET` are independent of each other and of everything above — see
 "Historical/trend observability" below.
 
-## Google Tasks sync
+## Todoist sync
 
-`POST /google-tasks-jobs` schedules a job on the `sync-google-tasks` queue, consumed by a second
+`POST /todoist-jobs` schedules a job on the `sync-todoist` queue, consumed by a second
 `bullmq.Worker` started alongside the Jobs API server in `server.ts`
-(`src/modules/google-tasks/queues/sync-google-tasks/googleTasksJobProcessor.ts` →
-`src/modules/google-tasks/queues/sync-google-tasks/googleTasksClient.ts`, wrapping the Google Tasks API).
+(`src/modules/todoist/queues/sync-todoist/todoistJobProcessor.ts` →
+`src/modules/todoist/queues/sync-todoist/todoistClient.ts`, wrapping Todoist's REST API).
 `personal-assistant`'s sync loop
-(`src/googleTasksSyncer.ts`) is the only caller: it schedules a job for each action item without
+(`src/todoistSyncer.ts`) is the only caller: it schedules a job for each action item without
 a `job_id` yet, then polls for completion and backfills `task_id` — see that package's README for
 the full loop.
 
-This worker's refresh token is separate from the Mac worker's `gmail.readonly` one — provisioned
-via `scripts/google-tasks-oauth`, read from plain env vars (not the macOS Keychain, since this
-worker runs in the cloud) via Terraform/1Password in production. The OAuth client id/secret
-(`GOOGLE_TASKS_CLIENT_ID`/`_SECRET`), however, are the same shared Google Cloud OAuth client used
-by `GMAIL_CLIENT_ID`/`_SECRET` and `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET` — one client can mint
-refresh tokens for multiple scopes, so all three flows share one 1Password item
-(`personal_assistant_google_oauth_client`, #343) instead of each keeping a duplicate copy of the
-same value.
+Unlike the Google Tasks integration this replaced, there's no OAuth dance: `TODOIST_API_TOKEN` is
+a personal API token, generated once from Todoist's own Settings > Integrations > Developer page
+and set directly as a plain env var (via Terraform/1Password in production, see
+`task_manager_todoist_api_token`). `TODOIST_PROJECT_ID` picks which project new tasks land in
+(defaults to the Inbox); production points it at a specific project rather than the Inbox.
 
-The worker's `Worker` is configured with a `limiter` (`GOOGLE_TASKS_RATE_LIMIT_MAX`/`_DURATION_MS`
-above) so a burst of scheduled jobs drains onto the Tasks API gradually instead of all at once —
-added after hitting a real "quota exceeded" error from a burst of jobs. A malformed `due` date
-(the extracted action item's `dueDate` has no enforced format — see `lmStudio.ts`) no longer fails
-task creation outright either: `googleTasksClient.ts` drops it rather than sending Google a value
-it'll reject with "Request contains an invalid argument", so the task is still created, just
-without a due date.
+The worker's `Worker` is configured with a `limiter` (`TODOIST_RATE_LIMIT_MAX`/`_DURATION_MS`
+above) so a burst of scheduled jobs drains onto Todoist's API gradually instead of all at once —
+kept as a precaution, mirroring the Google Tasks worker's limiter this replaced (it hit a real
+"quota exceeded" error from a burst of jobs; Todoist's own rate limits haven't been hit in
+practice yet). A `due` date with no enforced format (the extracted action item's `dueDate` — see
+`lmStudio.ts`) doesn't need any special handling here: `todoistClient.ts` passes it straight
+through as Todoist's `due_string` field, which runs it through Todoist's own natural-language due
+parser instead of requiring a strict format.
 
 ## Calendar event sync
 
-The calendar-event counterpart to Google Tasks sync above — same shape, different destination.
+The calendar-event counterpart to Todoist sync above — same shape, different destination.
 `POST /calendar-event-jobs` schedules a job on the `sync-calendar-events` queue, consumed by a
 third `bullmq.Worker` started alongside the Jobs API server in `server.ts`
 (`src/modules/google-calendar/queues/sync-calendar-events/calendarEventJobProcessor.ts` →
@@ -170,7 +165,7 @@ library-loan sync (see "Library loan -> Google Calendar sync" below) and the sam
 footnotes above. Since a `CalendarEvent`'s `startTime` is required but `endTime` is optional (see
 `extractActionItems.system.md`'s Phase 3), `calendarEventJobProcessor.ts` gives an event with no
 stated end time a flat one-hour default duration rather than creating a zero-length event — Google
-Calendar's API requires a real `end`. Same `limiter` treatment as Google Tasks above
+Calendar's API requires a real `end`. Same `limiter` treatment as Todoist above
 (`CALENDAR_EVENTS_RATE_LIMIT_MAX`/`_DURATION_MS`), tuned separately since the two APIs have
 separate quotas.
 
@@ -228,7 +223,7 @@ queue overnight). That's what [Axiom](https://axiom.co) is for: `src/axiomEvents
 fire-and-forget POSTs a `{ service: "task-manager", entity, entityId, status, _time, error? }`
 event to Axiom's ingest API at each job's `active`/`completed`/`failed` transition — emitted
 inline in `jobProcessor.ts` (`entity: "extract-action-items"`, `entityId` = the email id),
-`googleTasksJobProcessor.ts` (`entity: "sync-google-tasks"`, `entityId` = the action item id), and
+`todoistJobProcessor.ts` (`entity: "sync-todoist"`, `entityId` = the action item id), and
 `calendarEventJobProcessor.ts` (`entity: "sync-calendar-events"`, `entityId` = the calendar event
 id), right where each transition already happens, rather than a separate BullMQ `QueueEvents`
 Redis-pubsub listener — simpler, no new listener lifecycle to manage.
@@ -240,7 +235,7 @@ not a job failure. A no-op (`noopEventEmitter`) until both `AXIOM_TOKEN`/`AXIOM_
 (see the env var tables above) — this is purely additive on both the Mac worker and cloud sides.
 Both processes share the same `task-manager-events` Axiom dataset (`personal-assistant` has its
 own separate one, `personal-assistant-events` — see that package's README); the `entity` field is
-what distinguishes `extract-action-items`, `sync-google-tasks`, and `sync-calendar-events` jobs
+what distinguishes `extract-action-items`, `sync-todoist`, and `sync-calendar-events` jobs
 within it.
 
 ## Error monitoring (Sentry)
@@ -255,7 +250,7 @@ Wired at process/queue boundaries, not into every internal try/catch:
 
 - Both entrypoints' global uncaught-exception/unhandled-rejection handlers — installed
   automatically by `Sentry.init` itself, no extra code here.
-- Every `bullmq.Worker`'s `"failed"` event (`sync-google-tasks`, `sync-calendar-events`, the two
+- Every `bullmq.Worker`'s `"failed"` event (`sync-todoist`, `sync-calendar-events`, the two
   library sync queues in `server.ts`, and `extract-action-items` in `worker.ts`) — alongside the
   `app.log.error`/`console.error` call already there,
   `Sentry.captureException(error, { tags: { queue, jobId } })`.
@@ -265,7 +260,7 @@ Wired at process/queue boundaries, not into every internal try/catch:
 - Both entrypoints' own startup-failure catch blocks (`app.listen()` in `server.ts`,
   `main().catch()` in `worker.ts`).
 
-Deliberately *not* duplicated into `jobProcessor.ts`/`googleTasksJobProcessor.ts`/
+Deliberately *not* duplicated into `jobProcessor.ts`/`todoistJobProcessor.ts`/
 `calendarEventJobProcessor.ts`'s own catch blocks — those already rethrow into the `Worker` that's
 running them, so the `"failed"` handlers
 above already see the same error once, not once per internal failure site. This keeps one Sentry
@@ -323,15 +318,15 @@ and re-run until they go green. "Unflag" in the UI (or deleting the entry from
 
 ## Endpoints
 
-All `/jobs*`, `/google-tasks-jobs*`, and `/calendar-event-jobs*` endpoints require
+All `/jobs*`, `/todoist-jobs*`, and `/calendar-event-jobs*` endpoints require
 `Authorization: Bearer <JOBS_API_BEARER_TOKEN>`.
 
 - `POST /jobs` — `{ emailId }` → `201 { jobId }`
 - `GET /jobs/:jobId` — `200 { jobId, status, result?, error? }`, `404` if unknown
 - `POST /jobs/status` — `{ jobIds: [...] }` → `200 { results: [{ jobId, status, result?, error? }, ...] }` (unknown job IDs are omitted from `results`)
-- `POST /google-tasks-jobs` — `{ actionItemId, title, description?, dueDate? }` → `201 { jobId }`
-- `GET /google-tasks-jobs/:jobId` — `200 { jobId, status, result?, error? }` (`result` is `{ actionItemId, googleTaskId }` on success), `404` if unknown
-- `POST /google-tasks-jobs/status` — `{ jobIds: [...] }` → `200 { results: [...] }`, same shape as `/jobs/status`
+- `POST /todoist-jobs` — `{ actionItemId, title, description?, dueDate? }` → `201 { jobId }`
+- `GET /todoist-jobs/:jobId` — `200 { jobId, status, result?, error? }` (`result` is `{ actionItemId, todoistTaskId }` on success), `404` if unknown
+- `POST /todoist-jobs/status` — `{ jobIds: [...] }` → `200 { results: [...] }`, same shape as `/jobs/status`
 - `POST /calendar-event-jobs` — `{ calendarEventId, title, date, startTime, description?, endTime? }` → `201 { jobId }`
 - `GET /calendar-event-jobs/:jobId` — `200 { jobId, status, result?, error? }` (`result` is `{ calendarEventId, googleEventId }` on success), `404` if unknown
 - `POST /calendar-event-jobs/status` — `{ jobIds: [...] }` → `200 { results: [...] }`, same shape as `/jobs/status`
@@ -586,17 +581,17 @@ This repo's CI/sandbox is Linux, so several pieces here have never run for real:
 
 ## Library loan -> Google Calendar sync
 
-A second sync job, unrelated to Google Tasks above: keeps a Google Calendar event in sync with
+A second sync job, unrelated to Todoist above: keeps a Google Calendar event in sync with
 every currently-borrowed library book (WBPG, https://katalog.wbpg.org.pl/), so a return date shows
 up on the calendar instead of only in the library's own app. Built from a feasibility spike — see
 `scripts/wbpg-library-spike/README.md` for how the WBPG API was reverse-engineered (no public docs
 exist for it) and what was confirmed against a real account.
 
-Two more `Worker`s started inside `server.ts`, same as `sync-google-tasks` — **not** the Mac
+Two more `Worker`s started inside `server.ts`, same as `sync-todoist` — **not** the Mac
 worker, and not a separate Dokku process type. This used to be a standalone entry point
 (`librarySyncWorker.ts`) requiring its own `Procfile` process type and a manual `dokku ps:scale`
 step; folded into `server.ts` since neither WBPG login (username/password, not OAuth) nor Google
-Calendar needs anything Mac-local, matching the one existing precedent (Google Tasks) instead of
+Calendar needs anything Mac-local, matching the one existing precedent (Todoist) instead of
 being the odd one out. `refresh-library-loans` runs as a BullMQ repeatable job
 (`upsertJobScheduler`, cron pattern `LIBRARY_REFRESH_CRON_PATTERN`, see "What is the schedule?"
 below); its `Worker` calls `libraryRefresh.ts`, which fans out one `sync-loan-calendar` job per
@@ -651,7 +646,7 @@ processes every job on that queue identically, scheduled or manual). It fans out
    whatever was consented to, and the Gmail one was only ever consented for `gmail.readonly`.
 3. **Local dev**: with Redis up (`pnpm --filter task-manager dev:redis`) and `.env` filled in (see
    `.env.example`), just `pnpm --filter task-manager dev` — same command as always, the library
-   sync workers start automatically once those five vars are set, same as Google Tasks. This runs
+   sync workers start automatically once those five vars are set, same as Todoist. This runs
    against the *real* WBPG and Google Calendar — there's no fake-deps mode here (unlike
    `worker.ts`'s `WORKER_FAKE_DEPS`); the pure sync/refresh logic is what `loanCalendarSync.test.ts`
    and `libraryRefresh.test.ts` exist to cover without needing either.

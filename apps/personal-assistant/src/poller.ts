@@ -1,7 +1,7 @@
 import { noopEventEmitter, type EventEmitter } from "./axiomEvents.js";
 import { runCalendarEventSyncCycle } from "./calendarEventSyncer.js";
 import type { GmailClient } from "./gmailClient.js";
-import { runGoogleTasksSyncCycle } from "./googleTasksSyncer.js";
+import { runTodoistSyncCycle } from "./todoistSyncer.js";
 import type { JobsApiClient } from "./jobsApiClient.js";
 import { noopLogger, type Logger } from "./logger.js";
 import type { Store } from "./store.js";
@@ -89,12 +89,12 @@ export async function pollPendingJobStatuses(deps: PollDeps): Promise<void> {
 export async function runPollCycle(deps: PollDeps): Promise<void> {
   await discoverAndScheduleNewEmails(deps);
   await pollPendingJobStatuses(deps);
-  // Keeps action_items in sync with Google Tasks — schedules a sync job for anything not yet
-  // scheduled, then backfills task_id for anything that's finished (googleTasksSyncer.ts). Runs
+  // Keeps action_items in sync with Todoist — schedules a sync job for anything not yet
+  // scheduled, then backfills task_id for anything that's finished (todoistSyncer.ts). Runs
   // on this same cycle/interval (runner.ts) rather than its own, since it shares this cycle's
   // `store`/`jobsApi` deps and there's no reason for a separate timer yet.
-  await runGoogleTasksSyncCycle(deps);
-  // Same loop as above, for calendar_events -> Google Calendar instead of action_items -> Google
-  // Tasks (calendarEventSyncer.ts) — see that file's header comment.
+  await runTodoistSyncCycle(deps);
+  // Same loop as above, for calendar_events -> Google Calendar instead of action_items ->
+  // Todoist (calendarEventSyncer.ts) — see that file's header comment.
   await runCalendarEventSyncCycle(deps);
 }

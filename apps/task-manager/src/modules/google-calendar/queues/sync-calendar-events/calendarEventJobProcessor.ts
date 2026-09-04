@@ -1,5 +1,5 @@
 // The actual "handle one sync job" logic, independent of BullMQ — mirrors
-// google-tasks/queues/sync-google-tasks/googleTasksJobProcessor.ts. server.ts wraps this in a
+// todoist/queues/sync-todoist/todoistJobProcessor.ts. server.ts wraps this in a
 // `Worker` processor callback for the `sync-calendar-events` queue; tests call it directly with a
 // fake `CalendarClient`.
 import { noopEventEmitter, type EventEmitter } from "../../../../axiomEvents.js";
@@ -43,7 +43,7 @@ function addDefaultDuration(date: string, startTime: string): string {
 }
 
 // Throws on any failure so BullMQ marks the job `failed` with that error as `failedReason` —
-// matching the Jobs API contract used for extract-action-items/sync-google-tasks.
+// matching the Jobs API contract used for extract-action-items/sync-todoist.
 export async function processCalendarEventJob(
   payload: CalendarEventJobPayload,
   deps: CalendarEventJobProcessorDeps,

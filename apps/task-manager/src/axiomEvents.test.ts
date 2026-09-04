@@ -52,7 +52,7 @@ describe("createAxiomEventEmitter", () => {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
 
-    emitter.emit({ entity: "sync-google-tasks", entityId: "1", status: "failed", error: "boom" });
+    emitter.emit({ entity: "sync-todoist", entityId: "1", status: "failed", error: "boom" });
 
     const body = JSON.parse(String((fetchImpl.mock.calls[0] as [string, RequestInit])[1].body));
     expect(body[0].error).toBe("boom");

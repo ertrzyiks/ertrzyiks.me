@@ -1,4 +1,4 @@
-// Thin seam so BullMQ-agnostic processor functions (jobProcessor.ts, googleTasksJobProcessor.ts,
+// Thin seam so BullMQ-agnostic processor functions (jobProcessor.ts, todoistJobProcessor.ts,
 // libraryRefresh.ts, loanCalendarSync.ts) can leave progress notes on the job they're running
 // as — visible in Bull Board's per-job "Logs" tab — without depending on bullmq's `Job` type
 // directly. Mirrors axiomEvents.ts's `EventEmitter` seam: optional on every processor's deps,
