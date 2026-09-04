@@ -13,12 +13,12 @@ import { BULL_BOARD_BASE_PATH, registerBullBoard } from "./bullBoard.js";
 import { createGoogleCalendarClient } from "./googleCalendarClient.js";
 import { createQueue as createCalendarEventsQueue } from "./modules/google-calendar/queues/sync-calendar-events/queue.js";
 import { createWorker as createCalendarEventsWorker } from "./modules/google-calendar/queues/sync-calendar-events/worker.js";
-import { createGoogleTasksClient } from "./modules/google-tasks/queues/sync-google-tasks/googleTasksClient.js";
+import { createTodoistClient } from "./modules/todoist/queues/sync-todoist/todoistClient.js";
 import { createLibraryClient } from "./modules/loans/queues/refresh-library-loans/library.js";
 import { loadLibraryWorkerConfig } from "./modules/loans/libraryConfig.js";
 import { createQueue as createExtractActionItemsQueue } from "./modules/email-processing/queues/extract-action-items/queue.js";
-import { createQueue as createGoogleTasksQueue } from "./modules/google-tasks/queues/sync-google-tasks/queue.js";
-import { createWorker as createGoogleTasksWorker } from "./modules/google-tasks/queues/sync-google-tasks/worker.js";
+import { createQueue as createTodoistQueue } from "./modules/todoist/queues/sync-todoist/queue.js";
+import { createWorker as createTodoistWorker } from "./modules/todoist/queues/sync-todoist/worker.js";
 import { createQueue as createLibraryRefreshQueue } from "./modules/loans/queues/refresh-library-loans/queue.js";
 import { createWorker as createLibraryRefreshWorker } from "./modules/loans/queues/refresh-library-loans/worker.js";
 import {
@@ -34,12 +34,10 @@ const bearerToken = process.env.JOBS_API_BEARER_TOKEN;
 const port = Number(process.env.PORT ?? 3000);
 const bullBoardUsername = process.env.TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME;
 const bullBoardPassword = process.env.TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD;
-const googleTasksClientId = process.env.GOOGLE_TASKS_CLIENT_ID;
-const googleTasksClientSecret = process.env.GOOGLE_TASKS_CLIENT_SECRET;
-const googleTasksRefreshToken = process.env.GOOGLE_TASKS_REFRESH_TOKEN;
-const googleTasksListId = process.env.GOOGLE_TASKS_LIST_ID;
-const googleTasksRateLimitMax = Number(process.env.GOOGLE_TASKS_RATE_LIMIT_MAX ?? 5);
-const googleTasksRateLimitDurationMs = Number(process.env.GOOGLE_TASKS_RATE_LIMIT_DURATION_MS ?? 1000);
+const todoistApiToken = process.env.TODOIST_API_TOKEN;
+const todoistProjectId = process.env.TODOIST_PROJECT_ID;
+const todoistRateLimitMax = Number(process.env.TODOIST_RATE_LIMIT_MAX ?? 5);
+const todoistRateLimitDurationMs = Number(process.env.TODOIST_RATE_LIMIT_DURATION_MS ?? 1000);
 const wbpgUsername = process.env.WBPG_USERNAME;
 const wbpgPassword = process.env.WBPG_PASSWORD;
 const googleCalendarClientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
@@ -65,17 +63,17 @@ if (!bearerToken) throw new Error("JOBS_API_BEARER_TOKEN is required");
 
 // Trend-event emission (#315) — plain, optional env vars like the other credentials in this
 // file; see axiomEvents.ts's header comment for why this one credential doesn't need Keychain
-// treatment on the Mac worker side. Unset, sync-google-tasks jobs just don't emit events —
-// everything else about the worker is unaffected (see jobProcessor.ts/googleTasksJobProcessor.ts).
+// treatment on the Mac worker side. Unset, sync-todoist jobs just don't emit events —
+// everything else about the worker is unaffected (see jobProcessor.ts/todoistJobProcessor.ts).
 const events: EventEmitter =
   axiomToken && axiomDataset
     ? createAxiomEventEmitter({ token: axiomToken, dataset: axiomDataset, service: "task-manager" })
     : noopEventEmitter;
 
 const queue = createExtractActionItemsQueue(redisUrl);
-const googleTasksQueue = createGoogleTasksQueue(redisUrl);
+const todoistQueue = createTodoistQueue(redisUrl);
 const calendarEventsQueue = createCalendarEventsQueue(redisUrl);
-const app = createApp(queue, googleTasksQueue, calendarEventsQueue, bearerToken);
+const app = createApp(queue, todoistQueue, calendarEventsQueue, bearerToken);
 
 // Registered here (rather than only inside the "library sync workers" block below) so Bull
 // Board below always shows these two queues and — since Bull Board isn't read-only — offers an
@@ -101,7 +99,7 @@ if (bullBoardUsername && bullBoardPassword) {
 
     await registerBullBoard(bullBoardApp, [
       queue,
-      googleTasksQueue,
+      todoistQueue,
       calendarEventsQueue,
       libraryRefreshQueue,
       librarySyncQueue,
@@ -110,59 +108,54 @@ if (bullBoardUsername && bullBoardPassword) {
 } else {
   await registerBullBoard(app, [
     queue,
-    googleTasksQueue,
+    todoistQueue,
     calendarEventsQueue,
     libraryRefreshQueue,
     librarySyncQueue,
   ]);
 }
 
-// The `sync-google-tasks` worker runs right here, in the same cloud process as the Jobs API —
-// unlike the `extract-action-items` worker (worker.ts), which is Mac-only because it's the only
-// thing allowed to read raw email content. Pushing an already-extracted action item to Google
-// Tasks has no such constraint, so it doesn't need to wait for the Mac to be online.
+// The `sync-todoist` worker runs right here, in the same cloud process as the Jobs API — unlike
+// the `extract-action-items` worker (worker.ts), which is Mac-only because it's the only thing
+// allowed to read raw email content. Pushing an already-extracted action item to Todoist has no
+// such constraint, so it doesn't need to wait for the Mac to be online.
 //
-// The three credentials are optional at startup (not `required(...)`-style fail-fast like
-// REDIS_URL/JOBS_API_BEARER_TOKEN above) so this deploys cleanly before the Google Tasks OAuth
-// credential has been provisioned (see scripts/google-tasks-oauth) — the Jobs API still accepts
-// `/google-tasks-jobs` either way, jobs just queue up unconsumed until the worker starts.
-if (googleTasksClientId && googleTasksClientSecret && googleTasksRefreshToken) {
-  const googleTasksClient = createGoogleTasksClient({
-    clientId: googleTasksClientId,
-    clientSecret: googleTasksClientSecret,
-    refreshToken: googleTasksRefreshToken,
-    taskListId: googleTasksListId,
+// The credential is optional at startup (not `required(...)`-style fail-fast like
+// REDIS_URL/JOBS_API_BEARER_TOKEN above) so this deploys cleanly before the Todoist API token has
+// been provisioned — the Jobs API still accepts `/todoist-jobs` either way, jobs just queue up
+// unconsumed until the worker starts.
+if (todoistApiToken) {
+  const todoistClient = createTodoistClient({
+    apiToken: todoistApiToken,
+    projectId: todoistProjectId,
   });
 
   // `limiter` throttles how fast this worker drains the queue — BullMQ just holds jobs back
   // rather than dropping/retrying them, so a burst of scheduled jobs (e.g. many action items
   // completing in one personal-assistant poll cycle) gets smoothed out over time instead of
-  // firing at Google Tasks all at once. Added after hitting a real "quota exceeded" error from
-  // the Tasks API; 5/sec is a conservative starting point, not a measured ceiling — tune via the
-  // env vars if it turns out to be too slow (a deep backlog) or still too fast (still hitting
-  // quota).
-  const googleTasksConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
-  createGoogleTasksWorker(
-    googleTasksConnection,
-    { googleTasksClient, events },
+  // firing at Todoist all at once. Kept as the same conservative default the old Google Tasks
+  // worker used after hitting a real "quota exceeded" error there; 5/sec is a starting point, not
+  // a measured ceiling for Todoist's own API — tune via the env vars if it turns out to be too
+  // slow (a deep backlog) or still too fast (hitting Todoist's rate limit).
+  const todoistConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  createTodoistWorker(
+    todoistConnection,
+    { todoistClient, events },
     {
-      limiter: { max: googleTasksRateLimitMax, duration: googleTasksRateLimitDurationMs },
+      limiter: { max: todoistRateLimitMax, duration: todoistRateLimitDurationMs },
       logger: app.log,
     },
   );
 } else {
-  app.log.warn(
-    "GOOGLE_TASKS_CLIENT_ID/GOOGLE_TASKS_CLIENT_SECRET/GOOGLE_TASKS_REFRESH_TOKEN not fully set — " +
-      "sync-google-tasks worker not started, jobs will queue up unconsumed",
-  );
+  app.log.warn("TODOIST_API_TOKEN not set — sync-todoist worker not started, jobs will queue up unconsumed");
 }
 
-// The `sync-calendar-events` worker runs right here too, same reasoning as sync-google-tasks
-// above — pushing an already-extracted calendar event has no Mac-local constraint either.
-// Deliberately independent of the library sync block below even though both ultimately talk to
-// the same Google Calendar credential (#343): gating this on WBPG being configured too would mean
-// an email-derived event could never reach the calendar on an install that has no library sync
-// set up at all. Optional at startup like Google Tasks above — the Jobs API still accepts
+// The `sync-calendar-events` worker runs right here too, same reasoning as sync-todoist above —
+// pushing an already-extracted calendar event has no Mac-local constraint either. Deliberately
+// independent of the library sync block below even though both ultimately talk to the same
+// Google Calendar credential (#343): gating this on WBPG being configured too would mean an
+// email-derived event could never reach the calendar on an install that has no library sync set
+// up at all. Optional at startup like Todoist above — the Jobs API still accepts
 // `/calendar-event-jobs` either way, jobs just queue up unconsumed until the worker starts.
 if (googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefreshToken) {
   const calendarClient = createGoogleCalendarClient({
@@ -173,8 +166,8 @@ if (googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefres
     timeZone: googleCalendarTimeZone,
   });
 
-  // Same quota-protection reasoning as sync-google-tasks's limiter above, tuned by its own pair
-  // of env vars rather than reusing the Tasks ones — the two APIs have separate quotas.
+  // Same quota-protection reasoning as sync-todoist's limiter above, tuned by its own pair
+  // of env vars rather than reusing Todoist's — the two APIs have separate quotas.
   const calendarEventsConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
   createCalendarEventsWorker(
     calendarEventsConnection,
@@ -192,13 +185,13 @@ if (googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefres
 }
 
 // The library-loan -> Google Calendar sync workers run right here too, same reasoning as
-// sync-google-tasks above: neither WBPG login nor Google Calendar needs anything Mac-local, so
+// sync-todoist above: neither WBPG login nor Google Calendar needs anything Mac-local, so
 // there's no reason to isolate them the way the Gmail-reading worker.ts has to be. (This used to
 // be a separate Dokku process type, librarySyncWorker.ts, requiring a manual `dokku ps:scale`
 // step that's easy to forget — folding it in here means it just comes up with "web", no scaling
 // step needed, matching the one existing precedent instead of being the odd one out.)
 //
-// Optional at startup like Google Tasks above: the Jobs API and Bull Board still come up fine
+// Optional at startup like Todoist above: the Jobs API and Bull Board still come up fine
 // before these five vars are provisioned, the two queues just sit unconsumed until they are.
 if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefreshToken) {
   // Safe to call without an env override — all five vars this checks for were just confirmed

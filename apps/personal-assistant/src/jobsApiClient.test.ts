@@ -89,17 +89,17 @@ describe("createJobsApiClient", () => {
     });
   });
 
-  describe("scheduleGoogleTaskJob", () => {
-    it("POSTs to /google-tasks-jobs with the item and bearer token, returning the jobId", async () => {
+  describe("scheduleTodoistJob", () => {
+    it("POSTs to /todoist-jobs with the item and bearer token, returning the jobId", async () => {
       const fetchFn = fakeFetch((url) => {
-        expect(url).toBe("http://localhost:3000/google-tasks-jobs");
-        return jsonResponse({ jobId: "gtask-job-1" }, 201);
+        expect(url).toBe("http://localhost:3000/todoist-jobs");
+        return jsonResponse({ jobId: "todoist-job-1" }, 201);
       });
       const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
 
       await expect(
-        client.scheduleGoogleTaskJob({ actionItemId: 1, title: "Send the report" }),
-      ).resolves.toEqual({ jobId: "gtask-job-1" });
+        client.scheduleTodoistJob({ actionItemId: 1, title: "Send the report" }),
+      ).resolves.toEqual({ jobId: "todoist-job-1" });
 
       const [, init] = fetchFn.mock.calls[0] as [string, RequestInit];
       expect(JSON.parse(init.body as string)).toEqual({ actionItemId: 1, title: "Send the report" });
@@ -111,25 +111,25 @@ describe("createJobsApiClient", () => {
       const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
 
       await expect(
-        client.scheduleGoogleTaskJob({ actionItemId: 1, title: "Send the report" }),
+        client.scheduleTodoistJob({ actionItemId: 1, title: "Send the report" }),
       ).rejects.toThrow(/status 401/);
     });
   });
 
-  describe("getGoogleTaskJobStatuses", () => {
-    it("POSTs to /google-tasks-jobs/status with the jobIds and returns results", async () => {
+  describe("getTodoistJobStatuses", () => {
+    it("POSTs to /todoist-jobs/status with the jobIds and returns results", async () => {
       const fetchFn = fakeFetch((url) => {
-        expect(url).toBe("http://localhost:3000/google-tasks-jobs/status");
+        expect(url).toBe("http://localhost:3000/todoist-jobs/status");
         return jsonResponse({
           results: [
-            { jobId: "gtask-job-1", status: "completed", result: { actionItemId: 1, googleTaskId: "gtask-1" } },
+            { jobId: "todoist-job-1", status: "completed", result: { actionItemId: 1, todoistTaskId: "todoist-1" } },
           ],
         });
       });
       const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
 
-      await expect(client.getGoogleTaskJobStatuses(["gtask-job-1", "gtask-job-2"])).resolves.toEqual([
-        { jobId: "gtask-job-1", status: "completed", result: { actionItemId: 1, googleTaskId: "gtask-1" } },
+      await expect(client.getTodoistJobStatuses(["todoist-job-1", "todoist-job-2"])).resolves.toEqual([
+        { jobId: "todoist-job-1", status: "completed", result: { actionItemId: 1, todoistTaskId: "todoist-1" } },
       ]);
     });
 
@@ -137,7 +137,7 @@ describe("createJobsApiClient", () => {
       const fetchFn = fakeFetch(() => jsonResponse({ results: [] }));
       const client = createJobsApiClient({ ...CONFIG, fetchFn: fetchFn as unknown as typeof fetch });
 
-      await expect(client.getGoogleTaskJobStatuses([])).resolves.toEqual([]);
+      await expect(client.getTodoistJobStatuses([])).resolves.toEqual([]);
       expect(fetchFn).not.toHaveBeenCalled();
     });
   });

@@ -43,8 +43,8 @@ for this client before; revoke access at https://myaccount.google.com/permission
 ## 3. Store the values
 
 **1Password** (vault `Dokku apps`, item names as expected by the Terraform). `personal_assistant_google_oauth_client`
-is a **Login** item shared with `scripts/google-tasks-oauth`/`scripts/calendar-oauth` (#343) —
-if you bootstrapped Tasks or Calendar first, it already exists; reuse its existing client
+is a **Login** item shared with `scripts/calendar-oauth` (#343) —
+if you bootstrapped Calendar first, it already exists; reuse its existing client
 id/secret instead of minting a new OAuth client here, since a single OAuth client can hold
 refresh tokens for multiple scopes.
 

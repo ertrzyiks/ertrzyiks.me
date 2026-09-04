@@ -1,7 +1,7 @@
 // Fire-and-forget trend-event emission to Axiom (#315) — historical/trend visibility over email
 // status, supplementing (not replacing) the snapshot dashboard (healthServer.ts). Emitted inline
 // at each of poller.ts's existing store.ts call sites (insertQueuedEmail/markEmailCompleted/
-// markEmailFailed), mirroring task-manager's approach in jobProcessor.ts/googleTasksJobProcessor.ts.
+// markEmailFailed), mirroring task-manager's approach in jobProcessor.ts/todoistJobProcessor.ts.
 import { noopLogger, type Logger } from "./logger.js";
 
 export type TrendEventStatus = "queued" | "active" | "completed" | "failed";

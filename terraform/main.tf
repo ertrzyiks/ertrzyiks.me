@@ -100,7 +100,7 @@ resource "dokku_app" "yummy_next" {
   domains = ["kuchnia-yummy.pl"]
 }
 
-# Task Manager app (Jobs API server, see #248). Also runs the sync-google-tasks and library-loan
+# Task Manager app (Jobs API server, see #248). Also runs the sync-todoist and library-loan
 # -> Google Calendar sync workers, both as extra bullmq.Worker instances started directly inside
 # server.ts (see that file) rather than as separate Dokku process types — a single `web` process
 # covers everything, no `dokku ps:scale` step needed.
@@ -114,13 +114,12 @@ resource "dokku_app" "task_manager" {
     # provisioned here so it's always active in production.
     TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME = data.onepassword_item.personal_assistant_task_manager_bull_board.username
     TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD = data.onepassword_item.personal_assistant_task_manager_bull_board.password
-    # Optional: the sync-google-tasks worker only starts once all three are set (server.ts) — see
-    # scripts/google-tasks-oauth for how to provision the refresh token. Client id/secret come
-    # from the shared personal_assistant_google_oauth_client item (#343), same as
-    # GOOGLE_CALENDAR_CLIENT_* and personal_assistant's GMAIL_CLIENT_* below.
-    GOOGLE_TASKS_CLIENT_ID     = data.onepassword_item.personal_assistant_google_oauth_client.username
-    GOOGLE_TASKS_CLIENT_SECRET = data.onepassword_item.personal_assistant_google_oauth_client.password
-    GOOGLE_TASKS_REFRESH_TOKEN = data.onepassword_item.task_manager_google_tasks_oauth_refresh_token.password
+    # Optional: the sync-todoist worker only starts once this is set (server.ts) — a personal API
+    # token, no OAuth client/refresh-token pair needed (unlike GOOGLE_CALENDAR_* below).
+    TODOIST_API_TOKEN = data.onepassword_item.task_manager_todoist_api_token.password
+    # Not a secret (see GOOGLE_CALENDAR_ID below for the same reasoning) — the "personal" Todoist
+    # project new tasks are created in, rather than the Inbox.
+    TODOIST_PROJECT_ID = "6hQpWr89qF4wgf7W"
 
     # Optional: the library sync workers only start once all five (six with the id below) are
     # set (server.ts) — see scripts/calendar-oauth for how to provision the Calendar refresh
@@ -137,7 +136,7 @@ resource "dokku_app" "task_manager" {
     GOOGLE_CALENDAR_ID = "beff7d227de04ef6e92cec0deea77b7ef9e1a89346af7d76b047d90fff377d1c@group.calendar.google.com"
 
     # Optional: trend-event emission to Axiom (#315) — a no-op in both jobProcessor.ts and
-    # googleTasksJobProcessor.ts until both are set. Separate dataset/token from
+    # todoistJobProcessor.ts until both are set. Separate dataset/token from
     # personal_assistant's own below, per #315's resolution (one dataset per service).
     AXIOM_TOKEN   = data.onepassword_item.task_manager_axiom.password
     AXIOM_DATASET = data.onepassword_item.task_manager_axiom.username
@@ -165,7 +164,7 @@ resource "dokku_app" "personal_assistant" {
 
   config = {
     # Client id/secret come from the shared personal_assistant_google_oauth_client item (#343),
-    # same as task-manager's GOOGLE_TASKS_CLIENT_* and GOOGLE_CALENDAR_CLIENT_* above.
+    # same as task-manager's GOOGLE_CALENDAR_CLIENT_* above.
     GMAIL_CLIENT_ID       = data.onepassword_item.personal_assistant_google_oauth_client.username
     GMAIL_CLIENT_SECRET   = data.onepassword_item.personal_assistant_google_oauth_client.password
     GMAIL_REFRESH_TOKEN   = data.onepassword_item.personal_assistant_gcloud_oauth_refresh_token.password

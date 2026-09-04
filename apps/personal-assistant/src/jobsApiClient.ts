@@ -32,29 +32,29 @@ export interface JobStatusResult {
   error?: string;
 }
 
-// Payload/result shapes for the sync-google-tasks queue's Jobs API endpoints
-// (`/google-tasks-jobs*`), mirroring the extract-action-items ones above.
-export interface GoogleTaskPayload {
+// Payload/result shapes for the sync-todoist queue's Jobs API endpoints
+// (`/todoist-jobs*`), mirroring the extract-action-items ones above.
+export interface TodoistPayload {
   actionItemId: number;
   title: string;
   description?: string;
   dueDate?: string;
 }
 
-export interface GoogleTaskResultPayload {
+export interface TodoistResultPayload {
   actionItemId: number;
-  googleTaskId: string;
+  todoistTaskId: string;
 }
 
-export interface GoogleTaskJobStatusResult {
+export interface TodoistJobStatusResult {
   jobId: string;
   status: JobStatusName;
-  result?: GoogleTaskResultPayload;
+  result?: TodoistResultPayload;
   error?: string;
 }
 
 // Payload/result shapes for the sync-calendar-events queue's Jobs API endpoints
-// (`/calendar-event-jobs*`), mirroring the sync-google-tasks ones above.
+// (`/calendar-event-jobs*`), mirroring the sync-todoist ones above.
 export interface CalendarEventJobPayload {
   calendarEventId: number;
   title: string;
@@ -80,10 +80,10 @@ export interface JobsApiClient {
   scheduleJob(emailId: string): Promise<{ jobId: string }>;
   /** Batch status lookup. Unknown job IDs are simply omitted from the result (per #241/task-manager). */
   getJobStatuses(jobIds: string[]): Promise<JobStatusResult[]>;
-  /** Schedules a job on the sync-google-tasks queue for one action item. */
-  scheduleGoogleTaskJob(item: GoogleTaskPayload): Promise<{ jobId: string }>;
-  /** Batch status lookup for sync-google-tasks jobs. Unknown job IDs are omitted, same as getJobStatuses. */
-  getGoogleTaskJobStatuses(jobIds: string[]): Promise<GoogleTaskJobStatusResult[]>;
+  /** Schedules a job on the sync-todoist queue for one action item. */
+  scheduleTodoistJob(item: TodoistPayload): Promise<{ jobId: string }>;
+  /** Batch status lookup for sync-todoist jobs. Unknown job IDs are omitted, same as getJobStatuses. */
+  getTodoistJobStatuses(jobIds: string[]): Promise<TodoistJobStatusResult[]>;
   /** Schedules a job on the sync-calendar-events queue for one calendar event. */
   scheduleCalendarEventJob(item: CalendarEventJobPayload): Promise<{ jobId: string }>;
   /** Batch status lookup for sync-calendar-events jobs. Unknown job IDs are omitted, same as getJobStatuses. */
@@ -131,14 +131,14 @@ export function createJobsApiClient(config: JobsApiClientConfig): JobsApiClient 
       return body.results;
     },
 
-    async scheduleGoogleTaskJob(item) {
-      return (await request("/google-tasks-jobs", item)) as { jobId: string };
+    async scheduleTodoistJob(item) {
+      return (await request("/todoist-jobs", item)) as { jobId: string };
     },
 
-    async getGoogleTaskJobStatuses(jobIds) {
+    async getTodoistJobStatuses(jobIds) {
       if (jobIds.length === 0) return [];
-      const body = (await request("/google-tasks-jobs/status", { jobIds })) as {
-        results: GoogleTaskJobStatusResult[];
+      const body = (await request("/todoist-jobs/status", { jobIds })) as {
+        results: TodoistJobStatusResult[];
       };
       return body.results;
     },

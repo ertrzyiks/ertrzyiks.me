@@ -1,6 +1,6 @@
-// The calendar-event counterpart to googleTasksSyncer.ts — same shape (schedule what's unsynced,
+// The calendar-event counterpart to todoistSyncer.ts — same shape (schedule what's unsynced,
 // then poll and backfill what's finished), pointed at the sync-calendar-events queue and
-// calendar_events table instead of sync-google-tasks and action_items. See that file for the
+// calendar_events table instead of sync-todoist and action_items. See that file for the
 // design rationale this mirrors.
 import type { JobsApiClient } from "./jobsApiClient.js";
 import { noopLogger, type Logger } from "./logger.js";
@@ -20,7 +20,7 @@ function errorMessage(err: unknown): string {
  * Schedules a sync-calendar-events job for every calendar event that doesn't have one yet
  * (`job_id IS NULL`), and stores the returned job ID.
  *
- * Same deferred-retry stance as scheduleUnsyncedActionItems in googleTasksSyncer.ts: a scheduling
+ * Same deferred-retry stance as scheduleUnsyncedActionItems in todoistSyncer.ts: a scheduling
  * failure here is not recorded anywhere terminal — `job_id` is simply left `NULL` so the item is
  * retried next cycle.
  */
@@ -53,7 +53,7 @@ export async function scheduleUnsyncedCalendarEvents(deps: CalendarEventSyncDeps
  * Polls the Jobs API for the status of every calendar event with a sync job scheduled but not yet
  * backfilled (`job_id` set, `google_event_id IS NULL`), and stores the outcome: `google_event_id`
  * on success. A failed job is logged and left stuck (same deferred-retry stance as
- * pollPendingGoogleTaskJobs) — still-pending/active jobs are left untouched either way.
+ * pollPendingTodoistJobs) — still-pending/active jobs are left untouched either way.
  */
 export async function pollPendingCalendarEventJobs(deps: CalendarEventSyncDeps): Promise<void> {
   const { jobsApi, store, logger = noopLogger } = deps;

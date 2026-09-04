@@ -27,16 +27,16 @@ For each poll cycle:
    returned calendar events into `calendar_events`, and the email is marked `status='completed'`.
    On `failed`, the email is marked `status='failed'` with `error_message` set. `pending`/`active`
    jobs are left alone until the next cycle.
-5. Google Tasks sync (`src/googleTasksSyncer.ts`), same cycle: for every action item with no
-   `job_id` yet, `POST /google-tasks-jobs` against the Jobs API's `sync-google-tasks` queue and
+5. Todoist sync (`src/todoistSyncer.ts`), same cycle: for every action item with no
+   `job_id` yet, `POST /todoist-jobs` against the Jobs API's `sync-todoist` queue and
    record the returned job ID. For every action item with a `job_id` but no `task_id` yet,
-   `POST /google-tasks-jobs/status` (batched) and, on `completed`, backfill `task_id` with the
-   Google Tasks task ID. A scheduling failure leaves `job_id` unset (retried next cycle); a job
+   `POST /todoist-jobs/status` (batched) and, on `completed`, backfill `task_id` with the
+   Todoist task ID. A scheduling failure leaves `job_id` unset (retried next cycle); a job
    failure is logged and left stuck (`job_id` set, `task_id` never filled) — this feature has no
    per-item error column, unlike `emails.error_message`, so both are best-effort rather than a
    real retry/alerting policy (same "explicitly deferred" stance as step 3 above).
 6. Calendar event sync (`src/calendarEventSyncer.ts`), same cycle, structurally identical to step 5
-   above but for `calendar_events` → Google Calendar instead of `action_items` → Google Tasks:
+   above but for `calendar_events` → Google Calendar instead of `action_items` → Todoist:
    `POST /calendar-event-jobs` against the Jobs API's `sync-calendar-events` queue for every
    unscheduled event, then `POST /calendar-event-jobs/status` (batched) and backfill
    `google_event_id` on `completed`. Same best-effort, no-retry-policy stance as step 5.
@@ -44,7 +44,7 @@ For each poll cycle:
 ## SQLite schema
 
 Exactly as specified in [#242](https://github.com/ertrzyiks/ertrzyiks.me/issues/242), plus
-`job_id`/`task_id` on `action_items` for the Google Tasks sync loop above, and `calendar_events`
+`job_id`/`task_id` on `action_items` for the Todoist sync loop above, and `calendar_events`
 for the calendar-event sync loop. Created (and migrated, for `job_id`/`task_id` on a database file
 that predates them) at startup:
 
@@ -66,8 +66,8 @@ CREATE TABLE action_items (
   due_date TEXT,
   status TEXT NOT NULL DEFAULT 'open',    -- open | done
   created_at TEXT NOT NULL,
-  job_id TEXT,                            -- sync-google-tasks job ID, once scheduled
-  task_id TEXT                            -- Google Tasks task ID, once the job completes
+  job_id TEXT,                            -- sync-todoist job ID, once scheduled
+  task_id TEXT                            -- Todoist task ID, once the job completes
 );
 
 CREATE TABLE calendar_events (
@@ -89,8 +89,9 @@ pre-existing row (anything that existed before the two columns did) with a `"pre
 sentinel in both columns, rather than leaving them genuinely `NULL`. Without that, the very first
 startup after this feature shipped would read the *entire* historical backlog as unsynced and
 schedule a sync job for all of it at once — which is both semantically wrong (nobody asked for
-months of old action items to show up in Google Tasks) and what actually tripped a Google Tasks
-API "quota exceeded" error in production. The sentinel value is never a real job/task ID; it just
+months of old action items to show up in the task sync target) and what actually tripped a Google
+Tasks API "quota exceeded" error in production (this feature has since moved from Google Tasks to
+Todoist, but the migration/backfill story is unchanged). The sentinel value is never a real job/task ID; it just
 permanently excludes the row from both `getUnsyncedActionItems` and `getActionItemsAwaitingTaskSync`.
 A genuinely new action item's `job_id`/`task_id` stay `NULL` until the sync loop actually touches
 them, so this only affects rows that predate the migration.
@@ -169,7 +170,7 @@ Wired at a few boundaries, not into every internal try/catch:
 - Global uncaught-exception/unhandled-rejection handlers — installed automatically by
   `Sentry.init` itself, no extra code here.
 - `runner.ts`'s outer per-cycle catch — reached only when something breaks `runPollCycle` as a
-  whole, not the routine per-email/per-action-item failures `poller.ts`/`googleTasksSyncer.ts`
+  whole, not the routine per-email/per-action-item failures `poller.ts`/`todoistSyncer.ts`
   already swallow internally (those are tracked via `emails.status`/`error_message` in SQLite,
   and for `poller.ts`'s two sites, an Axiom trend event too — genuinely handled outcomes, not
   bugs).
@@ -220,13 +221,13 @@ pnpm --filter personal-assistant test
 - The SQLite store (`src/store.ts`) uses Node's built-in `node:sqlite` rather than a native-addon
   driver, and is tested directly against a real (in-memory or temp-file) database rather than a
   fake, since it's fast, synchronous, and local.
-- `src/googleTasksSyncer.ts` (schedule-unsynced / poll-pending / run-cycle) structurally mirrors
+- `src/todoistSyncer.ts` (schedule-unsynced / poll-pending / run-cycle) structurally mirrors
   `src/poller.ts`'s email flow, reusing the same `JobsApiClient`/`Store` — `runPollCycle` just
   calls both. `src/logger.ts` holds the shared `Logger`/`noopLogger` (split out of `poller.ts`)
-  so `googleTasksSyncer.ts` can use them without poller.ts/googleTasksSyncer.ts importing each
+  so `todoistSyncer.ts` can use them without poller.ts/todoistSyncer.ts importing each
   other.
-- `src/calendarEventSyncer.ts` is `googleTasksSyncer.ts`'s calendar-event counterpart — same
+- `src/calendarEventSyncer.ts` is `todoistSyncer.ts`'s calendar-event counterpart — same
   schedule-unsynced/poll-pending/run-cycle shape, same `Logger` split, pointed at
-  `calendar_events`/`sync-calendar-events` instead of `action_items`/`sync-google-tasks`.
-  `runPollCycle` calls all three (discover+poll, Google Tasks sync, calendar event sync) in one
+  `calendar_events`/`sync-calendar-events` instead of `action_items`/`sync-todoist`.
+  `runPollCycle` calls all three (discover+poll, Todoist sync, calendar event sync) in one
   cycle.

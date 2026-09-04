@@ -68,7 +68,7 @@ describe("store (in-memory)", () => {
     expect(store.getQueuedEmailsWithJobId()).toEqual([{ emailId: "email-2", jobId: "job-2" }]);
   });
 
-  describe("Google Tasks sync (job_id/task_id)", () => {
+  describe("Todoist sync (job_id/task_id)", () => {
     beforeEach(() => {
       store.insertQueuedEmail("email-1");
       store.setJobId("email-1", "job-1");
@@ -441,7 +441,8 @@ describe("store (file-backed)", () => {
     // Reopening via createStore must apply the migration without losing the existing row — but
     // the pre-existing row must NOT come back as unsynced (see migrateActionItemsColumns's
     // comment): retroactively scheduling the entire historical backlog the moment job_id first
-    // exists is exactly what triggered Google Tasks API quota errors in production.
+    // exists is exactly what triggered Google Tasks API quota errors in production (this feature
+    // has since moved from Google Tasks to Todoist, but the migration/backfill story is unchanged).
     store = createStore(dbPath);
 
     expect(store.getUnsyncedActionItems()).toEqual([]);

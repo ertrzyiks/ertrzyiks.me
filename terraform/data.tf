@@ -68,17 +68,16 @@ data "onepassword_item" "kstatus_admin_basic_auth" {
   title = "kstatus_admin_basic_auth"
 }
 
-# `tasks` refresh token for task-manager's sync-google-tasks worker (see
-# scripts/google-tasks-oauth) — a separate refresh token from personal_assistant_gcloud_oauth's
-# above (a Google refresh token is scoped to whatever was consented to), but minted from the same
-# shared OAuth client (see personal_assistant_google_oauth_client below, #343).
-data "onepassword_item" "task_manager_google_tasks_oauth_refresh_token" {
+# Personal API token for task-manager's sync-todoist worker — unlike the Google Tasks integration
+# this replaced, Todoist needs no OAuth client/refresh-token pair, just a token generated once from
+# Settings > Integrations > Developer in the Todoist app.
+data "onepassword_item" "task_manager_todoist_api_token" {
   vault = "Dokku apps"
-  title = "task_manager_google_tasks_oauth_refresh_token"
+  title = "task_manager_todoist_api_token"
 }
 
 # WBPG library card login for the library-loan -> Google Calendar sync workers (started inside
-# apps/task-manager/src/server.ts, same as the Google Tasks ones above) — a Login item exposing
+# apps/task-manager/src/server.ts, same as the Todoist worker above) — a Login item exposing
 # both `.username` and `.password`, since that's literally what this credential is.
 data "onepassword_item" "task_manager_wbpg_login" {
   vault = "Dokku apps"

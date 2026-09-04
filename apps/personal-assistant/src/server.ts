@@ -29,7 +29,7 @@ const jobsApi = createJobsApiClient(config.jobsApi);
 
 // Trend-event emission (#315) — a no-op until both AXIOM_TOKEN/AXIOM_DATASET are provisioned
 // (config.axiom is null until then, same optional-at-startup treatment task-manager gives its
-// own Google Tasks/library sync credentials).
+// own Todoist/library sync credentials).
 const events: EventEmitter = config.axiom
   ? createAxiomEventEmitter({ ...config.axiom, service: "personal-assistant", logger })
   : noopEventEmitter;

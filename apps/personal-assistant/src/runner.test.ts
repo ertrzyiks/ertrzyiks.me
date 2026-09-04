@@ -19,10 +19,10 @@ class NoopJobsApiClient implements JobsApiClient {
   async getJobStatuses() {
     return [];
   }
-  async scheduleGoogleTaskJob() {
+  async scheduleTodoistJob() {
     return { jobId: "unused" };
   }
-  async getGoogleTaskJobStatuses() {
+  async getTodoistJobStatuses() {
     return [];
   }
 }

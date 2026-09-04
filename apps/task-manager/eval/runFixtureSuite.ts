@@ -10,7 +10,7 @@ import type { ActionItemExtractor } from "../src/modules/email-processing/queues
 import type { EvalFixture } from "./fixtures.js";
 
 // This is the exact same extraction call src/jobProcessor.ts runs for a real job, so a fixture's
-// `expect` is checked against what would actually have reached Google Tasks, not an intermediate
+// `expect` is checked against what would actually have reached Todoist, not an intermediate
 // result. Only asserts on `actionItems` today — `events` isn't part of `EvalFixture` yet.
 export function runFixtureSuite(fixtures: EvalFixture[], extractor: ActionItemExtractor): void {
   describe.each(fixtures)("$name — $rule", (fixture) => {

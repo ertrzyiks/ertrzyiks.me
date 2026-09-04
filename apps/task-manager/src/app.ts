@@ -5,11 +5,11 @@ import {
   CALENDAR_EVENTS_QUEUE_NAME,
   type CalendarEventJobsQueue,
 } from "./modules/google-calendar/queues/sync-calendar-events/queue.js";
-import type { GoogleTaskJobPayload } from "./modules/google-tasks/queues/sync-google-tasks/googleTask.js";
+import type { TodoistJobPayload } from "./modules/todoist/queues/sync-todoist/todoistTask.js";
 import {
-  GOOGLE_TASKS_QUEUE_NAME,
-  type GoogleTasksJobsQueue,
-} from "./modules/google-tasks/queues/sync-google-tasks/queue.js";
+  TODOIST_QUEUE_NAME,
+  type TodoistJobsQueue,
+} from "./modules/todoist/queues/sync-todoist/queue.js";
 import { QUEUE_NAME, type JobsQueue } from "./modules/email-processing/queues/extract-action-items/queue.js";
 import { toSimplifiedStatus, type SimplifiedStatus } from "./jobStatus.js";
 import { Sentry } from "./sentry.js";
@@ -21,9 +21,9 @@ interface JobStatusResponse {
   error?: string;
 }
 
-// Minimal shape JobsQueue, GoogleTasksJobsQueue, and CalendarEventJobsQueue's `getJob` all
+// Minimal shape JobsQueue, TodoistJobsQueue, and CalendarEventJobsQueue's `getJob` all
 // satisfy — lets every queue share this lookup instead of duplicating it per queue (their
-// JobLike/GoogleTaskJobLike/CalendarEventJobLike types differ only in an unused `id` field).
+// JobLike/TodoistJobLike/CalendarEventJobLike types differ only in an unused `id` field).
 interface JobLookupQueue {
   getJob(jobId: string): Promise<
     { getState(): Promise<string>; returnvalue: unknown; failedReason?: string } | undefined
@@ -48,7 +48,7 @@ async function buildJobStatusResponse(
 
 export function createApp(
   queue: JobsQueue,
-  googleTasksQueue: GoogleTasksJobsQueue,
+  todoistQueue: TodoistJobsQueue,
   calendarEventsQueue: CalendarEventJobsQueue,
   bearerToken: string,
 ): FastifyInstance {
@@ -117,13 +117,13 @@ export function createApp(
       return reply.send({ results });
     });
 
-    api.post<{ Body: Partial<GoogleTaskJobPayload> }>("/google-tasks-jobs", async (request, reply) => {
+    api.post<{ Body: Partial<TodoistJobPayload> }>("/todoist-jobs", async (request, reply) => {
       const { actionItemId, title, description, dueDate } = request.body ?? {};
       if (typeof actionItemId !== "number" || typeof title !== "string" || title.length === 0) {
         return reply.code(400).send({ error: "actionItemId and title are required" });
       }
 
-      const job = await googleTasksQueue.add(GOOGLE_TASKS_QUEUE_NAME, {
+      const job = await todoistQueue.add(TODOIST_QUEUE_NAME, {
         actionItemId,
         title,
         description,
@@ -132,20 +132,20 @@ export function createApp(
       return reply.code(201).send({ jobId: job.id });
     });
 
-    api.get<{ Params: { jobId: string } }>("/google-tasks-jobs/:jobId", async (request, reply) => {
-      const response = await buildJobStatusResponse(googleTasksQueue, request.params.jobId);
+    api.get<{ Params: { jobId: string } }>("/todoist-jobs/:jobId", async (request, reply) => {
+      const response = await buildJobStatusResponse(todoistQueue, request.params.jobId);
       if (!response) return reply.code(404).send();
       return reply.send(response);
     });
 
-    api.post<{ Body: { jobIds?: string[] } }>("/google-tasks-jobs/status", async (request, reply) => {
+    api.post<{ Body: { jobIds?: string[] } }>("/todoist-jobs/status", async (request, reply) => {
       const jobIds = request.body?.jobIds;
       if (!Array.isArray(jobIds) || jobIds.some((id) => typeof id !== "string")) {
         return reply.code(400).send({ error: "jobIds must be an array of strings" });
       }
 
       const results = (
-        await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(googleTasksQueue, jobId)))
+        await Promise.all(jobIds.map((jobId) => buildJobStatusResponse(todoistQueue, jobId)))
       ).filter((result): result is JobStatusResponse => result !== null);
 
       return reply.send({ results });

@@ -1,5 +1,5 @@
-// Split out of poller.ts so googleTasksSyncer.ts can use the same Logger/noopLogger without a
-// circular import (poller.ts's runPollCycle calls into googleTasksSyncer.ts).
+// Split out of poller.ts so todoistSyncer.ts can use the same Logger/noopLogger without a
+// circular import (poller.ts's runPollCycle calls into todoistSyncer.ts).
 
 export interface Logger {
   info(message: string): void;

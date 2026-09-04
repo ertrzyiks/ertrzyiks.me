@@ -24,7 +24,7 @@ export interface QueuedEmail {
   jobId: string;
 }
 
-/** One action item not yet scheduled for a Google Tasks sync job (job_id IS NULL). */
+/** One action item not yet scheduled for a Todoist sync job (job_id IS NULL). */
 export interface UnsyncedActionItem {
   id: number;
   title: string;
@@ -68,9 +68,9 @@ export interface FailedEmail {
   updatedAt: string;
 }
 
-// Schema exactly as specified in #250/#242, plus job_id/task_id on action_items for the Google
-// Tasks sync loop (googleTasksSyncer.ts): job_id is set once a sync job has been scheduled,
-// task_id is backfilled with the Google Tasks task ID once that job completes. calendar_events
+// Schema exactly as specified in #250/#242, plus job_id/task_id on action_items for the Todoist
+// sync loop (todoistSyncer.ts, née googleTasksSyncer.ts): job_id is set once a sync job has been
+// scheduled, task_id is backfilled with the Todoist task ID once that job completes. calendar_events
 // mirrors that same job_id/<result column> shape for the calendar-event sync loop
 // (calendarEventSyncer.ts) — job_id/google_event_id instead of job_id/task_id — but is a brand
 // new table (this feature shipped with it from the start), so unlike action_items it needs no
@@ -112,8 +112,8 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 );
 `;
 
-// Stamped onto job_id/task_id for rows that predate the Google Tasks sync feature (see the
-// backfill below) — never a real BullMQ job ID or Google Tasks task ID, just a marker that
+// Stamped onto job_id/task_id for rows that predate the Todoist sync feature (see the
+// backfill below) — never a real BullMQ job ID or Todoist task ID, just a marker that
 // excludes the row from both `getUnsyncedActionItems` (job_id IS NULL) and
 // `getActionItemsAwaitingTaskSync` (job_id set, task_id IS NULL) forever.
 const PRE_EXISTING_SENTINEL = "pre-existing-skip-sync";
@@ -138,8 +138,8 @@ function migrateActionItemsColumns(db: DatabaseSync): void {
 
   // Without this, every row that existed before this feature shipped would read as "unsynced"
   // the moment job_id first appears, and the very next poll cycle would schedule a sync job for
-  // the *entire* historical backlog at once — a burst large enough to trip Google Tasks API rate
-  // limits ("quota exceeded"), and each old item's free-form LLM-extracted due date is more
+  // the *entire* historical backlog at once — a burst large enough to trip the sync provider's API
+  // rate limits ("quota exceeded"), and each old item's free-form LLM-extracted due date is more
   // likely to be something Google's `due` field rejects outright ("Request contains an invalid
   // argument") than a freshly-extracted one. Only the run where job_id is actually being added
   // needs this — a job_id that's genuinely NULL after that point means "new item, not yet
@@ -171,13 +171,13 @@ export interface Store {
   ): void;
   /** Emails still awaiting a job result (status='queued' with a job already scheduled). */
   getQueuedEmailsWithJobId(): QueuedEmail[];
-  /** Action items not yet scheduled for a Google Tasks sync job (job_id IS NULL). */
+  /** Action items not yet scheduled for a Todoist sync job (job_id IS NULL). */
   getUnsyncedActionItems(): UnsyncedActionItem[];
-  /** Attaches the Google Tasks sync job ID once scheduling succeeded. */
+  /** Attaches the Todoist sync job ID once scheduling succeeded. */
   setActionItemJobId(id: number, jobId: string): void;
   /** Action items with a sync job scheduled but not yet completed (job_id set, task_id NULL). */
   getActionItemsAwaitingTaskSync(): QueuedActionItem[];
-  /** Backfills the Google Tasks task ID once the sync job completes. */
+  /** Backfills the Todoist task ID once the sync job completes. */
   setActionItemTaskId(id: number, taskId: string): void;
   /** Calendar events not yet scheduled for a sync-calendar-events job (job_id IS NULL). */
   getUnsyncedCalendarEvents(): UnsyncedCalendarEvent[];

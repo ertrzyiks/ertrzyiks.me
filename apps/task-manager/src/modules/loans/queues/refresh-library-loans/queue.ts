@@ -1,7 +1,7 @@
 // The `refresh-library-loans` queue: a single repeatable job (see server.ts's
 // `upsertJobScheduler`) that logs into WBPG, refreshes the loans snapshot, and fans out one
 // `sync-loan-calendar` job per current loan (see ../sync-loan-calendar/queue.ts) onto that
-// second queue. Consumed by a `Worker` started inside server.ts, same as `sync-google-tasks` —
+// second queue. Consumed by a `Worker` started inside server.ts, same as `sync-todoist` —
 // neither WBPG login nor Google Calendar needs anything Mac-local.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
