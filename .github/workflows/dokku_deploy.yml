@@ -38,7 +38,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    concurrency: dokku-deploy-${{ inputs.app || github.event.client_payload.app }}
+    # Same group as release_*.yml: only one deployment (of any app) can be running at a time,
+    # everything else queues behind it.
+    concurrency: production-deploy
 
     steps:
       - name: Resolve inputs

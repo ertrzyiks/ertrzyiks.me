@@ -12,7 +12,9 @@ on:
       DOKKU_DEPLOY_KEY:
         required: true
 
-concurrency: kstatus-production
+# Shared group across all release_*.yml/dokku_deploy.yml workflows: only one deployment (of any
+# app) can be running at a time, everything else queues behind it.
+concurrency: production-deploy
 
 env:
   REGISTRY: ghcr.io
