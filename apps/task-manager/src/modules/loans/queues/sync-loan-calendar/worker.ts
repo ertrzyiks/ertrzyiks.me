@@ -7,6 +7,7 @@ import { Worker } from "bullmq";
 import { syncLoanCalendarEvent, type LoanCalendarSyncDeps } from "./loanCalendarSync.js";
 import { jobLoggerFor } from "../../../../jobLogger.js";
 import { logConnectionErrors } from "../../../../redisResilience.js";
+import { backoffStrategy } from "../../../../retry.js";
 import { Sentry } from "../../../../sentry.js";
 import type { WorkerLogger } from "../../../../workerLogger.js";
 import { LIBRARY_SYNC_QUEUE_NAME, type LoanSyncJobPayload } from "./queue.js";
@@ -29,7 +30,9 @@ export function createWorker(
     async (job) => {
       await syncLoanCalendarEvent(job.data.holdingId, { ...deps, log: jobLoggerFor(job) });
     },
-    { connection },
+    // `settings.backoffStrategy` (#348/#370) — see retry.ts; pairs with DEFAULT_JOB_OPTIONS'
+    // `backoff: { type: "custom" }` on queue.ts to cap retries at 7 days.
+    { connection, settings: { backoffStrategy } },
   );
 
   worker.on("ready", () => {

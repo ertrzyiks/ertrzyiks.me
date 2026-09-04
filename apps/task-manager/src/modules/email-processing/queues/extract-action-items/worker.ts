@@ -9,6 +9,7 @@ import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
 import { processEmailJob, type JobProcessorDeps } from "./jobProcessor.js";
 import { jobLoggerFor } from "../../../../jobLogger.js";
 import { logConnectionErrors } from "../../../../redisResilience.js";
+import { backoffStrategy } from "../../../../retry.js";
 import { Sentry } from "../../../../sentry.js";
 import type { WorkerLogger } from "../../../../workerLogger.js";
 import { QUEUE_NAME } from "./queue.js";
@@ -30,7 +31,9 @@ export function createWorker(
   const worker = new Worker<EmailJobPayload, EmailJobResult>(
     QUEUE_NAME,
     async (job) => processEmailJob(job.data.emailId, { ...deps, log: jobLoggerFor(job) }),
-    { connection },
+    // `settings.backoffStrategy` (#348/#370) — see retry.ts; pairs with DEFAULT_JOB_OPTIONS'
+    // `backoff: { type: "custom" }` on queue.ts to cap retries at 7 days.
+    { connection, settings: { backoffStrategy } },
   );
 
   worker.on("ready", () => {

@@ -7,6 +7,7 @@ import { Worker } from "bullmq";
 import { refreshLibraryLoans, type LibraryRefreshDeps } from "./libraryRefresh.js";
 import { jobLoggerFor } from "../../../../jobLogger.js";
 import { logConnectionErrors } from "../../../../redisResilience.js";
+import { backoffStrategy } from "../../../../retry.js";
 import { Sentry } from "../../../../sentry.js";
 import type { WorkerLogger } from "../../../../workerLogger.js";
 import { LIBRARY_REFRESH_QUEUE_NAME } from "./queue.js";
@@ -33,7 +34,9 @@ export function createWorker(
           `${result.removedCalendarEventGroups} stale calendar event group(s) removed`,
       );
     },
-    { connection },
+    // `settings.backoffStrategy` (#348/#370) — see retry.ts; pairs with DEFAULT_JOB_OPTIONS'
+    // `backoff: { type: "custom" }` on queue.ts to cap retries at 7 days.
+    { connection, settings: { backoffStrategy } },
   );
 
   worker.on("ready", () => {
