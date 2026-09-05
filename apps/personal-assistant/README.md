@@ -15,9 +15,10 @@ capable of it (see [#236](https://github.com/ertrzyiks/ertrzyiks.me/issues/236))
 
 For each poll cycle:
 
-1. `messages.list` against Gmail, filtered to `q: "is:starred"` → message IDs. Starring is an
-   explicit, user-driven signal — scoping to it keeps this service from scheduling a job for every
-   message that lands in the mailbox.
+1. `messages.list` against Gmail, filtered to `q: "is:starred OR label:PersonalAssistant"` →
+   message IDs. Starring and applying the "PersonalAssistant" label are both explicit, user-driven
+   signals — scoping to them keeps this service from scheduling a job for every message that lands
+   in the mailbox.
 2. Dedup against the `emails` table — only IDs not already recorded are new.
 3. For each new ID: insert into `emails` with `status='queued'`, then `POST /jobs { emailId }`
    against the Jobs API. If scheduling fails, the email is marked `status='failed'` right away

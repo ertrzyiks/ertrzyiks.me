@@ -38,10 +38,11 @@ export function createGmailClient(
       const response = await gmailApi.users.messages.list({
         userId: "me",
         maxResults: config.maxResults ?? 50,
-        // Restricts discovery to mail the user has starred, rather than every message in the
-        // mailbox — starring is an explicit, user-driven signal, and it's exposed as a regular
-        // search operator, so this is just a `q` filter, not a separate API surface.
-        q: "is:starred",
+        // Restricts discovery to mail the user has explicitly flagged for this pipeline, rather
+        // than every message in the mailbox — starring and applying the "PersonalAssistant" label
+        // are both explicit, user-driven signals, and each is exposed as a regular search
+        // operator, so this is just a `q` filter, not a separate API surface.
+        q: "is:starred OR label:PersonalAssistant",
       });
 
       return (response.data.messages ?? [])

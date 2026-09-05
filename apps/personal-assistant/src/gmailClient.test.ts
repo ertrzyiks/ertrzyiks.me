@@ -46,7 +46,7 @@ describe("createGmailClient", () => {
     await expect(client.listNewMessageIds()).resolves.toEqual(["msg-1"]);
   });
 
-  it("requests userId 'me', defaults maxResults to 50, and filters to starred mail", async () => {
+  it("requests userId 'me', defaults maxResults to 50, and filters to starred mail or mail labeled PersonalAssistant", async () => {
     let capturedParams: unknown;
     const gmailApi = fakeGmailApi(async (params) => {
       capturedParams = params;
@@ -56,7 +56,11 @@ describe("createGmailClient", () => {
 
     await client.listNewMessageIds();
 
-    expect(capturedParams).toEqual({ userId: "me", maxResults: 50, q: "is:starred" });
+    expect(capturedParams).toEqual({
+      userId: "me",
+      maxResults: 50,
+      q: "is:starred OR label:PersonalAssistant",
+    });
   });
 
   it("honors a configured maxResults", async () => {
@@ -69,6 +73,10 @@ describe("createGmailClient", () => {
 
     await client.listNewMessageIds();
 
-    expect(capturedParams).toEqual({ userId: "me", maxResults: 10, q: "is:starred" });
+    expect(capturedParams).toEqual({
+      userId: "me",
+      maxResults: 10,
+      q: "is:starred OR label:PersonalAssistant",
+    });
   });
 });
