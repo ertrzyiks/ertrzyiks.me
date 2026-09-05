@@ -238,11 +238,25 @@ model/provider will end up reading your email, and it can change request to requ
 `OPENROUTER_MODEL` (see https://openrouter.ai/models?max_price=0 for the current free lineup to
 choose from) if you'd rather pin a specific one and know for certain.
 
-Not every model honors `response_format`'s `json_schema` mode equally strictly, pinned or via the
-auto-router — a malformed or rejected request surfaces as a normal job failure, retried per
-`queue.ts`'s backoff policy, same as any other extraction error (see `openRouterClient.ts`'s header
-comment). OpenRouter's free models also enforce their own (often quite low) requests-per-minute
-ceiling — see `EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`/`_DURATION_MS` in the env var table above.
+**No `response_format` either.** OpenRouter's `response_format` (both strict JSON-schema mode and
+even its looser JSON-object mode) turned out not to be reliably supported across the free
+auto-router's pool either — several models this account's router landed on rejected it outright
+with a hard 400 rather than degrading gracefully. Dropped entirely: the exact JSON shape is spelled
+out in the prompt text instead (`OUTPUT_FORMAT_INSTRUCTIONS` in `openRouter.ts`), which worked the
+large majority of the time on those same models. Since nothing on OpenRouter's side rejects a
+malformed response any more, `openRouter.ts` validates the parsed JSON itself with a
+[zod](https://zod.dev) schema before returning it — a wrong field type or a `dueDate`/`date`/
+`startTime` in the wrong format fails validation the same way a request failure does, rather than
+reaching `todoistJobProcessor.ts`/`calendarEventJobProcessor.ts` as silently wrong data.
+
+Both a request failure and a validation failure are caught by `createOpenRouterExtractor`'s own
+short retry loop (3 attempts) before either surfaces as a job failure — the free auto-router lands
+on a different underlying model each call, so retrying re-rolls that pick instead of waiting on
+`queue.ts`'s much slower backoff policy for what's usually a transient, router-specific problem (an
+upstream rate limit, or a model that ignored the prompt's JSON-only instruction). Only once every
+retry is exhausted does it become a normal job failure, retried again later per that backoff policy.
+OpenRouter's free models also enforce their own (often quite low) requests-per-minute ceiling on top
+of all this — see `EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`/`_DURATION_MS` in the env var table above.
 
 `gmail.ts`'s Gmail API calls and `openRouter.ts`'s OpenRouter calls both talk to real external
 services this repo's CI/sandbox can't reach, so both are built behind small seams (`EmailFetcher`,

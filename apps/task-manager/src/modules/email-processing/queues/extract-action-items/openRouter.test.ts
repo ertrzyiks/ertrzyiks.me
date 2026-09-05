@@ -152,7 +152,7 @@ describe("createOpenRouterExtractor", () => {
       apiKey: "test-api-key",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
-    await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an actionItems array");
+    await expect(extractor.extract(EMAIL)).rejects.toThrow(/did not match the expected shape.*actionItems/s);
   });
 
   it("throws when the response is missing an events array", async () => {
@@ -164,7 +164,113 @@ describe("createOpenRouterExtractor", () => {
       apiKey: "test-api-key",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
-    await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an events array");
+    await expect(extractor.extract(EMAIL)).rejects.toThrow(/did not match the expected shape.*events/s);
+  });
+
+  it("throws when an action item's dueDate isn't a YYYY-MM-DD string or null", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                actionItems: [{ title: "x", description: "y", dueDate: "next Friday" }],
+                events: [],
+              }),
+            },
+          },
+        ],
+      }),
+    );
+
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await expect(extractor.extract(EMAIL)).rejects.toThrow("did not match the expected shape");
+  });
+
+  it("throws when an action item's title is missing", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                actionItems: [{ description: "y", dueDate: null }],
+                events: [],
+              }),
+            },
+          },
+        ],
+      }),
+    );
+
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await expect(extractor.extract(EMAIL)).rejects.toThrow("did not match the expected shape");
+  });
+
+  it("throws when an event's startTime is null instead of an HH:MM string", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                actionItems: [],
+                events: [
+                  {
+                    title: "x",
+                    description: "y",
+                    date: "2026-09-10",
+                    startTime: null,
+                    endTime: null,
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+      }),
+    );
+
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await expect(extractor.extract(EMAIL)).rejects.toThrow("did not match the expected shape");
+  });
+
+  it("drops unrecognized extra fields instead of failing the job over them", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                actionItems: [
+                  { title: "x", description: "y", dueDate: null, confidence: 0.9 },
+                ],
+                events: [],
+                notes: "the model added this, unprompted",
+              }),
+            },
+          },
+        ],
+      }),
+    );
+
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(await extractor.extract(EMAIL)).toEqual({
+      actionItems: [{ title: "x", description: "y", dueDate: null }],
+      events: [],
+    });
   });
 
   it("defaults to OpenRouter's own free auto-router and OpenRouter's own base URL when neither is given", async () => {

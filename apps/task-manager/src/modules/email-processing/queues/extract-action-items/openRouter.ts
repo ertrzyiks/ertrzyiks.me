@@ -12,6 +12,7 @@
 // processing" property the Mac-only worker used to guarantee, made in exchange for not needing a
 // Mac online at all. Set `OPENROUTER_MODEL` (see server.ts) to pin a specific model/provider
 // instead, if you'd rather know exactly where email content goes.
+import { z } from "zod";
 import type { ActionItem, CalendarEvent } from "./actionItem.js";
 import type { EmailContent } from "./gmail.js";
 import {
@@ -74,16 +75,51 @@ function buildPrompt(email: EmailContent): string {
   ].join("\n");
 }
 
-function parseExtractionResult(parsed: unknown): ExtractionResult {
-  const { actionItems, events } = parsed as { actionItems?: unknown; events?: unknown };
-  if (!Array.isArray(actionItems)) {
-    throw new Error("OpenRouter response was missing an actionItems array");
-  }
-  if (!Array.isArray(events)) {
-    throw new Error("OpenRouter response was missing an events array");
-  }
+// `OUTPUT_FORMAT_INSTRUCTIONS` above is the only thing telling the model what shape to return —
+// unlike the JSON Schema this used to send via `response_format` (see openRouterClient.ts's header
+// comment for why that was dropped), nothing on OpenRouter's side rejects a malformed response
+// before it reaches here. So this validates every field, not just that `actionItems`/`events` are
+// arrays: a field of the wrong type or a date/time in the wrong format fails validation just like a
+// missing array does, and for the same reason — a bad `dueDate`/`date`/`startTime` would otherwise
+// reach todoistJobProcessor.ts/calendarEventJobProcessor.ts as silently wrong data instead of
+// failing where the actual problem is. A schema mismatch is caught by `extract()`'s own retry loop
+// below (re-rolls which model handles the request) and, if every attempt produces something
+// unusable, surfaces as a normal job failure retried per queue.ts's backoff policy — same treatment
+// as a request that failed outright. Unrecognized extra fields are silently dropped rather than
+// rejected (zod's default `z.object()` behavior) — a free model adding something harmless isn't
+// worth failing the job over, unlike a wrong type or a malformed date/time.
+const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a "YYYY-MM-DD" date');
+const timeString = z.string().regex(/^\d{2}:\d{2}$/, 'must be an "HH:MM" time');
 
-  return { actionItems: actionItems as ActionItem[], events: events as CalendarEvent[] };
+const actionItemSchema = z.object({
+  title: z.string().min(1),
+  description: z.string(),
+  dueDate: dateString.nullable(),
+}) satisfies z.ZodType<ActionItem>;
+
+const calendarEventSchema = z.object({
+  title: z.string().min(1),
+  description: z.string(),
+  date: dateString,
+  // Required — see actionItem.ts's CalendarEvent comment: an event with no extractable start time
+  // isn't produced at all, so this is never legitimately null on an event that made it this far.
+  startTime: timeString,
+  endTime: timeString.nullable(),
+}) satisfies z.ZodType<CalendarEvent>;
+
+const extractionResultSchema = z.object({
+  actionItems: z.array(actionItemSchema),
+  events: z.array(calendarEventSchema),
+}) satisfies z.ZodType<ExtractionResult>;
+
+function parseExtractionResult(parsed: unknown): ExtractionResult {
+  const result = extractionResultSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`OpenRouter response did not match the expected shape: ${result.error.message}`, {
+      cause: result.error,
+    });
+  }
+  return result.data;
 }
 
 // `openrouter/free` (DEFAULT_OPENROUTER_MODEL) doesn't commit to one underlying model — each
