@@ -4,10 +4,7 @@ import type { EmailContent } from "./gmail.js";
 
 // OpenRouter is a real cloud API — nothing to talk to in CI/sandbox, so every test here injects a
 // fake `fetch` via the `fetchImpl` seam rather than making a real HTTP call (see
-// openRouter.ts's OpenRouterConfig comment). Most tests pass an explicit `model`, which skips
-// discovery entirely (see openRouterClient.ts's pickFreeModel) and lets the fake fetch only ever
-// see `/chat/completions` requests — pickFreeModel itself is covered in openRouterClient.test.ts;
-// the "auto-picks a free model" group below covers the two files wired together.
+// openRouter.ts's OpenRouterConfig comment).
 
 const EMAIL: EmailContent = {
   id: "email-1",
@@ -27,7 +24,7 @@ function jsonResponse(body: unknown, ok = true, status = 200): Response {
 }
 
 describe("createOpenRouterExtractor", () => {
-  it("posts a structured chat completion request with the configured model and API key", async () => {
+  it("posts a plain chat completion request with the configured model, API key, and JSON-shape instructions", async () => {
     const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
 
@@ -36,7 +33,10 @@ describe("createOpenRouterExtractor", () => {
 
       const requestBody = JSON.parse(String(init?.body));
       expect(requestBody.model).toBe("some/model:free");
-      expect(requestBody.response_format.type).toBe("json_schema");
+      // No response_format — see openRouterClient.ts's header comment for why: several free
+      // models rejected it outright in testing, including its loosest "json_object" mode.
+      expect(requestBody.response_format).toBeUndefined();
+      expect(requestBody.messages[0].content).toContain("Respond with a single JSON object");
       expect(requestBody.messages[1].content).toContain("Please send the report by Friday.");
 
       return jsonResponse({
@@ -96,7 +96,6 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
-      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     expect(await extractor.extract(EMAIL)).toEqual({ actionItems: [], events: [] });
@@ -107,10 +106,29 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
-      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("/chat/completions request failed");
+  });
+
+  it("strips a markdown code fence the model wrapped its JSON in despite being told not to", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content: "```json\n" + JSON.stringify({ actionItems: [], events: [] }) + "\n```",
+            },
+          },
+        ],
+      }),
+    );
+
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(await extractor.extract(EMAIL)).toEqual({ actionItems: [], events: [] });
   });
 
   it("throws when the response content is not valid JSON", async () => {
@@ -120,7 +138,6 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
-      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("not valid JSON");
@@ -133,7 +150,6 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
-      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an actionItems array");
@@ -146,101 +162,66 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
-      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an events array");
   });
 
-  describe("auto-picks a free model when none is configured", () => {
-    function fakeCatalogAndCompletionFetch() {
-      return vi.fn(async (url: string | URL, init?: RequestInit) => {
-        if (String(url).endsWith("/models")) {
-          return jsonResponse({
-            data: [
-              {
-                id: "auto-picked/free-model",
-                context_length: 128_000,
-                pricing: { prompt: "0", completion: "0" },
-                architecture: { output_modalities: ["text"] },
-                supported_parameters: ["response_format", "structured_outputs"],
-              },
-            ],
-          });
-        }
+  it("defaults to OpenRouter's own free auto-router and OpenRouter's own base URL when neither is given", async () => {
+    const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
+      expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
+      const requestBody = JSON.parse(String(init?.body));
+      expect(requestBody.model).toBe("openrouter/free");
 
-        expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
-        const requestBody = JSON.parse(String(init?.body));
-        expect(requestBody.model).toBe("auto-picked/free-model");
-
-        return jsonResponse({
-          choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
-        });
+      return jsonResponse({
+        choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
       });
-    }
-
-    it("discovers and uses a free model from OpenRouter's catalog", async () => {
-      const fetchImpl = fakeCatalogAndCompletionFetch();
-
-      const extractor = createOpenRouterExtractor({
-        apiKey: "test-api-key",
-        fetchImpl: fetchImpl as unknown as typeof fetch,
-      });
-      const result = await extractor.extract(EMAIL);
-
-      expect(result).toEqual({ actionItems: [], events: [] });
-      expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
 
-    it("only fetches the catalog once across multiple extract() calls", async () => {
-      const fetchImpl = fakeCatalogAndCompletionFetch();
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    await extractor.extract(EMAIL);
 
-      const extractor = createOpenRouterExtractor({
-        apiKey: "test-api-key",
-        fetchImpl: fetchImpl as unknown as typeof fetch,
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries when a request fails, since the free auto-router can land on a different model each time", async () => {
+    let callCount = 0;
+    const fetchImpl = vi.fn(async () => {
+      callCount += 1;
+      if (callCount < 3) {
+        // Mirrors what a real request to `openrouter/free` did in manual testing: routed to a
+        // provider whose model rejected structured-output mode outright.
+        return jsonResponse({ error: "model features structured outputs not support" }, false, 400);
+      }
+      return jsonResponse({
+        choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
       });
-      await extractor.extract(EMAIL);
-      await extractor.extract(EMAIL);
-
-      const modelsCalls = fetchImpl.mock.calls.filter(([url]) => String(url).endsWith("/models"));
-      expect(modelsCalls).toHaveLength(1);
-      expect(fetchImpl).toHaveBeenCalledTimes(3);
     });
 
-    it("re-discovers on the next call after a completion failure, instead of retrying the same model forever", async () => {
-      let completionCallCount = 0;
-      const fetchImpl = vi.fn(async (url: string | URL) => {
-        if (String(url).endsWith("/models")) {
-          return jsonResponse({
-            data: [
-              {
-                id: "auto-picked/free-model",
-                context_length: 128_000,
-                pricing: { prompt: "0", completion: "0" },
-                architecture: { output_modalities: ["text"] },
-                supported_parameters: ["structured_outputs"],
-              },
-            ],
-          });
-        }
-
-        completionCallCount += 1;
-        if (completionCallCount === 1) return jsonResponse({}, false, 503);
-        return jsonResponse({
-          choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
-        });
-      });
-
-      const extractor = createOpenRouterExtractor({
-        apiKey: "test-api-key",
-        fetchImpl: fetchImpl as unknown as typeof fetch,
-      });
-
-      await expect(extractor.extract(EMAIL)).rejects.toThrow("/chat/completions request failed");
-      await expect(extractor.extract(EMAIL)).resolves.toEqual({ actionItems: [], events: [] });
-
-      const modelsCalls = fetchImpl.mock.calls.filter(([url]) => String(url).endsWith("/models"));
-      expect(modelsCalls).toHaveLength(2);
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      model: "some/model:free",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
     });
+
+    await expect(extractor.extract(EMAIL)).resolves.toEqual({ actionItems: [], events: [] });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives up and throws the last error once every retry has failed", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ error: "still failing" }, false, 400));
+
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      model: "some/model:free",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+
+    await expect(extractor.extract(EMAIL)).rejects.toThrow("/chat/completions request failed");
+    // Exactly the retry budget, not more — a persistently-broken model shouldn't retry forever.
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 });

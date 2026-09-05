@@ -13,7 +13,7 @@ export interface ActionItem {
 // specific time) as opposed to an ActionItem, which is a task the receiver needs to do with no
 // fixed slot on the calendar. `date`/`startTime`/`endTime` are kept separate (rather than one
 // combined datetime) so the extraction schema can constrain each independently — see
-// openRouter.ts's extractionJsonSchema. `date`/`startTime` are both required — an event with no
+// openRouter.ts's OUTPUT_FORMAT_INSTRUCTIONS. `date`/`startTime` are both required — an event with no
 // known start time isn't extracted at all (see extractActionItems.system.md's Phase 3), so there
 // is no "day only" event to represent. `endTime` stays nullable: a real duration/end time is
 // nice-to-have, not something worth guessing when the email doesn't state one. A later phase (not

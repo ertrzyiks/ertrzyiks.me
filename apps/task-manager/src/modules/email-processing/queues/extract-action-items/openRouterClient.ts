@@ -1,12 +1,35 @@
-// Shared OpenRouter HTTP client plumbing — free-model discovery plus a structured chat completion
-// helper — used by openRouter.ts (action item + calendar event extraction, #238, moved from a
-// local LM Studio server to OpenRouter's cloud API so `extract-action-items` no longer needs a Mac
-// to run on; see this queue's README section for why that constraint existed and what changed).
-// OpenRouter speaks the same OpenAI-compatible `/chat/completions` shape LM Studio did, so
-// `requestStructuredCompletion` mirrors the old lmStudioClient.ts's closely; `pickFreeModel` below
-// replaces that file's `getLoadedModelId` — LM Studio's "whatever's currently loaded" query has no
-// cloud equivalent, but OpenRouter's `/models` catalog plays the same "don't make the caller name
-// a model" role, filtered down to ones that cost nothing to call.
+// Shared OpenRouter HTTP client plumbing — a plain chat completion helper — used by openRouter.ts
+// (action item + calendar event extraction, #238, moved from a local LM Studio server to
+// OpenRouter's cloud API so `extract-action-items` no longer needs a Mac to run on; see this
+// queue's README section for why that constraint existed and what changed). OpenRouter speaks the
+// same OpenAI-compatible `/chat/completions` shape LM Studio did, so this file mirrors the old
+// lmStudioClient.ts's closely — the one structural difference is that a cloud provider has no
+// "whatever's currently loaded" concept to discover via an API call, so the model id is just part
+// of the request (`DEFAULT_OPENROUTER_MODEL` below, or `OPENROUTER_MODEL` — see
+// openRouter.ts/server.ts).
+//
+// Two things this file deliberately does *not* do, both dropped after testing against a real
+// account rather than by design upfront:
+//
+// - Pick a specific model itself, by scanning OpenRouter's public `/models` catalog for a free,
+//   text-output entry. OpenRouter's per-account/workspace guardrails (Zero Data Retention,
+//   "no free-model training on my data", etc. — configured at
+//   https://openrouter.ai/workspaces/default/guardrails) exclude specific model endpoints for
+//   reasons the public catalog has no way to expose, so a client-side pick can land on a model
+//   this account can't actually call. `openrouter/free` (below) is OpenRouter's own first-party
+//   free auto-router — it resolves to a real, currently-available, guardrail-compliant free
+//   endpoint server-side, which a catalog scan run from outside the account structurally cannot.
+// - Request `response_format` (OpenAI-style JSON-schema or even plain JSON-object mode) to
+//   constrain the response. Several models this router's free pool actually landed on for the
+//   guardrailed test account above rejected `response_format` outright — a hard 400 ("model
+//   features structured outputs not support"), not a graceful ignore — including its *loosest*
+//   "json_object" mode, not just strict JSON-schema. The exact same requests, with
+//   `response_format` dropped and the desired JSON shape spelled out in the prompt text instead
+//   (see openRouter.ts), succeeded the large majority of the time on those same models. Structured
+//   outputs are common among frontier/paid models but evidently not reliable across a free-tier
+//   router's pool, so this file asks for JSON the same way any chat model can already produce it —
+//   by being told to — and leaves shape validation entirely to the caller
+//   (`parseExtractionResult` in openRouter.ts).
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,11 +54,18 @@ export function readSystemPrompt(filename: string): string {
 
 export const DEFAULT_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
+// OpenRouter's own first-party auto-router for its free model lineup (see
+// https://openrouter.ai/openrouter/free) — resolves to whichever specific free, currently
+// available model/provider actually works for the calling account at request time, rather than a
+// single named model this file would otherwise have to guess and keep up to date by hand. See the
+// header comment above for why that beats picking one ourselves from the public catalog.
+export const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
+
 export interface OpenRouterConfig {
   apiKey: string;
   baseUrl?: string;
-  // Pins a specific model, skipping `pickFreeModel` entirely — set `OPENROUTER_MODEL` (see
-  // server.ts) if you want a fixed choice instead of whatever free model this discovers.
+  // Pins a specific model instead of DEFAULT_OPENROUTER_MODEL — set `OPENROUTER_MODEL` (see
+  // server.ts) if you'd rather know and control exactly which model/provider reads email content.
   model?: string;
   // Test seam — a fake `fetch` swapped in so the request/response shape can be asserted without a
   // real OpenRouter account/network call (mirrors lmStudioClient.ts's own `fetchImpl` seam, kept
@@ -47,101 +77,33 @@ interface OpenRouterChatCompletionResponse {
   choices?: Array<{ message?: { content?: string } }>;
 }
 
-// The subset of OpenRouter's `GET /models` catalog entry shape this file actually reads — see
-// https://openrouter.ai/docs/api-reference/list-available-models. `pricing` values are decimal
-// strings (USD per token), not numbers.
-interface OpenRouterCatalogModel {
-  id: string;
-  context_length?: number;
-  pricing?: { prompt?: string; completion?: string };
-  architecture?: { output_modalities?: string[] };
-  supported_parameters?: string[];
+// A fenced code block a model wrapped its JSON in despite being told not to
+// (```json\n...\n``` or plain ```\n...\n```) — stripped defensively before parsing rather than
+// trusted to never happen, since nothing here enforces the response actually be bare JSON (see
+// this file's header comment for why not). A no-op on content that's already bare JSON.
+const CODE_FENCE = /^```[a-z]*\n([\s\S]*?)\n?```$/i;
+
+function stripCodeFence(content: string): string {
+  const match = content.trim().match(CODE_FENCE);
+  return match ? match[1] : content;
 }
 
-interface OpenRouterModelsResponse {
-  data?: OpenRouterCatalogModel[];
-}
-
-function isFreeTextModel(model: OpenRouterCatalogModel): boolean {
-  // Both string fields, e.g. "0" for free or "0.000002" for paid — missing/unparseable is treated
-  // as non-free rather than assumed free, since accidentally calling a paid model with no
-  // OPENROUTER_MODEL override would be a nasty surprise. `architecture.output_modalities` filters
-  // out entries that produce something other than text (e.g. an audio-generation model that
-  // happens to be priced at zero) — this queue only ever wants a chat completion back.
-  const prompt = Number(model.pricing?.prompt);
-  const completion = Number(model.pricing?.completion);
-  return (
-    prompt === 0 &&
-    completion === 0 &&
-    (model.architecture?.output_modalities?.includes("text") ?? false)
-  );
-}
-
-function supportsStructuredOutputs(model: OpenRouterCatalogModel): boolean {
-  // "structured_outputs" is OpenRouter's flag for strict JSON-schema mode, which is what
-  // `requestStructuredCompletion` below actually requests (`json_schema.strict: true`) — a model
-  // only listing the looser "response_format" (plain JSON-object mode) isn't guaranteed to honor
-  // that.
-  return model.supported_parameters?.includes("structured_outputs") ?? false;
-}
-
-// Picks one model to extract with out of OpenRouter's current free lineup, so nothing here has to
-// hardcode a model id that OpenRouter could retire or reprice at any time (see
-// https://openrouter.ai/models?max_price=0 for the live list this queries). Prefers a free model
-// that also declares strict JSON-schema support; falls back to any free text-output model if none
-// of the free ones happen to declare it (extraction may then fail if the picked model doesn't
-// actually honor `response_format` — same as any other extraction error, retried per queue.ts's
-// backoff policy). Ties are broken by context length (a rough capability proxy — an email might be
-// long) and then by id, so the same catalog snapshot always resolves the same model rather than
-// picking arbitrarily between equally-ranked options.
-export async function pickFreeModel(
-  baseUrl: string,
-  apiKey: string,
-  fetchImpl: typeof fetch,
-): Promise<string> {
-  const response = await fetchImpl(`${baseUrl}/models`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
-  });
-  if (!response.ok) {
-    throw new Error(`OpenRouter /models request failed: ${response.status} ${response.statusText}`);
-  }
-
-  const body = (await response.json()) as OpenRouterModelsResponse;
-  const freeTextModels = (body.data ?? []).filter(isFreeTextModel);
-  const structuredFreeTextModels = freeTextModels.filter(supportsStructuredOutputs);
-  const candidates = structuredFreeTextModels.length > 0 ? structuredFreeTextModels : freeTextModels;
-
-  if (candidates.length === 0) {
-    throw new Error("OpenRouter reported no free text-output models to extract with");
-  }
-
-  const [best] = [...candidates].sort((a, b) => {
-    const byContextLength = (b.context_length ?? 0) - (a.context_length ?? 0);
-    return byContextLength !== 0 ? byContextLength : a.id.localeCompare(b.id);
-  });
-
-  return best.id;
-}
-
-// Posts one structured chat completion — a system + user turn, constrained to `jsonSchema` via
-// OpenRouter's OpenAI-compatible `response_format` — and returns the parsed JSON content. The
-// caller validates the returned `unknown` into its own shape (openRouter.ts: `actionItems`/
-// `events` arrays). Not every free model on OpenRouter honors `response_format`'s `json_schema`
-// mode equally strictly — a request failure or malformed content here surfaces as a normal job
-// failure (retried per queue.ts's backoff policy) same as any other extraction error, rather than
-// something this client tries to paper over.
-export async function requestStructuredCompletion(params: {
+// Posts one chat completion — a system + user turn — and returns the parsed JSON content. The
+// caller (openRouter.ts) is responsible for instructing the model on the exact JSON shape to
+// return in `systemPrompt`/`userPrompt` and for validating the returned `unknown` into that shape;
+// this file makes no attempt to enforce or verify it beyond "is this parseable JSON". A request
+// failure or malformed content surfaces as a normal job failure (retried both by openRouter.ts's
+// own short retry loop and, if that's exhausted, per queue.ts's backoff policy), same as any other
+// extraction error.
+export async function requestJsonCompletion(params: {
   baseUrl: string;
   apiKey: string;
   model: string;
   fetchImpl: typeof fetch;
   systemPrompt: string;
   userPrompt: string;
-  schemaName: string;
-  jsonSchema: object;
 }): Promise<unknown> {
-  const { baseUrl, apiKey, model, fetchImpl, systemPrompt, userPrompt, schemaName, jsonSchema } =
-    params;
+  const { baseUrl, apiKey, model, fetchImpl, systemPrompt, userPrompt } = params;
 
   const response = await fetchImpl(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -160,10 +122,6 @@ export async function requestStructuredCompletion(params: {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      response_format: {
-        type: "json_schema",
-        json_schema: { name: schemaName, schema: jsonSchema, strict: true },
-      },
     }),
   });
 
@@ -182,7 +140,7 @@ export async function requestStructuredCompletion(params: {
   }
 
   try {
-    return JSON.parse(content);
+    return JSON.parse(stripCodeFence(content));
   } catch (cause) {
     throw new Error("OpenRouter response content was not valid JSON", { cause });
   }
