@@ -70,11 +70,11 @@ describe("createFileInspectionLogger", () => {
   it("writes the error instead when given one, e.g. after a failed extraction", async () => {
     const logger = createFileInspectionLogger(dir);
 
-    await logger.record({ emailId: "email-1", email: EMAIL, error: "LM Studio error" });
+    await logger.record({ emailId: "email-1", email: EMAIL, error: "OpenRouter error" });
 
     const files = await readdir(dir);
     const contents = JSON.parse(await readFile(join(dir, files[0]), "utf8"));
-    expect(contents).toMatchObject({ emailId: "email-1", email: EMAIL, error: "LM Studio error" });
+    expect(contents).toMatchObject({ emailId: "email-1", email: EMAIL, error: "OpenRouter error" });
   });
 
   it("creates the directory if it doesn't exist yet", async () => {

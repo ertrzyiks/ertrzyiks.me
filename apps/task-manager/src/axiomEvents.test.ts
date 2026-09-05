@@ -3,7 +3,7 @@ import { createAxiomEventEmitter, noopEventEmitter } from "./axiomEvents.js";
 
 // Axiom is a real remote service — nothing to talk to in CI/sandbox, so every test here injects
 // a fake `fetch` via the `fetchImpl` seam rather than making a real HTTP call (mirrors
-// lmStudio.test.ts).
+// openRouter.test.ts).
 
 function jsonResponse(ok = true, status = 200): Response {
   return { ok, status, statusText: ok ? "OK" : "Error" } as Response;

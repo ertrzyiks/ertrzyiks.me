@@ -9,7 +9,7 @@
 //
 // The array itself lives in reviewed-fixtures.json (plain data) rather than inline here, so the
 // review server can append to it with a JSON read-modify-write instead of parsing/rewriting
-// TypeScript. Read via readFileSync + import.meta.url (mirrors lmStudio.ts's system-prompt
+// TypeScript. Read via readFileSync + import.meta.url (mirrors openRouter.ts's system-prompt
 // loading) rather than a JSON import, to sidestep import-attribute syntax differences between the
 // tsx-run review script and vitest's own module loader.
 import { readFileSync } from "node:fs";

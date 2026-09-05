@@ -3,7 +3,7 @@ import type { EventEmitter, TrendEvent } from "../../../../axiomEvents.js";
 import { processEmailJob } from "./jobProcessor.js";
 import type { EmailContent, EmailFetcher } from "./gmail.js";
 import type { InspectionLogger, InspectionRecord } from "./inspectionLog.js";
-import type { ActionItemExtractor, ExtractionResult } from "./lmStudio.js";
+import type { ActionItemExtractor, ExtractionResult } from "./openRouter.js";
 import type { ActionItem, CalendarEvent } from "./actionItem.js";
 
 function recordingEmitter(): EventEmitter & { events: TrendEvent[] } {
@@ -111,14 +111,14 @@ describe("processEmailJob", () => {
   });
 
   it("propagates an error when extraction fails, so BullMQ can mark the job failed", async () => {
-    const error = new Error("LM Studio error");
+    const error = new Error("OpenRouter error");
 
     await expect(
       processEmailJob("email-1", {
         emailFetcher: fakeFetcher(EMAIL),
         actionItemExtractor: failingExtractor(error),
       }),
-    ).rejects.toThrow("LM Studio error");
+    ).rejects.toThrow("OpenRouter error");
   });
 
   it("emits active then completed trend events, keyed by emailId (#315)", async () => {
@@ -191,13 +191,13 @@ describe("processEmailJob", () => {
     await expect(
       processEmailJob("email-1", {
         emailFetcher: fakeFetcher(EMAIL),
-        actionItemExtractor: failingExtractor(new Error("LM Studio error")),
+        actionItemExtractor: failingExtractor(new Error("OpenRouter error")),
         inspectionLogger,
       }),
-    ).rejects.toThrow("LM Studio error");
+    ).rejects.toThrow("OpenRouter error");
 
     expect(inspectionLogger.records).toEqual([
-      { emailId: "email-1", email: EMAIL, error: "LM Studio error" },
+      { emailId: "email-1", email: EMAIL, error: "OpenRouter error" },
     ]);
   });
 

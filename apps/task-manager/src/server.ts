@@ -16,7 +16,15 @@ import { createWorker as createCalendarEventsWorker } from "./modules/google-cal
 import { createTodoistClient } from "./modules/todoist/queues/sync-todoist/todoistClient.js";
 import { createLibraryClient } from "./modules/loans/queues/refresh-library-loans/library.js";
 import { loadLibraryWorkerConfig } from "./modules/loans/libraryConfig.js";
+import { createGmailFetcher } from "./modules/email-processing/queues/extract-action-items/gmail.js";
+import {
+  createFileInspectionLogger,
+  noopInspectionLogger,
+  type InspectionLogger,
+} from "./modules/email-processing/queues/extract-action-items/inspectionLog.js";
+import { createOpenRouterExtractor } from "./modules/email-processing/queues/extract-action-items/openRouter.js";
 import { createQueue as createExtractActionItemsQueue } from "./modules/email-processing/queues/extract-action-items/queue.js";
+import { createWorker as createExtractActionItemsWorker } from "./modules/email-processing/queues/extract-action-items/worker.js";
 import { createQueue as createTodoistQueue } from "./modules/todoist/queues/sync-todoist/queue.js";
 import { createWorker as createTodoistWorker } from "./modules/todoist/queues/sync-todoist/worker.js";
 import { createQueue as createLibraryRefreshQueue } from "./modules/loans/queues/refresh-library-loans/queue.js";
@@ -49,6 +57,18 @@ const calendarEventsRateLimitMax = Number(process.env.CALENDAR_EVENTS_RATE_LIMIT
 const calendarEventsRateLimitDurationMs = Number(
   process.env.CALENDAR_EVENTS_RATE_LIMIT_DURATION_MS ?? 1000,
 );
+const gmailClientId = process.env.GMAIL_CLIENT_ID;
+const gmailClientSecret = process.env.GMAIL_CLIENT_SECRET;
+const gmailRefreshToken = process.env.GMAIL_REFRESH_TOKEN;
+const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+const openRouterModel = process.env.OPENROUTER_MODEL;
+const openRouterBaseUrl = process.env.OPENROUTER_BASE_URL;
+const extractActionItemsRateLimitMax = Number(process.env.EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX ?? 5);
+const extractActionItemsRateLimitDurationMs = Number(
+  process.env.EXTRACT_ACTION_ITEMS_RATE_LIMIT_DURATION_MS ?? 60_000,
+);
+const inspectionDirEnv = process.env.WORKER_INSPECTION_DIR;
+const inspectionDir = inspectionDirEnv === undefined ? "./audit" : inspectionDirEnv;
 const axiomToken = process.env.AXIOM_TOKEN;
 const axiomDataset = process.env.AXIOM_DATASET;
 const sentryDsn = process.env.SENTRY_DSN;
@@ -184,9 +204,57 @@ if (googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefres
   );
 }
 
+// The `extract-action-items` worker runs right here too now, same shape as sync-todoist/
+// sync-calendar-events above — it used to be a Mac-only LaunchAgent (worker.ts, #249/#251)
+// because a local LM Studio call meant email content could never leave the user's machine; moved
+// into this cloud process once extraction switched to OpenRouter, which is a cloud call regardless
+// of where it's dispatched from (see openRouter.ts's header comment for that trade-off). Optional
+// at startup like the others above — the Jobs API still accepts `POST /jobs` either way, jobs just
+// queue up unconsumed until both credentials are configured.
+if (gmailClientId && gmailClientSecret && gmailRefreshToken && openRouterApiKey) {
+  const emailFetcher = createGmailFetcher({
+    clientId: gmailClientId,
+    clientSecret: gmailClientSecret,
+    refreshToken: gmailRefreshToken,
+  });
+  const actionItemExtractor = createOpenRouterExtractor({
+    apiKey: openRouterApiKey,
+    model: openRouterModel,
+    baseUrl: openRouterBaseUrl,
+  });
+  // On-disk inspection trail (see inspectionLog.ts) — on by default (`./audit`, resolved against
+  // this process's cwd), same as the worker this replaced. Mostly useful when running `server.ts`
+  // locally (`npm run review` reads it back); in a real Dokku deploy it just writes into the
+  // container's ephemeral filesystem, harmless but not durable across redeploys. Set
+  // WORKER_INSPECTION_DIR="" to turn it off entirely.
+  const inspectionLogger: InspectionLogger = inspectionDir
+    ? createFileInspectionLogger(inspectionDir)
+    : noopInspectionLogger;
+
+  // Same quota-protection reasoning as sync-todoist's/sync-calendar-events' limiters above — free
+  // OpenRouter models enforce their own requests-per-minute ceiling, tuned by its own pair of env
+  // vars since that ceiling has nothing to do with Todoist's or Google Calendar's quotas.
+  const extractActionItemsConnection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+  createExtractActionItemsWorker(
+    extractActionItemsConnection,
+    { emailFetcher, actionItemExtractor, events, inspectionLogger },
+    {
+      limiter: {
+        max: extractActionItemsRateLimitMax,
+        duration: extractActionItemsRateLimitDurationMs,
+      },
+      logger: app.log,
+    },
+  );
+} else {
+  app.log.warn(
+    "GMAIL_CLIENT_ID/GMAIL_CLIENT_SECRET/GMAIL_REFRESH_TOKEN/OPENROUTER_API_KEY not fully set — " +
+      "extract-action-items worker not started, jobs will queue up unconsumed",
+  );
+}
+
 // The library-loan -> Google Calendar sync workers run right here too, same reasoning as
-// sync-todoist above: neither WBPG login nor Google Calendar needs anything Mac-local, so
-// there's no reason to isolate them the way the Gmail-reading worker.ts has to be. (This used to
+// sync-todoist above: neither WBPG login nor Google Calendar needs anything Mac-local. (This used to
 // be a separate Dokku process type, librarySyncWorker.ts, requiring a manual `dokku ps:scale`
 // step that's easy to forget — folding it in here means it just comes up with "web", no scaling
 // step needed, matching the one existing precedent instead of being the odd one out.)

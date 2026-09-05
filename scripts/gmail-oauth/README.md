@@ -1,8 +1,10 @@
 # Gmail OAuth bootstrap
 
 One-time script for [#247](https://github.com/ertrzyiks/ertrzyiks.me/issues/247). Produces the
-single `gmail.readonly` refresh token shared by `personal-assistant` (orchestration, cloud) and
-the `task-manager` Mac worker, per the design in #236.
+single `gmail.readonly` refresh token shared by `personal-assistant` (orchestration) and
+`task-manager`'s `extract-action-items` worker, per the design in #236 — both run in the cloud
+today (`task-manager`'s worker used to be a Mac-only LaunchAgent, see that package's README's
+"Email action-item extraction" section for what changed).
 
 Run this locally on your Mac, not in CI or any sandbox — it needs a real browser for the consent
 screen and its output is a live credential.
@@ -68,19 +70,11 @@ op item create --category=password --vault="Dokku apps" \
   "password=<GMAIL_REFRESH_TOKEN value>"
 ```
 
-**macOS Keychain** (read by the Mac worker at startup — see `apps/task-manager/src/keychain.ts`
-and the "macOS LaunchAgent" section of `apps/task-manager/README.md`, #251):
-
-```bash
-security add-generic-password \
-  -a "task-manager-worker" \
-  -s "gmail-refresh-token" \
-  -w "<GMAIL_REFRESH_TOKEN value>"
-```
-
-The account/service above (`task-manager-worker` / `gmail-refresh-token`) match `keychain.ts`'s
-defaults (`GMAIL_KEYCHAIN_ACCOUNT`/`GMAIL_KEYCHAIN_SERVICE`) — if you override those env vars for
-the worker, store the token under the same values instead.
+**`task-manager`'s own deploy config** (Terraform, see `terraform/main.tf`'s `dokku_app.task_manager`
+`GMAIL_REFRESH_TOKEN` — sourced from the same `personal_assistant_gcloud_oauth_refresh_token`
+1Password item above, not a separate copy). `task-manager`'s `extract-action-items` worker used to
+read this from the macOS Keychain instead, back when it ran as a Mac-only LaunchAgent (#251,
+removed) — it's a plain env var now, same as everywhere else this service reads a credential.
 
 ## Notes
 

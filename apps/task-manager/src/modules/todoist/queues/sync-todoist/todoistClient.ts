@@ -41,7 +41,7 @@ export function createTodoistClient(
           // `due_string` goes through Todoist's own natural-language due parser, which handles
           // both a bare `YYYY-MM-DD` and free-form text like "next Friday" or "ASAP" — unlike
           // Google Tasks' `due` field (see the old googleTasksClient.ts, since removed), so the
-          // LLM-extracted dueDate (no format guarantee, see lmStudio.ts) can be passed straight
+          // LLM-extracted dueDate (no format guarantee, see openRouter.ts) can be passed straight
           // through with no local parsing/validation.
           due_string: due,
         }),

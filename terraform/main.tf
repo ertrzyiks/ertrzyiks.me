@@ -100,10 +100,12 @@ resource "dokku_app" "yummy_next" {
   domains = ["kuchnia-yummy.pl"]
 }
 
-# Task Manager app (Jobs API server, see #248). Also runs the sync-todoist and library-loan
-# -> Google Calendar sync workers, both as extra bullmq.Worker instances started directly inside
-# server.ts (see that file) rather than as separate Dokku process types — a single `web` process
-# covers everything, no `dokku ps:scale` step needed.
+# Task Manager app (Jobs API server, see #248). Also runs extract-action-items, sync-todoist, and
+# the library-loan -> Google Calendar sync workers, all as extra bullmq.Worker instances started
+# directly inside server.ts (see that file) rather than as separate Dokku process types — a single
+# `web` process covers everything, no `dokku ps:scale` step needed. extract-action-items used to be
+# a Mac-only LaunchAgent instead (#251, removed) — see apps/task-manager/README.md's "Email
+# action-item extraction" section for what changed.
 resource "dokku_app" "task_manager" {
   app_name = "task-manager"
 
@@ -134,6 +136,16 @@ resource "dokku_app" "task_manager" {
     # what does), so it's a plain literal here rather than a 1Password item. The "Dom" calendar,
     # not the refresh token account's primary one — see googleCalendar.ts's GOOGLE_CALENDAR_ID.
     GOOGLE_CALENDAR_ID = "beff7d227de04ef6e92cec0deea77b7ef9e1a89346af7d76b047d90fff377d1c@group.calendar.google.com"
+
+    # Optional: the extract-action-items worker only starts once all four of these are set
+    # (server.ts) — see apps/task-manager/README.md's "Email action-item extraction" section. The
+    # same shared gmail.readonly credential personal_assistant uses below, not a separate one
+    # (#236) — client id/secret from personal_assistant_google_oauth_client (#343), same as
+    # GOOGLE_CALENDAR_CLIENT_* above.
+    GMAIL_CLIENT_ID     = data.onepassword_item.personal_assistant_google_oauth_client.username
+    GMAIL_CLIENT_SECRET = data.onepassword_item.personal_assistant_google_oauth_client.password
+    GMAIL_REFRESH_TOKEN = data.onepassword_item.personal_assistant_gcloud_oauth_refresh_token.password
+    OPENROUTER_API_KEY  = data.onepassword_item.task_manager_openrouter_api_key.password
 
     # Optional: trend-event emission to Axiom (#315) — a no-op in both jobProcessor.ts and
     # todoistJobProcessor.ts until both are set. Separate dataset/token from
