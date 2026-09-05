@@ -11,6 +11,7 @@ import {
 } from "./calendarEventJobProcessor.js";
 import { jobLoggerFor } from "../../../../jobLogger.js";
 import { logConnectionErrors } from "../../../../redisResilience.js";
+import { backoffStrategy } from "../../../../retry.js";
 import { Sentry } from "../../../../sentry.js";
 import type { WorkerLogger } from "../../../../workerLogger.js";
 import { CALENDAR_EVENTS_QUEUE_NAME } from "./queue.js";
@@ -34,7 +35,9 @@ export function createWorker(
   const worker = new Worker<CalendarEventJobPayload, CalendarEventJobResult>(
     CALENDAR_EVENTS_QUEUE_NAME,
     async (job) => processCalendarEventJob(job.data, { ...deps, log: jobLoggerFor(job) }),
-    { connection, limiter: options.limiter },
+    // `settings.backoffStrategy` (#348/#370) — see retry.ts; pairs with DEFAULT_JOB_OPTIONS'
+    // `backoff: { type: "custom" }` on queue.ts to cap retries at 7 days.
+    { connection, limiter: options.limiter, settings: { backoffStrategy } },
   );
 
   worker.on("ready", () => {
