@@ -273,6 +273,35 @@ describe("createOpenRouterExtractor", () => {
     });
   });
 
+  it("caps action items at 6 and events at 2, silently dropping the overflow", async () => {
+    const actionItems = Array.from({ length: 9 }, (_, i) => ({
+      title: `Item ${i + 1}`,
+      description: "",
+      dueDate: null,
+    }));
+    const events = Array.from({ length: 4 }, (_, i) => ({
+      title: `Event ${i + 1}`,
+      description: "",
+      date: "2026-09-10",
+      startTime: "09:00",
+      endTime: null,
+    }));
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        choices: [{ message: { content: JSON.stringify({ actionItems, events }) } }],
+      }),
+    );
+
+    const extractor = createOpenRouterExtractor({
+      apiKey: "test-api-key",
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const result = await extractor.extract(EMAIL);
+
+    expect(result.actionItems).toEqual(actionItems.slice(0, 6));
+    expect(result.events).toEqual(events.slice(0, 2));
+  });
+
   it("defaults to OpenRouter's own free auto-router and OpenRouter's own base URL when neither is given", async () => {
     const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
       expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");

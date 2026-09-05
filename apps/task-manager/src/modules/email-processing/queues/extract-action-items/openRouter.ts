@@ -59,7 +59,10 @@ Rules for the fields above:
   actionItems.system.md's Phase 3, rule 1: an event with no extractable start time isn't produced
   at all, so there is no event needing a null one. endTime is null when the email states no
   end time/duration for that event — never guess one.
-- If there are no action items and/or no events, use an empty array for whichever is empty.`;
+- If there are no action items and/or no events, use an empty array for whichever is empty.
+- Return at most 6 action items and at most 2 events. If there would be more, keep only the most
+  important ones (per the ranking rules above) and drop the rest — anything beyond these limits is
+  discarded anyway, so there's no point generating it.`;
 
 // Kept in its own file (rather than inline) so it reads and edits like prose, not a
 // string embedded in TS. Read once at module load — see openRouterClient.ts's readSystemPrompt
@@ -112,6 +115,16 @@ const extractionResultSchema = z.object({
   events: z.array(calendarEventSchema),
 }) satisfies z.ZodType<ExtractionResult>;
 
+// The system prompt already asks for "less is better than more" (see
+// extractActionItems.system.md), but that's guidance, not a guarantee — a model can still hand
+// back more than is useful. These are a hard backstop enforced in code: extras beyond the cap are
+// silently dropped (not an error, and not something worth failing the job over) rather than
+// letting an over-eager extraction flood Todoist/Calendar with dozens of items from one email.
+// Kept low relative to what a chatty email could plausibly contain, on the assumption that
+// anything past this many items is noise the prompt's judgment should have already trimmed.
+const MAX_ACTION_ITEMS = 6;
+const MAX_EVENTS = 2;
+
 function parseExtractionResult(parsed: unknown): ExtractionResult {
   const result = extractionResultSchema.safeParse(parsed);
   if (!result.success) {
@@ -119,7 +132,10 @@ function parseExtractionResult(parsed: unknown): ExtractionResult {
       cause: result.error,
     });
   }
-  return result.data;
+  return {
+    actionItems: result.data.actionItems.slice(0, MAX_ACTION_ITEMS),
+    events: result.data.events.slice(0, MAX_EVENTS),
+  };
 }
 
 // `openrouter/free` (DEFAULT_OPENROUTER_MODEL) doesn't commit to one underlying model — each
