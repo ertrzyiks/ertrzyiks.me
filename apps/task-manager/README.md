@@ -27,8 +27,10 @@ required a Mac to be up and email content to never leave it. Once extraction mov
 — a cloud API regardless of what dispatches the request — that constraint no longer applied, so
 this queue folded into `server.ts` like every other one. **This is a real trade-off, not a free
 lunch**: email content (and whatever action items/events get derived from it) is now sent to
-OpenRouter and whichever model provider serves the configured `OPENROUTER_MODEL`, same as
-`personal-assistant`'s own Gmail credential only ever having handled message *ids* before. See
+OpenRouter and — since no `OPENROUTER_MODEL` is required — whichever provider happens to serve the
+free model auto-picked from OpenRouter's catalog at the time (see "Email action-item extraction"
+below), same as `personal-assistant`'s own Gmail credential only ever having handled message *ids*
+before. See
 "Email action-item extraction" below for the env vars, and `openRouter.ts`'s header comment for
 more on the trade-off. If you previously had the old Mac LaunchAgent installed, see "Decommissioning
 the old Mac worker" at the end of this file.
@@ -90,7 +92,7 @@ dependencies/logger (Fastify's `app.log` in every case now) rather than construc
 | `GMAIL_CLIENT_SECRET`                             | no\*\*\*\*\*\* | OAuth client secret for the same credential                                   |
 | `GMAIL_REFRESH_TOKEN`                             | no\*\*\*\*\*\* | Refresh token for the same credential (from `scripts/gmail-oauth`)            |
 | `OPENROUTER_API_KEY`                              | no\*\*\*\*\*\* | API key from https://openrouter.ai/keys — see "Email action-item extraction" below for the trade-off of sending email content there |
-| `OPENROUTER_MODEL`                                | no       | Which OpenRouter model to call (default: a free model, see `openRouter.ts`'s `DEFAULT_OPENROUTER_MODEL` — override if it's ever retired) |
+| `OPENROUTER_MODEL`                                | no       | Pins a specific OpenRouter model to call — unset (the default), one is auto-picked from OpenRouter's live free catalog on worker startup (see `pickFreeModel` in `openRouterClient.ts`) |
 | `OPENROUTER_BASE_URL`                             | no       | Overrides OpenRouter's own base URL (default `https://openrouter.ai/api/v1`) — no reason to set this outside testing against a compatible proxy |
 | `EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`             | no       | Max `extract-action-items` jobs processed per `EXTRACT_ACTION_ITEMS_RATE_LIMIT_DURATION_MS` window (default `5`) — free OpenRouter models enforce their own (often low) requests-per-minute ceiling |
 | `EXTRACT_ACTION_ITEMS_RATE_LIMIT_DURATION_MS`     | no       | Window length in ms for the rate limit above (default `60000`) |
@@ -211,24 +213,42 @@ OpenRouter, it called a local LM Studio server, so this was a separate LaunchAge
 never ran on Dokku — the only thing in this whole system that ever saw raw email content, and it
 never left the machine it ran on. That constraint is gone now: OpenRouter is a cloud API regardless
 of what calls it, so this queue's `Worker` runs in the same process as everything else, and email
-content is sent off-machine to OpenRouter (and whichever underlying provider serves
-`OPENROUTER_MODEL`) to be read and processed. `GMAIL_CLIENT_ID`/`_SECRET`/`_REFRESH_TOKEN` are now
-plain env vars like every other credential in this file — no Keychain, no LaunchAgent, no
-Mac-specific code path left in this queue at all.
+content is sent off-machine to OpenRouter to be read and processed. `GMAIL_CLIENT_ID`/`_SECRET`/
+`_REFRESH_TOKEN` are now plain env vars like every other credential in this file — no Keychain, no
+LaunchAgent, no Mac-specific code path left in this queue at all.
 
-OpenRouter's `:free`-suffixed models cost nothing to call but rotate over time and enforce their
-own (often quite low) requests-per-minute ceiling — see `EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`/
-`_DURATION_MS` in the env var table above, and override `OPENROUTER_MODEL` if the default one is
-ever retired (check https://openrouter.ai/models?max_price=0 for the current free lineup). Not
-every model honors `response_format`'s `json_schema` mode equally strictly — a malformed or
-rejected request surfaces as a normal job failure, retried per `queue.ts`'s backoff policy, same as
-any other extraction error (see `openRouterClient.ts`'s header comment).
+**No model id to keep up to date by hand.** Leave `OPENROUTER_MODEL` unset (the default) and
+`openRouter.ts` picks a model itself the first time the worker extracts something, via
+`pickFreeModel` in `openRouterClient.ts`: it fetches OpenRouter's live catalog (`GET /models`),
+keeps only free (`pricing.prompt`/`.completion` both `0`), text-output models, prefers ones that
+declare strict JSON-schema support (`supported_parameters` includes `structured_outputs` — what
+`requestStructuredCompletion`'s `response_format.json_schema.strict: true` actually needs), and
+among those picks the largest context length (a rough capability proxy, since an email can be
+long). That choice is cached for the life of the worker process rather than re-fetched per job — a
+catalog lookup on every job would compete against this worker's own tight
+`EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`/`_DURATION_MS` budget for no benefit — but a failed
+completion clears the cache so the *next* job re-picks instead of retrying the same broken choice
+for the rest of the process's life (e.g. if OpenRouter retired or repriced it). The trade-off: you
+don't know in advance exactly which model/provider will end up reading your email, and it can
+change across worker restarts as OpenRouter's free lineup rotates. Set `OPENROUTER_MODEL` (see
+https://openrouter.ai/models?max_price=0 for the current free lineup to choose from) if you'd
+rather pin a specific one and know for certain.
+
+Not every model honors `response_format`'s `json_schema` mode equally strictly, pinned or
+auto-picked — a malformed or rejected request surfaces as a normal job failure, retried per
+`queue.ts`'s backoff policy, same as any other extraction error (see `openRouterClient.ts`'s header
+comment). OpenRouter's free models also enforce their own (often quite low) requests-per-minute
+ceiling regardless of which one gets picked — see `EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`/
+`_DURATION_MS` in the env var table above.
 
 `gmail.ts`'s Gmail API calls and `openRouter.ts`'s OpenRouter calls both talk to real external
 services this repo's CI/sandbox can't reach, so both are built behind small seams (`EmailFetcher`,
 `ActionItemExtractor`) and covered by fakes — `jobProcessor.test.ts` for the "handle one job" logic
-end to end, `openRouter.test.ts` for the request/response shape against a fake `fetch`. See
-"Evaluating the extraction prompt" below for exercising the *real* OpenRouter call by hand.
+end to end, `openRouterClient.test.ts` for `pickFreeModel`'s filtering/sorting against fixture
+catalog entries, `openRouter.test.ts` for the completion request/response shape and the two files
+wired together (including the discovery-caching/re-pick-on-failure behavior above) against a fake
+`fetch`. See "Evaluating the extraction prompt" below for exercising the *real* OpenRouter call by
+hand.
 
 ## Historical/trend observability (#315)
 

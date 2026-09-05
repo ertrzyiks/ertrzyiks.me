@@ -4,7 +4,10 @@ import type { EmailContent } from "./gmail.js";
 
 // OpenRouter is a real cloud API — nothing to talk to in CI/sandbox, so every test here injects a
 // fake `fetch` via the `fetchImpl` seam rather than making a real HTTP call (see
-// openRouter.ts's OpenRouterConfig comment).
+// openRouter.ts's OpenRouterConfig comment). Most tests pass an explicit `model`, which skips
+// discovery entirely (see openRouterClient.ts's pickFreeModel) and lets the fake fetch only ever
+// see `/chat/completions` requests — pickFreeModel itself is covered in openRouterClient.test.ts;
+// the "auto-picks a free model" group below covers the two files wired together.
 
 const EMAIL: EmailContent = {
   id: "email-1",
@@ -93,6 +96,7 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
+      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     expect(await extractor.extract(EMAIL)).toEqual({ actionItems: [], events: [] });
@@ -103,6 +107,7 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
+      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("/chat/completions request failed");
@@ -115,6 +120,7 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
+      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("not valid JSON");
@@ -127,6 +133,7 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
+      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an actionItems array");
@@ -139,28 +146,101 @@ describe("createOpenRouterExtractor", () => {
 
     const extractor = createOpenRouterExtractor({
       apiKey: "test-api-key",
+      model: "some/model:free",
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
     await expect(extractor.extract(EMAIL)).rejects.toThrow("missing an events array");
   });
 
-  it("defaults to a free model and OpenRouter's own base URL when neither is given", async () => {
-    const fetchImpl = vi.fn(async (url: string | URL, init?: RequestInit) => {
-      expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
-      const requestBody = JSON.parse(String(init?.body));
-      expect(requestBody.model).toContain(":free");
+  describe("auto-picks a free model when none is configured", () => {
+    function fakeCatalogAndCompletionFetch() {
+      return vi.fn(async (url: string | URL, init?: RequestInit) => {
+        if (String(url).endsWith("/models")) {
+          return jsonResponse({
+            data: [
+              {
+                id: "auto-picked/free-model",
+                context_length: 128_000,
+                pricing: { prompt: "0", completion: "0" },
+                architecture: { output_modalities: ["text"] },
+                supported_parameters: ["response_format", "structured_outputs"],
+              },
+            ],
+          });
+        }
 
-      return jsonResponse({
-        choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
+        expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
+        const requestBody = JSON.parse(String(init?.body));
+        expect(requestBody.model).toBe("auto-picked/free-model");
+
+        return jsonResponse({
+          choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
+        });
       });
+    }
+
+    it("discovers and uses a free model from OpenRouter's catalog", async () => {
+      const fetchImpl = fakeCatalogAndCompletionFetch();
+
+      const extractor = createOpenRouterExtractor({
+        apiKey: "test-api-key",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+      const result = await extractor.extract(EMAIL);
+
+      expect(result).toEqual({ actionItems: [], events: [] });
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
     });
 
-    const extractor = createOpenRouterExtractor({
-      apiKey: "test-api-key",
-      fetchImpl: fetchImpl as unknown as typeof fetch,
-    });
-    await extractor.extract(EMAIL);
+    it("only fetches the catalog once across multiple extract() calls", async () => {
+      const fetchImpl = fakeCatalogAndCompletionFetch();
 
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
+      const extractor = createOpenRouterExtractor({
+        apiKey: "test-api-key",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+      await extractor.extract(EMAIL);
+      await extractor.extract(EMAIL);
+
+      const modelsCalls = fetchImpl.mock.calls.filter(([url]) => String(url).endsWith("/models"));
+      expect(modelsCalls).toHaveLength(1);
+      expect(fetchImpl).toHaveBeenCalledTimes(3);
+    });
+
+    it("re-discovers on the next call after a completion failure, instead of retrying the same model forever", async () => {
+      let completionCallCount = 0;
+      const fetchImpl = vi.fn(async (url: string | URL) => {
+        if (String(url).endsWith("/models")) {
+          return jsonResponse({
+            data: [
+              {
+                id: "auto-picked/free-model",
+                context_length: 128_000,
+                pricing: { prompt: "0", completion: "0" },
+                architecture: { output_modalities: ["text"] },
+                supported_parameters: ["structured_outputs"],
+              },
+            ],
+          });
+        }
+
+        completionCallCount += 1;
+        if (completionCallCount === 1) return jsonResponse({}, false, 503);
+        return jsonResponse({
+          choices: [{ message: { content: JSON.stringify({ actionItems: [], events: [] }) } }],
+        });
+      });
+
+      const extractor = createOpenRouterExtractor({
+        apiKey: "test-api-key",
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+
+      await expect(extractor.extract(EMAIL)).rejects.toThrow("/chat/completions request failed");
+      await expect(extractor.extract(EMAIL)).resolves.toEqual({ actionItems: [], events: [] });
+
+      const modelsCalls = fetchImpl.mock.calls.filter(([url]) => String(url).endsWith("/models"));
+      expect(modelsCalls).toHaveLength(2);
+    });
   });
 });

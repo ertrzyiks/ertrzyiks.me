@@ -6,16 +6,17 @@
 // makes — see openRouterClient.ts for the HTTP plumbing this shares with nothing else today.
 //
 // Unlike the local LM Studio setup this replaced, email content now leaves the machine running
-// this worker and is sent to OpenRouter (and whichever underlying model provider serves the
-// configured `OPENROUTER_MODEL`) to be processed — a real trade-off against the "email content
-// never leaves local processing" property the Mac-only worker used to guarantee, made in exchange
-// for not needing a Mac online at all. Pick a model/provider you're comfortable sending email
-// content to.
+// this worker and is sent to OpenRouter — and, since no model is required in config, to whichever
+// provider happens to serve the free model `pickFreeModel` (openRouterClient.ts) picks at the time
+// — to be processed. This is a real trade-off against the "email content never leaves local
+// processing" property the Mac-only worker used to guarantee, made in exchange for not needing a
+// Mac online at all. Set `OPENROUTER_MODEL` (see server.ts) to pin a specific model/provider
+// instead, if you'd rather know exactly where email content goes.
 import type { ActionItem, CalendarEvent } from "./actionItem.js";
 import type { EmailContent } from "./gmail.js";
 import {
   DEFAULT_OPENROUTER_BASE_URL,
-  DEFAULT_OPENROUTER_MODEL,
+  pickFreeModel,
   readSystemPrompt,
   requestStructuredCompletion,
   type OpenRouterConfig,
@@ -106,23 +107,52 @@ function parseExtractionResult(parsed: unknown): ExtractionResult {
 
 export function createOpenRouterExtractor(config: OpenRouterConfig): ActionItemExtractor {
   const baseUrl = config.baseUrl ?? DEFAULT_OPENROUTER_BASE_URL;
-  const model = config.model ?? DEFAULT_OPENROUTER_MODEL;
   const fetchImpl = config.fetchImpl ?? fetch;
+
+  // Resolved at most once per extractor (i.e. once per worker process, since server.ts builds one
+  // extractor at startup) rather than on every `extract()` call — a `/models` catalog fetch on
+  // every job would be one more request competing against this same worker's already-tight
+  // requests-per-minute budget (see worker.ts's limiter) for no benefit, since the catalog rarely
+  // changes minute to minute. `config.model` bypasses discovery entirely for a pinned choice.
+  let modelPromise: Promise<string> | undefined;
+  function resolveModel(): Promise<string> {
+    if (config.model) return Promise.resolve(config.model);
+    if (!modelPromise) {
+      modelPromise = pickFreeModel(baseUrl, config.apiKey, fetchImpl).catch((error) => {
+        // Don't cache a rejection — a transient `/models` failure shouldn't permanently wedge
+        // every future job for the rest of this process's life.
+        modelPromise = undefined;
+        throw error;
+      });
+    }
+    return modelPromise;
+  }
 
   return {
     async extract(email: EmailContent): Promise<ExtractionResult> {
-      const parsed = await requestStructuredCompletion({
-        baseUrl,
-        apiKey: config.apiKey,
-        model,
-        fetchImpl,
-        systemPrompt,
-        userPrompt: buildPrompt(email),
-        schemaName: "action_items_and_events",
-        jsonSchema: extractionJsonSchema,
-      });
+      const model = await resolveModel();
 
-      return parseExtractionResult(parsed);
+      try {
+        const parsed = await requestStructuredCompletion({
+          baseUrl,
+          apiKey: config.apiKey,
+          model,
+          fetchImpl,
+          systemPrompt,
+          userPrompt: buildPrompt(email),
+          schemaName: "action_items_and_events",
+          jsonSchema: extractionJsonSchema,
+        });
+
+        return parseExtractionResult(parsed);
+      } catch (error) {
+        // Self-healing for the auto-picked case: if this model was retired, repriced, or is
+        // otherwise no longer usable, drop the cache so the *next* job re-runs discovery instead
+        // of retrying the same broken choice for the rest of this process's life. A pinned
+        // `config.model` never reaches here (`modelPromise` is never set for it above).
+        if (!config.model) modelPromise = undefined;
+        throw error;
+      }
     },
   };
 }
