@@ -118,6 +118,14 @@ data "onepassword_item" "personal_assistant_sentry_dsn" {
   title = "personal_assistant_sentry_dsn"
 }
 
+# OpenRouter API key for the extract-action-items worker (moved off a local LM Studio server, see
+# apps/task-manager/README.md's "Email action-item extraction" section) — a Password item, single
+# secret value like the Sentry DSNs above.
+data "onepassword_item" "task_manager_openrouter_api_key" {
+  vault = "Dokku apps"
+  title = "task_manager_openrouter_api_key"
+}
+
 # Shared Google Cloud OAuth client id/secret (#343), used for all three Google API scopes this
 # repo integrates with — gmail.readonly (personal_assistant + the Mac worker), tasks, and
 # calendar.events. A Google OAuth client isn't scope-bound, only the refresh tokens minted from

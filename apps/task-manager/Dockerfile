@@ -1,11 +1,12 @@
 # Build context is the repo root (see release_task_manager.yml) — this app is a pnpm workspace
 # member and needs the shared lockfile/workspace manifest to install correctly.
 #
-# `apps/task-manager` also contains `src/worker.ts`, the Mac-only worker that reads email content
-# via the local Keychain/LM Studio (see README.md). It never runs on Dokku — only the Jobs API
-# server (`server.ts`) is deployed here, so this image builds and ships `dist/server.js` (plus
-# everything it imports — the sync-google-tasks and library-loan-sync workers both run as extra
-# `Worker`s started directly inside server.ts, not as separate entry points/process types).
+# A single Dokku process type: this image builds and ships `dist/server.js` (plus everything it
+# imports — sync-todoist, sync-calendar-events, extract-action-items, and the library-loan-sync
+# workers all run as extra `Worker`s started directly inside server.ts, not as separate entry
+# points/process types; see README.md). `extract-action-items` used to be a Mac-only worker that
+# read email content via the local Keychain/LM Studio and never ran on Dokku at all — moved into
+# this same cloud process once it started calling OpenRouter instead (see openRouter.ts).
 
 FROM node:24.19.0-slim AS build
 WORKDIR /repo

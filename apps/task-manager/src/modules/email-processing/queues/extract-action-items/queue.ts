@@ -1,6 +1,8 @@
-// The `extract-action-items` queue: one job per email, consumed by the Mac worker (see
-// ./worker.ts) — the only component allowed to read raw email content. Producer side is
-// app.ts's `POST /jobs`.
+// The `extract-action-items` queue: one job per email, consumed by this queue's own `Worker` (see
+// ./worker.ts), started inside server.ts alongside every other queue in this package (formerly a
+// Mac-only worker, back when a local LM Studio call meant email content couldn't leave the user's
+// machine — see openRouter.ts's header comment for what changed). Producer side is app.ts's
+// `POST /jobs`.
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
 import { logConnectionErrors } from "../../../../redisResilience.js";

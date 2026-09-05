@@ -34,7 +34,7 @@ export interface LibraryClientConfig {
   username: string;
   password: string;
   // Test seam — a fake `fetch` swapped in so request/response shapes can be asserted without a
-  // real WBPG server (mirrors lmStudio.ts's LmStudioConfig.fetchImpl).
+  // real WBPG server (mirrors openRouter.ts's OpenRouterConfig.fetchImpl).
   fetchImpl?: typeof fetch;
 }
 

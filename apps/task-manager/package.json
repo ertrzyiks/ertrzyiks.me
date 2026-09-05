@@ -6,15 +6,12 @@
     "dev": "tsx watch src/server.ts",
     "dev:redis": "docker compose up -d",
     "dev:redis:down": "docker compose down",
-    "worker": "tsx watch src/worker.ts",
-    "worker:start": "node dist/worker.js",
-    "build": "tsc",
+    "build": "tsc && cp -r src/modules/email-processing/queues/extract-action-items/prompts dist/modules/email-processing/queues/extract-action-items/prompts",
     "start": "node dist/server.js",
     "test": "vitest run",
     "eval": "vitest run --config eval/vitest.config.ts",
     "eval:watch": "vitest --config eval/vitest.config.ts",
-    "review": "tsx scripts/review-inspections.ts",
-    "release:worker": "node scripts/release-worker.mjs"
+    "review": "tsx scripts/review-inspections.ts"
   },
   "dependencies": {
     "@bull-board/api": "8.6.0",
@@ -29,13 +26,8 @@
   },
   "devDependencies": {
     "@types/node": "24.13.3",
-    "@yao-pkg/pkg": "6.22.0",
-    "esbuild": "0.28.1",
     "tsx": "4.23.9",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
-  },
-  "pkg": {
-    "assets": ["dist-bin/prompts/**/*"]
   }
 }

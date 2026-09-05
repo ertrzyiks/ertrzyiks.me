@@ -5,11 +5,10 @@
 // separate BullMQ QueueEvents Redis-pubsub listener — simpler, no new listener lifecycle to
 // manage, per #315's resolution.
 //
-// AXIOM_TOKEN/AXIOM_DATASET are plain, optional env vars rather than Keychain-backed like
-// GMAIL_REFRESH_TOKEN etc. (see worker.ts) — an Axiom ingest token only grants write access to
-// one dataset, a meaningfully lower blast radius than this worker's other secrets, so the extra
-// Keychain machinery isn't worth it here. Unset, `noopEventEmitter` is used instead — this
-// feature is additive, never a hard requirement for either process to run.
+// AXIOM_TOKEN/AXIOM_DATASET are plain, optional env vars like every other credential this service
+// reads — an Axiom ingest token only grants write access to one dataset, a low blast radius even
+// among those. Unset, `noopEventEmitter` is used instead — this feature is additive, never a hard
+// requirement for the process to run.
 export type TrendEventStatus = "queued" | "active" | "completed" | "failed";
 
 export interface TrendEvent {
@@ -34,7 +33,7 @@ export interface AxiomConfig {
   service: string;
   domain?: string;
   // Test seam — a fake `fetch` swapped in so the request shape can be asserted without a real
-  // Axiom endpoint (mirrors lmStudio.ts's LmStudioConfig.fetchImpl).
+  // Axiom endpoint (mirrors openRouter.ts's OpenRouterConfig.fetchImpl).
   fetchImpl?: typeof fetch;
 }
 

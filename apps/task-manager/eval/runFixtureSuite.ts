@@ -6,7 +6,7 @@
 // neither file has to duplicate it.
 import { beforeAll, describe, expect, it } from "vitest";
 import type { ActionItem } from "../src/modules/email-processing/queues/extract-action-items/actionItem.js";
-import type { ActionItemExtractor } from "../src/modules/email-processing/queues/extract-action-items/lmStudio.js";
+import type { ActionItemExtractor } from "../src/modules/email-processing/queues/extract-action-items/openRouter.js";
 import type { EvalFixture } from "./fixtures.js";
 
 // This is the exact same extraction call src/jobProcessor.ts runs for a real job, so a fixture's

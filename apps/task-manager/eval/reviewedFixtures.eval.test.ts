@@ -10,17 +10,30 @@
 // entry from reviewed-fixtures.json (or leave it — a green fixture here does no harm, it just
 // stops being a to-do).
 //
-// Only ever run manually (`pnpm --filter task-manager eval`), same caveats as
-// extractActionItems.eval.test.ts's header comment (non-deterministic local model output).
+// Only ever run manually (`OPENROUTER_API_KEY=... pnpm --filter task-manager eval`), same caveats
+// as extractActionItems.eval.test.ts's header comment (non-deterministic free-tier model output).
 import { describe, it } from "vitest";
-import { createLmStudioExtractor } from "../src/modules/email-processing/queues/extract-action-items/lmStudio.js";
+import { createOpenRouterExtractor } from "../src/modules/email-processing/queues/extract-action-items/openRouter.js";
 import { reviewedFixtures } from "./reviewedFixtures.js";
 import { runFixtureSuite } from "./runFixtureSuite.js";
 
-const baseUrl = process.env.LM_STUDIO_BASE_URL ?? "http://localhost:1234";
-
 if (reviewedFixtures.length > 0) {
-  runFixtureSuite(reviewedFixtures, createLmStudioExtractor({ baseUrl }));
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "OPENROUTER_API_KEY is required to run this eval — set it in apps/task-manager/.env or " +
+        "prefix the command, see extractActionItems.eval.test.ts's header comment.",
+    );
+  }
+
+  runFixtureSuite(
+    reviewedFixtures,
+    createOpenRouterExtractor({
+      apiKey,
+      model: process.env.OPENROUTER_MODEL,
+      baseUrl: process.env.OPENROUTER_BASE_URL,
+    }),
+  );
 } else {
   // describe.each over an empty array silently produces zero tests, which reads as "nothing to
   // check" rather than "nothing has been flagged yet" — spell that out instead of letting this

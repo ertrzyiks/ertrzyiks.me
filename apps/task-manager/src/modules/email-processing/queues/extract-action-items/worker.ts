@@ -1,8 +1,10 @@
 // BullMQ wiring for the `extract-action-items` queue — the actual "fetch, extract" logic
 // lives in jobProcessor.ts, independent of BullMQ, so it can be unit-tested with fakes; this file
-// is only the `Worker` construction and its `ready`/`failed` listeners, extracted out of the
-// top-level worker.ts entrypoint so the queue/worker pairing matches every other queue under
-// src/modules/*/queues/.
+// is only the `Worker` construction, its rate limiter, and its `ready`/`failed` listeners,
+// extracted out of server.ts so the queue/worker pairing matches every other queue under
+// src/modules/*/queues/ (this queue used to have its own top-level Mac worker.ts entrypoint —
+// removed once extract-action-items moved onto OpenRouter and stopped needing a Mac, see
+// openRouter.ts's header comment).
 import type { ConnectionOptions } from "bullmq";
 import { Worker } from "bullmq";
 import type { EmailJobPayload, EmailJobResult } from "./actionItem.js";
@@ -15,9 +17,13 @@ import type { WorkerLogger } from "../../../../workerLogger.js";
 import { QUEUE_NAME } from "./queue.js";
 
 export interface CreateWorkerOptions {
-  /** Where "ready"/"failed" get logged — defaults to `console`, matching the Mac LaunchAgent
-   * entrypoint's plain stdout/stderr logging (server.ts's cloud workers pass Fastify's `app.log`
-   * instead, for the queues that run there). */
+  /** Throttles how fast this worker drains the queue (max jobs per `duration` ms) — OpenRouter's
+   * free-tier models enforce their own (often quite low) requests-per-minute ceiling, so a burst
+   * of scheduled jobs is smoothed out over time instead of firing at OpenRouter all at once, same
+   * reasoning as sync-todoist's/sync-calendar-events' limiters. */
+  limiter?: { max: number; duration: number };
+  /** Where "ready"/"failed" get logged — defaults to `console`; server.ts passes Fastify's
+   * `app.log` instead, matching every other worker started in that process. */
   logger?: WorkerLogger;
 }
 
@@ -33,7 +39,7 @@ export function createWorker(
     async (job) => processEmailJob(job.data.emailId, { ...deps, log: jobLoggerFor(job) }),
     // `settings.backoffStrategy` (#348/#370) — see retry.ts; pairs with DEFAULT_JOB_OPTIONS'
     // `backoff: { type: "custom" }` on queue.ts to cap retries at 7 days.
-    { connection, settings: { backoffStrategy } },
+    { connection, limiter: options.limiter, settings: { backoffStrategy } },
   );
 
   worker.on("ready", () => {

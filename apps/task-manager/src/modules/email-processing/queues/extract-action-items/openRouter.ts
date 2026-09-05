@@ -1,16 +1,25 @@
-// Calls LM Studio's local OpenAI-compatible server to extract action items and calendar events
-// from an email (#238, extended to also extract events per the follow-up that removed the action
-// item judge). Never leaves the Mac — `baseUrl` defaults to localhost, and this is the only model
-// call the worker makes now that judging (a second LM Studio call) is gone — see
-// lmStudioClient.ts for the HTTP plumbing this shares with nothing else today.
+// Calls OpenRouter's cloud, OpenAI-compatible chat completions API to extract action items and
+// calendar events from an email (#238, extended to also extract events per the follow-up that
+// removed the action item judge; moved off a local LM Studio server onto OpenRouter so
+// `extract-action-items` can run in the cloud alongside every other queue instead of needing a Mac
+// running LM Studio — see this queue's README section). This is the only model call the worker
+// makes — see openRouterClient.ts for the HTTP plumbing this shares with nothing else today.
+//
+// Unlike the local LM Studio setup this replaced, email content now leaves the machine running
+// this worker and is sent to OpenRouter (and whichever underlying model provider serves the
+// configured `OPENROUTER_MODEL`) to be processed — a real trade-off against the "email content
+// never leaves local processing" property the Mac-only worker used to guarantee, made in exchange
+// for not needing a Mac online at all. Pick a model/provider you're comfortable sending email
+// content to.
 import type { ActionItem, CalendarEvent } from "./actionItem.js";
 import type { EmailContent } from "./gmail.js";
 import {
-  DEFAULT_LM_STUDIO_BASE_URL,
+  DEFAULT_OPENROUTER_BASE_URL,
+  DEFAULT_OPENROUTER_MODEL,
   readSystemPrompt,
   requestStructuredCompletion,
-  type LmStudioConfig,
-} from "./lmStudioClient.js";
+  type OpenRouterConfig,
+} from "./openRouterClient.js";
 
 export interface ExtractionResult {
   actionItems: ActionItem[];
@@ -21,11 +30,11 @@ export interface ActionItemExtractor {
   extract(email: EmailContent): Promise<ExtractionResult>;
 }
 
-export type { LmStudioConfig };
+export type { OpenRouterConfig };
 
 // Kept in its own file (rather than inline) so it reads and edits like prose, not a
-// string embedded in TS. Read once at module load — see lmStudioClient.ts's readSystemPrompt
-// for how this resolves both in dev and inside the packaged production binary.
+// string embedded in TS. Read once at module load — see openRouterClient.ts's readSystemPrompt
+// for how this resolves both in dev and once built to dist/.
 const systemPrompt = readSystemPrompt("extractActionItems.system.md");
 
 const extractionJsonSchema = {
@@ -86,23 +95,26 @@ function buildPrompt(email: EmailContent): string {
 function parseExtractionResult(parsed: unknown): ExtractionResult {
   const { actionItems, events } = parsed as { actionItems?: unknown; events?: unknown };
   if (!Array.isArray(actionItems)) {
-    throw new Error("LM Studio response was missing an actionItems array");
+    throw new Error("OpenRouter response was missing an actionItems array");
   }
   if (!Array.isArray(events)) {
-    throw new Error("LM Studio response was missing an events array");
+    throw new Error("OpenRouter response was missing an events array");
   }
 
   return { actionItems: actionItems as ActionItem[], events: events as CalendarEvent[] };
 }
 
-export function createLmStudioExtractor(config: LmStudioConfig = {}): ActionItemExtractor {
-  const baseUrl = config.baseUrl ?? DEFAULT_LM_STUDIO_BASE_URL;
+export function createOpenRouterExtractor(config: OpenRouterConfig): ActionItemExtractor {
+  const baseUrl = config.baseUrl ?? DEFAULT_OPENROUTER_BASE_URL;
+  const model = config.model ?? DEFAULT_OPENROUTER_MODEL;
   const fetchImpl = config.fetchImpl ?? fetch;
 
   return {
     async extract(email: EmailContent): Promise<ExtractionResult> {
       const parsed = await requestStructuredCompletion({
         baseUrl,
+        apiKey: config.apiKey,
+        model,
         fetchImpl,
         systemPrompt,
         userPrompt: buildPrompt(email),

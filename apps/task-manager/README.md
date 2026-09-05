@@ -4,13 +4,13 @@ Jobs API server for the email → action-items automation (see [#248](https://gi
 Exposes the BullMQ + Redis queue over HTTP for `personal-assistant` to schedule action-item
 extraction jobs and poll their status/result.
 
-The Mac worker that actually processes jobs (`src/worker.ts`, colocated in this package per #245,
-built in #249) consumes the same queue. It never runs on Dokku/CI — it's started locally on the
-user's Mac (via a LaunchAgent, see #243) and is the only thing that ever reads email content.
+Every queue this package owns — including `extract-action-items`, the one that actually reads
+email content — runs as a `bullmq.Worker` started directly inside `server.ts`, one Dokku process
+type, no separate machine required:
 
-Three more queues run right here in `server.ts` (cloud), unlike `extract-action-items` — none has
-the "must never leave local processing" constraint that keeps the Mac worker on the Mac:
-
+- `extract-action-items` fetches an email via Gmail and calls
+  [OpenRouter](https://openrouter.ai) to extract action items and calendar events from it. See
+  "Email action-item extraction" below.
 - `sync-todoist` keeps `personal-assistant`'s `action_items` table in sync with Todoist.
   See "Todoist sync" below.
 - `sync-calendar-events` keeps `personal-assistant`'s `calendar_events` table in sync with Google
@@ -21,12 +21,25 @@ the "must never leave local processing" constraint that keeps the Mac worker on 
   event in sync with every currently-borrowed library book's return date. See "Library loan ->
   Google Calendar sync" below.
 
+`extract-action-items` used to be the one exception: a Mac-only worker (`src/worker.ts`, #245/
+#249/#251, removed) that ran via a LaunchAgent because it called a local LM Studio server, and so
+required a Mac to be up and email content to never leave it. Once extraction moved to OpenRouter
+— a cloud API regardless of what dispatches the request — that constraint no longer applied, so
+this queue folded into `server.ts` like every other one. **This is a real trade-off, not a free
+lunch**: email content (and whatever action items/events get derived from it) is now sent to
+OpenRouter and whichever model provider serves the configured `OPENROUTER_MODEL`, same as
+`personal-assistant`'s own Gmail credential only ever having handled message *ids* before. See
+"Email action-item extraction" below for the env vars, and `openRouter.ts`'s header comment for
+more on the trade-off. If you previously had the old Mac LaunchAgent installed, see "Decommissioning
+the old Mac worker" at the end of this file.
+
 ## Module and queue layout
 
 `src/modules/<module-name>/` is the top-level grouping — one per business capability this package
 owns, not per queue:
 
-- `src/modules/email-processing/` — one queue, `extract-action-items` (Mac-only, see below).
+- `src/modules/email-processing/` — one queue, `extract-action-items` (see "Email action-item
+  extraction" below).
 - `src/modules/todoist/` — one queue, `sync-todoist`.
 - `src/modules/google-calendar/` — one queue, `sync-calendar-events`.
 - `src/modules/loans/` — two queues, `refresh-library-loans` and `sync-loan-calendar` (see
@@ -44,7 +57,7 @@ nothing else:
   the job-processor callback plus its `ready`/`failed` listeners (Sentry reporting included).
 - The actual "handle one job" logic (`jobProcessor.ts`, `todoistJobProcessor.ts`,
   `calendarEventJobProcessor.ts`, `libraryRefresh.ts`, `loanCalendarSync.ts`) and everything only
-  *it* depends on (Gmail/LM Studio/Keychain for `extract-action-items`, the Todoist client
+  *it* depends on (Gmail/OpenRouter for `extract-action-items`, the Todoist client
   for `sync-todoist`, the WBPG client for `refresh-library-loans`) — kept independent of
   BullMQ so it can be unit-tested with fakes; `worker.ts` is only the wiring around it.
 
@@ -56,12 +69,11 @@ queue's folder to live under); and at `src/` top level only if it's shared acros
 (`axiomEvents.ts`, `jobLogger.ts`, `sentry.ts`, `retry.ts`, `jobStatus.ts`, `auth.ts`,
 `bullBoard.ts`, `workerLogger.ts`, `googleCalendarClient.ts` — the last one moved here from
 `modules/loans/` once `sync-calendar-events` needed the same Google Calendar client the library
-sync already had) or is a process entrypoint spanning more than one module (`app.ts`, `server.ts`,
-`worker.ts`).
+sync already had) or is a process entrypoint spanning more than one module (`app.ts`, `server.ts`).
 
-`server.ts` and the Mac `worker.ts` entrypoint both just import `createQueue`/`createWorker` from
-these modules and wire in their own dependencies/logger (Fastify's `app.log` for the cloud side,
-plain `console` for the Mac LaunchAgent) rather than constructing `Queue`/`Worker` inline.
+`server.ts` just imports `createQueue`/`createWorker` from these modules and wires in their own
+dependencies/logger (Fastify's `app.log` in every case now) rather than constructing
+`Queue`/`Worker` inline.
 
 ## Environment variables
 
@@ -74,6 +86,15 @@ plain `console` for the Mac LaunchAgent) rather than constructing `Queue`/`Worke
 | `PORT`                                            | no       | HTTP port to listen on (default `3000`)                    |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME`     | no\*     | Basic Auth username guarding the Bull Board UI (`/admin/queues`) |
 | `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_PASSWORD`     | no\*     | Basic Auth password guarding the Bull Board UI              |
+| `GMAIL_CLIENT_ID`                                 | no\*\*\*\*\*\* | OAuth client id for the `extract-action-items` worker's `gmail.readonly` credential (#236; shared across gmail/tasks/calendar, #343) |
+| `GMAIL_CLIENT_SECRET`                             | no\*\*\*\*\*\* | OAuth client secret for the same credential                                   |
+| `GMAIL_REFRESH_TOKEN`                             | no\*\*\*\*\*\* | Refresh token for the same credential (from `scripts/gmail-oauth`)            |
+| `OPENROUTER_API_KEY`                              | no\*\*\*\*\*\* | API key from https://openrouter.ai/keys — see "Email action-item extraction" below for the trade-off of sending email content there |
+| `OPENROUTER_MODEL`                                | no       | Which OpenRouter model to call (default: a free model, see `openRouter.ts`'s `DEFAULT_OPENROUTER_MODEL` — override if it's ever retired) |
+| `OPENROUTER_BASE_URL`                             | no       | Overrides OpenRouter's own base URL (default `https://openrouter.ai/api/v1`) — no reason to set this outside testing against a compatible proxy |
+| `EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`             | no       | Max `extract-action-items` jobs processed per `EXTRACT_ACTION_ITEMS_RATE_LIMIT_DURATION_MS` window (default `5`) — free OpenRouter models enforce their own (often low) requests-per-minute ceiling |
+| `EXTRACT_ACTION_ITEMS_RATE_LIMIT_DURATION_MS`     | no       | Window length in ms for the rate limit above (default `60000`) |
+| `WORKER_INSPECTION_DIR`                           | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items/events, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
 | `TODOIST_API_TOKEN`                               | no\*\*   | Personal API token for the `sync-todoist` worker (Settings > Integrations > Developer in the Todoist app — no OAuth dance needed) |
 | `TODOIST_PROJECT_ID`                              | no       | Todoist project to create tasks in (default: the user's Inbox) |
 | `TODOIST_RATE_LIMIT_MAX`                          | no       | Max `sync-todoist` jobs processed per `TODOIST_RATE_LIMIT_DURATION_MS` window (default `5`) |
@@ -90,9 +111,9 @@ plain `console` for the Mac LaunchAgent) rather than constructing `Queue`/`Worke
 | `DATABASE_PATH`                                   | no       | Where the sqlite loans DB lives (default `/app/data/library.sqlite`, matching the Dokku storage mount — see terraform/main.tf) |
 | `WBPG_BASE_URL`                                   | no       | Overrides the WBPG catalog base URL (default `https://katalog.wbpg.org.pl`)   |
 | `LIBRARY_REFRESH_CRON_PATTERN`                    | no       | Cron pattern for how often to re-check WBPG (default `0 7 * * *`, daily 07:00 Europe/Warsaw) |
-| `AXIOM_TOKEN`                                     | no       | Axiom API token for trend-event ingestion (#315), used by the `sync-todoist` worker here |
+| `AXIOM_TOKEN`                                     | no       | Axiom API token for trend-event ingestion (#315), used by every worker started in this process |
 | `AXIOM_DATASET`                                   | no       | Axiom dataset to ingest into (e.g. `task-manager-events`)                     |
-| `SENTRY_DSN`                                      | no       | Sentry DSN for error monitoring (see "Error monitoring" below), shared with `worker.ts` below |
+| `SENTRY_DSN`                                      | no       | Sentry DSN for error monitoring (see "Error monitoring" below)                |
 | `SENTRY_ENVIRONMENT`                              | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
 
 \* Bull Board is always mounted, but the Basic Auth check only applies when **both** vars are set —
@@ -116,6 +137,11 @@ process) only start once these two **and** the three `GOOGLE_CALENDAR_*` vars ab
 same optional-at-startup pattern as `TODOIST_API_TOKEN` above. Unset, Bull Board still shows both
 queues (registered unconditionally so its "Add Job" button always works — see `bullBoard.ts`),
 jobs just queue up unconsumed until the workers start.
+
+\*\*\*\*\*\* The `extract-action-items` worker only starts once all four (`GMAIL_CLIENT_ID`/
+`_SECRET`/`_REFRESH_TOKEN` and `OPENROUTER_API_KEY`) are set — same optional-at-startup pattern as
+`TODOIST_API_TOKEN` above. Unset, the Jobs API still accepts `POST /jobs` requests, they just queue
+up unconsumed until the worker starts. See "Email action-item extraction" below.
 
 `AXIOM_TOKEN`/`AXIOM_DATASET` are independent of each other and of everything above — see
 "Historical/trend observability" below.
@@ -142,7 +168,7 @@ above) so a burst of scheduled jobs drains onto Todoist's API gradually instead 
 kept as a precaution, mirroring the Google Tasks worker's limiter this replaced (it hit a real
 "quota exceeded" error from a burst of jobs; Todoist's own rate limits haven't been hit in
 practice yet). A `due` date with no enforced format (the extracted action item's `dueDate` — see
-`lmStudio.ts`) doesn't need any special handling here: `todoistClient.ts` passes it straight
+`openRouter.ts`) doesn't need any special handling here: `todoistClient.ts` passes it straight
 through as Todoist's `due_string` field, which runs it through Todoist's own natural-language due
 parser instead of requiring a strict format.
 
@@ -169,51 +195,40 @@ Calendar's API requires a real `end`. Same `limiter` treatment as Todoist above
 (`CALENDAR_EVENTS_RATE_LIMIT_MAX`/`_DURATION_MS`), tuned separately since the two APIs have
 separate quotas.
 
-### Mac worker (`worker.ts`)
+## Email action-item extraction
 
-| Variable                 | Required | Description                                                                 |
-| ------------------------- | -------- | ----------------------------------------------------------------------------- |
-| `REDIS_URL`               | no\*     | Same Redis instance as the Jobs API server                                    |
-| `GMAIL_CLIENT_ID`         | no\*     | OAuth client id for the worker's `gmail.readonly` credential (#236; shared across gmail/tasks/calendar, #343) |
-| `GMAIL_CLIENT_SECRET`     | no\*     | OAuth client secret for the same credential                                   |
-| `GMAIL_REFRESH_TOKEN`     | no\*     | Refresh token for the same credential (from `scripts/gmail-oauth`)            |
-| `GMAIL_KEYCHAIN_SERVICE`  | no       | macOS Keychain "service" all four secrets above are read from (default `task-manager-worker`) |
-| `GMAIL_KEYCHAIN_ACCOUNT`  | no       | macOS Keychain "account" the refresh token specifically is read from (default `gmail-refresh-token`) |
-| `LM_STUDIO_BASE_URL`      | no       | Base URL of the local LM Studio server (default `http://localhost:1234`)      |
-| `WORKER_FAKE_DEPS`        | no       | `"true"` swaps in canned fake Gmail/LM Studio implementations instead of the real ones — **manual smoke-testing only, never set in production** (see below) |
-| `AXIOM_TOKEN`             | no\*\*   | Axiom API token for trend-event ingestion (#315), used by `extract-action-items` jobs here |
-| `AXIOM_DATASET`           | no\*\*   | Axiom dataset to ingest into (e.g. `task-manager-events`, same dataset the cloud side uses) |
-| `SENTRY_DSN`              | no\*\*   | Sentry DSN for error monitoring (see "Error monitoring" below), same value as the Jobs API server's above |
-| `SENTRY_ENVIRONMENT`      | no       | Overrides the `environment` tag Sentry events are reported under (default `production`) |
-| `WORKER_INSPECTION_DIR`   | no       | Directory to write one JSON file per `extract-action-items` run (email content + extracted action items/events, or the error) to — default `./audit`; set to `""` to disable entirely (see "Inspection log" below) |
+`POST /jobs` schedules a job on the `extract-action-items` queue, consumed by a `bullmq.Worker`
+started alongside the Jobs API server in `server.ts`
+(`src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` → `gmail.ts` to fetch
+the email, then `openRouter.ts` to extract action items and calendar events from it). See the env
+var table above for `GMAIL_CLIENT_ID`/`_SECRET`/`_REFRESH_TOKEN` and `OPENROUTER_API_KEY`/`_MODEL`/
+`_BASE_URL`; the worker only starts once all four required ones are set (footnote \*\*\*\*\*\*
+above), same optional-at-startup pattern as `sync-todoist`/`sync-calendar-events`.
 
-\* All four secrets are read from the macOS Keychain if not set as env vars (see `resolveSecret`
-in `src/modules/email-processing/queues/extract-action-items/keychain.ts`) — the production LaunchAgent sets none of them and relies entirely on the
-Keychain. Setting them as env vars is a **local dev/CI convenience only** (this repo's Linux
-sandbox has no Keychain to fall back to); never set them in the LaunchAgent plist, which would put
-them back in plaintext. This includes `GMAIL_REFRESH_TOKEN` — the most sensitive of the four — so
-only set it locally when you actually need to exercise a real Gmail credential outside the
-Keychain; `WORKER_FAKE_DEPS=true` is the lower-stakes option when you just need to prove the queue
-wiring works.
+**This queue used to be a Mac-only exception.** Until #370-era work moved extraction onto
+OpenRouter, it called a local LM Studio server, so this was a separate LaunchAgent-run worker
+(`src/worker.ts`, #245/#249/#251) that read the Gmail refresh token from the macOS Keychain and
+never ran on Dokku — the only thing in this whole system that ever saw raw email content, and it
+never left the machine it ran on. That constraint is gone now: OpenRouter is a cloud API regardless
+of what calls it, so this queue's `Worker` runs in the same process as everything else, and email
+content is sent off-machine to OpenRouter (and whichever underlying provider serves
+`OPENROUTER_MODEL`) to be read and processed. `GMAIL_CLIENT_ID`/`_SECRET`/`_REFRESH_TOKEN` are now
+plain env vars like every other credential in this file — no Keychain, no LaunchAgent, no
+Mac-specific code path left in this queue at all.
 
-\*\* Deliberately *not* Keychain-backed like the four above, despite also being a credential — an
-Axiom ingest token only grants write access to one dataset, a meaningfully lower blast radius than
-this worker's other secrets, so the extra Keychain rotation machinery isn't worth it here (see
-`axiomEvents.ts`'s header comment). Plain, optional env vars; the LaunchAgent plist sets no
-`EnvironmentVariables` at all today, so wiring these into production would mean adding that block —
-not done, since this is additive and the Mac side isn't the primary way this gets exercised (see
-"Historical/trend observability" below).
+OpenRouter's `:free`-suffixed models cost nothing to call but rotate over time and enforce their
+own (often quite low) requests-per-minute ceiling — see `EXTRACT_ACTION_ITEMS_RATE_LIMIT_MAX`/
+`_DURATION_MS` in the env var table above, and override `OPENROUTER_MODEL` if the default one is
+ever retired (check https://openrouter.ai/models?max_price=0 for the current free lineup). Not
+every model honors `response_format`'s `json_schema` mode equally strictly — a malformed or
+rejected request surfaces as a normal job failure, retried per `queue.ts`'s backoff policy, same as
+any other extraction error (see `openRouterClient.ts`'s header comment).
 
-The worker reads all four secrets — the Gmail refresh token, `REDIS_URL`, `GMAIL_CLIENT_ID`, and
-`GMAIL_CLIENT_SECRET` — from the **macOS Keychain** at startup by shelling out to the `security`
-CLI (`security find-generic-password -a <account> -s <service> -w`, see `src/modules/email-processing/queues/extract-action-items/keychain.ts`). **This
-is macOS-only** — there is no cross-platform Node API for the Keychain — and the real Keychain read
-has never been exercised in this repo's CI or in the sandbox this worker was developed in, both of
-which are Linux. Likewise, the LM Studio HTTP call (`src/modules/email-processing/queues/extract-action-items/lmStudio.ts`) talks to a real local server
-that isn't running in CI/sandbox either. Both are built behind small seams (`EmailFetcher`,
-`ActionItemExtractor`) so `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` — the actual "handle one job" logic — is
-unit-tested with fakes, independent of Keychain/Gmail/LM Studio availability. See the PR that
-introduced this file for what was and wasn't verified end-to-end.
+`gmail.ts`'s Gmail API calls and `openRouter.ts`'s OpenRouter calls both talk to real external
+services this repo's CI/sandbox can't reach, so both are built behind small seams (`EmailFetcher`,
+`ActionItemExtractor`) and covered by fakes — `jobProcessor.test.ts` for the "handle one job" logic
+end to end, `openRouter.test.ts` for the request/response shape against a fake `fetch`. See
+"Evaluating the extraction prompt" below for exercising the *real* OpenRouter call by hand.
 
 ## Historical/trend observability (#315)
 
@@ -232,33 +247,29 @@ Fully best-effort: `emit()` never throws or awaits into the job pipeline it's de
 request, log-and-swallow any failure via `console.error` — this package has no logger abstraction
 today) — a dropped event from a brief Axiom outage is an acceptable gap in a 30-day trends view,
 not a job failure. A no-op (`noopEventEmitter`) until both `AXIOM_TOKEN`/`AXIOM_DATASET` are set
-(see the env var tables above) — this is purely additive on both the Mac worker and cloud sides.
-Both processes share the same `task-manager-events` Axiom dataset (`personal-assistant` has its
-own separate one, `personal-assistant-events` — see that package's README); the `entity` field is
-what distinguishes `extract-action-items`, `sync-todoist`, and `sync-calendar-events` jobs
-within it.
+(see the env var table above) — this is purely additive. Every worker in this process shares the
+same `task-manager-events` Axiom dataset (`personal-assistant` has its own separate one,
+`personal-assistant-events` — see that package's README); the `entity` field is what distinguishes
+`extract-action-items`, `sync-todoist`, and `sync-calendar-events` jobs within it.
 
 ## Error monitoring (Sentry)
 
 Axiom above answers "how many jobs failed, and when" — a trend, not a stack trace. `src/sentry.ts`
 wires up [Sentry](https://sentry.io) to answer the complementary question, "what broke and why":
-`initSentry()` is called once at the top of both `server.ts` and `worker.ts` (they're separate
-processes, so each needs its own `Sentry.init` call, but both read the same `SENTRY_DSN` — one
-Sentry project covers this whole package, the same way one Bull Board/one set of tests does).
+`initSentry()` is called once at the top of `server.ts`, this package's one entrypoint — one
+Sentry project covers this whole package, the same way one Bull Board/one set of tests does.
 
 Wired at process/queue boundaries, not into every internal try/catch:
 
-- Both entrypoints' global uncaught-exception/unhandled-rejection handlers — installed
-  automatically by `Sentry.init` itself, no extra code here.
-- Every `bullmq.Worker`'s `"failed"` event (`sync-todoist`, `sync-calendar-events`, the two
-  library sync queues in `server.ts`, and `extract-action-items` in `worker.ts`) — alongside the
-  `app.log.error`/`console.error` call already there,
-  `Sentry.captureException(error, { tags: { queue, jobId } })`.
-- `server.ts`'s Fastify app: `Sentry.setupFastifyErrorHandler(app)` (in `app.ts`) reports any
-  route handler exception that reaches Fastify's own error handling — every route already returns
-  its own 400/401/404 explicitly rather than throwing, so this only ever fires on a genuine bug.
-- Both entrypoints' own startup-failure catch blocks (`app.listen()` in `server.ts`,
-  `main().catch()` in `worker.ts`).
+- The global uncaught-exception/unhandled-rejection handlers — installed automatically by
+  `Sentry.init` itself, no extra code here.
+- Every `bullmq.Worker`'s `"failed"` event (`extract-action-items`, `sync-todoist`,
+  `sync-calendar-events`, and the two library sync queues) — alongside the `app.log.error` call
+  already there, `Sentry.captureException(error, { tags: { queue, jobId } })`.
+- The Fastify app: `Sentry.setupFastifyErrorHandler(app)` (in `app.ts`) reports any route handler
+  exception that reaches Fastify's own error handling — every route already returns its own
+  400/401/404 explicitly rather than throwing, so this only ever fires on a genuine bug.
+- `server.ts`'s own startup-failure catch block around `app.listen()`.
 
 Deliberately *not* duplicated into `jobProcessor.ts`/`todoistJobProcessor.ts`/
 `calendarEventJobProcessor.ts`'s own catch blocks — those already rethrow into the `Worker` that's
@@ -267,19 +278,16 @@ above already see the same error once, not once per internal failure site. This 
 event per job failure rather than multiplying against Sentry's free-tier event quota.
 
 Same no-op-until-configured treatment as Axiom: `Sentry.init`/`Sentry.captureException` are safe
-no-ops with no `SENTRY_DSN` set (see `sentry.ts`'s header comment) — this is purely additive, and
-(like `AXIOM_TOKEN`/`AXIOM_DATASET` on the Mac worker side, see the env var table above) isn't
-wired into the LaunchAgent plist's `EnvironmentVariables` today, so `worker.ts`'s own Sentry
-reporting is opt-in via a local env var, not active in the production LaunchAgent yet.
+no-ops with no `SENTRY_DSN` set (see `sentry.ts`'s header comment) — this is purely additive.
 
 ## Inspection log
 
 Axiom and Sentry above answer "did the job succeed" and "what broke" — neither shows *what the LLM
 actually saw and produced*, which is what you need when judging extraction quality or debugging a
 bad set of action items/events. `src/modules/email-processing/queues/extract-action-items/inspectionLog.ts` writes one JSON file per `extract-action-items` run
-to `WORKER_INSPECTION_DIR` (see the Mac worker env var table above; default `./audit`, resolved
-against the worker process's cwd — the repo checkout in dev, see "macOS LaunchAgent" below for
-prod) — `{ emailId, email, actionItems, events }` on success, `{ emailId, email, error }` if
+to `WORKER_INSPECTION_DIR` (see the env var table above; default `./audit`, resolved
+against the process's cwd — the repo checkout in dev, ephemeral container storage in a real Dokku
+deploy) — `{ emailId, email, actionItems, events }` on success, `{ emailId, email, error }` if
 extraction failed (fetch failures aren't logged here, there's no email content yet to inspect). One
 file per run rather than one per `emailId` on purpose: re-running/regenerating action items for the
 same email appends another file instead of overwriting the last one, so every attempt stays
@@ -369,7 +377,11 @@ pnpm --filter task-manager test
    This runs `src/server.ts` — the same entrypoint Dokku runs in production (via `pnpm start` →
    `node dist/server.js`). It loads `apps/task-manager/.env` (via `dotenv`, a no-op when no `.env`
    file exists, which is why this is safe to do unconditionally in production too) and always
-   mounts the [Bull Board](https://github.com/felixmosh/bull-board) queue-inspection UI.
+   mounts the [Bull Board](https://github.com/felixmosh/bull-board) queue-inspection UI. Every
+   worker this package owns — `extract-action-items` included — starts right here too, each one
+   only once its own env vars are set (see the env var table above); set
+   `GMAIL_CLIENT_ID`/`_SECRET`/`_REFRESH_TOKEN` and `OPENROUTER_API_KEY` in `.env` to exercise
+   `extract-action-items` against a real Gmail account and OpenRouter locally.
 
 4. Open the queue UI at **http://localhost:3000/admin/queues**. If you left
    `TASK_MANAGER_BULL_BOARD_BASIC_AUTH_USERNAME`/`_PASSWORD` unset in `.env`, it's open with no
@@ -389,195 +401,70 @@ pnpm --filter task-manager test
    pnpm --filter task-manager dev:redis:down
    ```
 
-### Running the worker locally
-
-With Redis up (`pnpm --filter task-manager dev:redis`), the worker can be run against real
-Gmail/LM Studio (macOS for the local LM Studio call; the Gmail credential works anywhere once
-`GMAIL_REFRESH_TOKEN` is set, no Keychain required) or, for smoke-testing the queue wiring itself
-anywhere (including this sandbox), against fakes:
-
-```bash
-# Real Gmail + LM Studio (LM Studio itself is macOS only; all Gmail secrets via env vars,
-# bypassing the Keychain entirely — see the env var table above)
-REDIS_URL=redis://localhost:6379 \
-GMAIL_CLIENT_ID=... GMAIL_CLIENT_SECRET=... GMAIL_REFRESH_TOKEN=... \
-pnpm --filter task-manager worker
-
-# Fakes only — proves the Worker really consumes `extract-action-items` and returns
-# a real BullMQ result, without needing Keychain/Gmail/LM Studio
-REDIS_URL=redis://localhost:6379 WORKER_FAKE_DEPS=true pnpm --filter task-manager worker
-```
-
 ### Evaluating the extraction prompt (`eval/`)
 
-`eval/extractActionItems.eval.test.ts` and `eval/reviewedFixtures.eval.test.ts` are local-only eval
-harnesses for `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md` — a set of
+`eval/extractActionItems.eval.test.ts` and `eval/reviewedFixtures.eval.test.ts` are manual-run-only
+eval harnesses for `src/modules/email-processing/queues/extract-action-items/prompts/extractActionItems.system.md` — a set of
 fixture emails (`eval/fixtures.ts`/`eval/reviewedFixtures.ts`) run through the exact same
-extraction call `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs for a real job (real local
-LM Studio server, via the same `createLmStudioExtractor(...)` the worker uses — see
+extraction call `src/modules/email-processing/queues/extract-action-items/jobProcessor.ts` runs for a real job (a real
+OpenRouter call, via the same `createOpenRouterExtractor(...)` the worker uses — see
 `eval/runFixtureSuite.ts`), each checked against expectations on how many action items should come
 back and what they should say (`events` isn't asserted on here yet — see `eval/fixtures.ts`'s
 `EvalFixture` shape). It's for iterating on the prompt by hand: change the wording, rerun, see
 which fixtures moved.
 
 It **never runs in CI** — it's outside `vitest`'s `src/**/*.{test,spec}.ts` include glob and outside
-`tsc`'s `include` (`src` only), and it needs a real LM Studio server, same reason the real LM Studio
-calls are excluded from `lmStudio.test.ts`. Run it by hand, with LM Studio
-running locally and a model loaded:
+`tsc`'s `include` (`src` only), and it needs a real `OPENROUTER_API_KEY`, same reason the real
+OpenRouter calls are excluded from `openRouter.test.ts`. Run it by hand:
 
 ```bash
-pnpm --filter task-manager eval
+OPENROUTER_API_KEY=... pnpm --filter task-manager eval
 
 # Only fixtures whose name contains this substring
-pnpm --filter task-manager eval -- --filter due-date
+OPENROUTER_API_KEY=... pnpm --filter task-manager eval -- -t due-date
 
-# Against a non-default LM Studio instance
-LM_STUDIO_BASE_URL=http://localhost:1234 pnpm --filter task-manager eval
+# Against a non-default model
+OPENROUTER_API_KEY=... OPENROUTER_MODEL=some/other-model:free pnpm --filter task-manager eval
 ```
 
-`LM_STUDIO_BASE_URL` can also be set once in `.env` (see `.env.example`) instead of prefixing every
-invocation by hand — `eval/vitest.config.ts` loads the same `.env` file `server.ts` does. That's
-also where `.env.example` documents `http://host.docker.internal:1234`, the value to use instead of
-the default `http://localhost:1234` when running eval from inside a Claude Code sandbox rather than
-on the Mac directly (a sandbox's own `localhost` can't reach a port bound on the host machine).
+`OPENROUTER_API_KEY`/`OPENROUTER_MODEL`/`OPENROUTER_BASE_URL` can also be set once in `.env` (see
+`.env.example`) instead of prefixing every invocation by hand — `eval/vitest.config.ts` loads the
+same `.env` file `server.ts` does.
 
 Each fixture asserts on the number of action items returned (exact, or a `{min, max}` range for
 cases where the model has legitimate latitude) and, per item, substring/regex checks on
 `title`/`description` and whether a `dueDate` is present/absent/an exact value. Assertions are
 loose on purpose — the model's wording varies run to run — so failures should point at the
-*substance* of the pipeline going wrong, not phrasing drift. Local models are non-deterministic, so
-a fixture or two flipping between runs is expected; treat it as a trend to watch across a prompt
-change, not a hard CI-style gate. Exits non-zero if any fixture had a failing assertion.
+*substance* of the pipeline going wrong, not phrasing drift. Free-tier model output is
+non-deterministic too, so a fixture or two flipping between runs is expected; treat it as a trend
+to watch across a prompt change, not a hard CI-style gate. Exits non-zero if any fixture had a
+failing assertion.
 
 Add a fixture whenever `extractActionItems.system.md` gains a new rule, or whenever a real email
 turns out to trick extraction into misclassifying something.
 
-## macOS LaunchAgent (#251)
+## Decommissioning the old Mac worker
 
-In normal use the worker isn't run by hand (`pnpm --filter task-manager worker`) — it runs as a
-user [LaunchAgent](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html)
-so it starts automatically at login and restarts itself if it crashes. The template plist lives at
-[`launchd/com.ertrzyiks.task-manager-worker.plist`](./launchd/com.ertrzyiks.task-manager-worker.plist):
-
-- `RunAtLoad = true` — starts the worker when you log in (or as soon as the agent is loaded).
-- `KeepAlive = true` — launchd restarts the worker if it exits for any reason, including a crash
-  (subject to launchd's default crash-loop throttling if it keeps failing immediately).
-- `ProgramArguments` runs a **standalone executable**, `dist-bin/task-manager-worker` — not
-  `node dist/worker.js` and not `pnpm run worker` (the dev-only entrypoint). That binary is
-  produced by bundling `worker.ts` with [esbuild](https://esbuild.github.io/) and packaging it
-  with [`@yao-pkg/pkg`](https://github.com/yao-pkg/pkg), via `pnpm --filter task-manager
-  release:worker` ([`scripts/release-worker.mjs`](./scripts/release-worker.mjs)). This exists
-  specifically so the Keychain access grant below (`-T`) can be scoped to this one program
-  instead of to every script the machine's shared `node` interpreter ever runs — see the PR that
-  introduced `release-worker.mjs` for the fuller reasoning.
-- No secrets live in this plist. `EnvironmentVariables` isn't set at all — `REDIS_URL`,
-  `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, and the Gmail refresh token are all read from the
-  Keychain at startup (`src/modules/email-processing/queues/extract-action-items/keychain.ts`), provisioned by the release script below.
-- LM Studio itself (starting it, keeping a model loaded) is **not** managed by this LaunchAgent —
-  that stays your manual responsibility; the worker just calls whatever LM Studio has loaded at
-  the time (`src/modules/email-processing/queues/extract-action-items/lmStudio.ts`).
-
-### 1. Create the local secrets file
-
-`scripts/release-worker.mjs` provisions the worker's four Keychain items from a plaintext file
-kept **outside this repo checkout** (never gitignored-in-tree — genuinely not in any git working
-tree) — the worker itself never reads this file, only the Keychain; it exists purely to feed
-`security add-generic-password` on each release.
-
-```bash
-mkdir -p ~/.task-manager
-cat > ~/.task-manager/secrets.env <<'EOF'
-GMAIL_REFRESH_TOKEN=<from scripts/gmail-oauth, see below>
-REDIS_URL=<same Redis instance the Jobs API server uses>
-GMAIL_CLIENT_ID=<OAuth client id for the gmail.readonly credential, see #236>
-GMAIL_CLIENT_SECRET=<OAuth client secret for the same credential>
-EOF
-chmod 600 ~/.task-manager/secrets.env
-```
-
-Get the refresh token first via
-[`scripts/gmail-oauth/README.md`](../../scripts/gmail-oauth/README.md) (#247) — it's only ever
-shown once, at generation time. Override the file's location with `TASK_MANAGER_SECRETS_FILE` if
-you'd rather keep it elsewhere.
-
-### 2. Install the plist (first time only)
-
-Copy the template plist and fill in the one `REPLACE_ME_REPO_PATH` placeholder (see the comments
-at the top of the plist). Never commit a copy with a real path filled in; the installed copy lives
-outside git:
-
-```bash
-cp apps/task-manager/launchd/com.ertrzyiks.task-manager-worker.plist \
-  ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
-# edit ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist to replace REPLACE_ME_REPO_PATH
-```
-
-The binary it points at doesn't exist yet — build it in the next step before loading the agent.
-
-### 3. Build, provision, and (re-)load — one command
-
-```bash
-pnpm --filter task-manager release:worker
-```
-
-This bundles `worker.ts`, packages it into `dist-bin/task-manager-worker`, ad-hoc code-signs it,
-(re-)provisions all four Keychain items trusting that exact binary, and — if the LaunchAgent is
-already loaded — restarts it (`launchctl kickstart -k`) to pick up the new build. **Run this again
-after every code change or Keychain-value rotation**, not just once: without a paid Apple Developer
-ID certificate, the ad-hoc-signed binary's Keychain trust is computed largely from its file hash,
-so a rebuild invalidates the previous `-T` grant and the script re-grants it every time. The first
-time you run it (before the LaunchAgent is loaded), it builds and provisions everything but skips
-the restart — bootstrap the agent once manually:
-
-```bash
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
-# or: launchctl load ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
-```
-
-From then on, `pnpm --filter task-manager release:worker` alone handles rebuild + re-provision +
-restart.
-
-### 4. Check it's running
-
-```bash
-launchctl list | grep com.ertrzyiks.task-manager-worker
-```
-
-A PID in the first column means it's running; a non-zero last-exit-status column means it exited
-and launchd is about to restart it (`KeepAlive`). Logs go to the `StandardOutPath`/
-`StandardErrorPath` files configured in the plist (`launchd/worker.log` /
-`launchd/worker-error.log` under your repo checkout by default).
-
-To stop/unload it:
+If you installed the old Mac-only `extract-action-items` worker (the LaunchAgent from #251, back
+when it called a local LM Studio server instead of OpenRouter), it's now redundant — the same
+queue is consumed by `server.ts` in the cloud, see "Email action-item extraction" above — and safe
+to remove. On the Mac it was installed on:
 
 ```bash
 launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
-# or: launchctl unload ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
+rm ~/Library/LaunchAgents/com.ertrzyiks.task-manager-worker.plist
+rm -rf <repo-checkout>/apps/task-manager/dist-bin
+security delete-generic-password -a task-manager-worker -s redis-url
+security delete-generic-password -a task-manager-worker -s gmail-client-id
+security delete-generic-password -a task-manager-worker -s gmail-client-secret
+security delete-generic-password -a task-manager-worker -s gmail-refresh-token
+rm -rf ~/.task-manager
 ```
 
-### Offline worker / missed jobs
-
-If the worker isn't running when a job is scheduled (laptop closed, LaunchAgent not loaded yet,
-etc.), no special handling is needed: jobs live in BullMQ's Redis-backed queue regardless of
-whether a consumer is currently connected, so the worker just picks up any waiting jobs the next
-time it starts or reconnects. `KeepAlive` handles the "worker crashed" case; Redis persistence
-handles the "worker wasn't running at all" case.
-
-### What's verifiable outside macOS
-
-This repo's CI/sandbox is Linux, so several pieces here have never run for real:
-
-- **Verified in the sandbox**: the esbuild bundle step runs clean against the real dependency
-  graph (`bullmq`, `ioredis`, `google-auth-library`, `googleapis`), and `@yao-pkg/pkg` packaging
-  was smoke-tested end-to-end against a Linux target — the resulting standalone binary genuinely
-  started, connected to a real local Redis, and logged `task-manager worker ready` consuming the
-  queue. That confirms the bundling/packaging *mechanics* work.
-- **Not verified**: packaging against an actual `macos` target (pkg's prebuilt-binary cache didn't
-  have a hit for the exact Node patch version tried here, and cross-compiling isn't possible from
-  Linux), `codesign`, `security` (Keychain provisioning), and `launchctl` (LaunchAgent
-  bootstrap/reload) — none of those tools exist in this sandbox. Same verification gap as
-  `src/modules/email-processing/queues/extract-action-items/keychain.ts`'s real Keychain read always had (see the PR that introduced this file for what
-  was and wasn't checked).
+(`launchctl bootout` is a no-op if the agent wasn't currently loaded; each `security
+delete-generic-password` is a no-op — with a "could not be found" message — for any item that was
+never provisioned or already removed.) You can also quit/uninstall LM Studio itself at this point
+if nothing else on the machine still uses it.
 
 ## Library loan -> Google Calendar sync
 
@@ -587,12 +474,12 @@ up on the calendar instead of only in the library's own app. Built from a feasib
 `scripts/wbpg-library-spike/README.md` for how the WBPG API was reverse-engineered (no public docs
 exist for it) and what was confirmed against a real account.
 
-Two more `Worker`s started inside `server.ts`, same as `sync-todoist` — **not** the Mac
-worker, and not a separate Dokku process type. This used to be a standalone entry point
-(`librarySyncWorker.ts`) requiring its own `Procfile` process type and a manual `dokku ps:scale`
-step; folded into `server.ts` since neither WBPG login (username/password, not OAuth) nor Google
-Calendar needs anything Mac-local, matching the one existing precedent (Todoist) instead of
-being the odd one out. `refresh-library-loans` runs as a BullMQ repeatable job
+Two more `Worker`s started inside `server.ts`, same as `sync-todoist` — not a separate Dokku
+process type. This used to be a standalone entry point (`librarySyncWorker.ts`) requiring its own
+`Procfile` process type and a manual `dokku ps:scale` step; folded into `server.ts` since neither
+WBPG login (username/password, not OAuth) nor Google Calendar needs anything Mac-local, matching
+the one existing precedent (Todoist) instead of being the odd one out. `refresh-library-loans` runs
+as a BullMQ repeatable job
 (`upsertJobScheduler`, cron pattern `LIBRARY_REFRESH_CRON_PATTERN`, see "What is the schedule?"
 below); its `Worker` calls `libraryRefresh.ts`, which fans out one `sync-loan-calendar` job per
 current loan onto the second queue, consumed by the second `Worker`.
@@ -603,8 +490,9 @@ current loan onto the second queue, consumed by the second `Worker`.
   `/api/auth/user/subusers` + `/api/auth/user/change`, collect current loans; also resolves branch
   ("filia") id -> name from the public `/api/setting/all`).
 - `src/modules/loans/loansStore.ts` — sqlite (`node:sqlite`, no native dependency, unlike `better-sqlite3` —
-  matters here because `worker.ts` gets bundled into a standalone binary elsewhere in this
-  package). Two tables: the current-loans snapshot, and one row per (filia, return-date day)
+  matters here because the Dockerfile's `slim` runtime image has no compiler toolchain to build a
+  native binding against, see that file's `--ignore-scripts` comment). Two tables: the
+  current-loans snapshot, and one row per (filia, return-date day)
   group that's ever gotten a calendar event — see that file's header comment for why the event is
   keyed by *group*, not by individual loan (a prolongation can move a loan into a different
   group, and a per-loan pointer would go stale in a way that's easy to apply to the wrong event).
@@ -647,9 +535,9 @@ processes every job on that queue identically, scheduled or manual). It fans out
 3. **Local dev**: with Redis up (`pnpm --filter task-manager dev:redis`) and `.env` filled in (see
    `.env.example`), just `pnpm --filter task-manager dev` — same command as always, the library
    sync workers start automatically once those five vars are set, same as Todoist. This runs
-   against the *real* WBPG and Google Calendar — there's no fake-deps mode here (unlike
-   `worker.ts`'s `WORKER_FAKE_DEPS`); the pure sync/refresh logic is what `loanCalendarSync.test.ts`
-   and `libraryRefresh.test.ts` exist to cover without needing either.
+   against the *real* WBPG and Google Calendar — there's no fake-deps mode here; the pure
+   sync/refresh logic is what `loanCalendarSync.test.ts` and `libraryRefresh.test.ts` exist to
+   cover without needing either.
 4. **Deploying**: nothing beyond the existing `release_task_manager.yml` — it already builds and
    ships this app's whole `dist/` to the same Dokku app the Jobs API server deploys to, and since
    this runs inside `server.ts` (the app's only process type), no `ps:scale` step is needed.
@@ -659,13 +547,14 @@ processes every job on that queue identically, scheduled or manual). It fans out
    `/app/data` (matching `DATABASE_PATH`'s default, same pattern as `kstatus`/`personal_assistant`
    in that file) for the sqlite file to survive redeploys. The terraform change is written; the
    1Password items themselves are a **manual follow-up step**, same division of labor as
-   `scripts/gmail-oauth/`'s manual 1Password step for the Mac worker.
+   `scripts/gmail-oauth/`'s manual 1Password step for the `extract-action-items` worker's Gmail
+   credential.
 
 ### What's verified vs. not
 
 - **Verified**: the WBPG login/cookie/endpoint flow (`scripts/wbpg-library-spike/`, run against a
   real account); `library.ts`'s request/response handling and pagination (`library.test.ts`, via
-  an injected fake `fetch`, mirroring `lmStudio.test.ts`); the sqlite store, the per-loan sync
+  an injected fake `fetch`, mirroring `openRouter.test.ts`); the sqlite store, the per-loan sync
   decision logic (including grouping, rescheduling on a prolonged return date, recovering from an
   event deleted out from under it, and a book leaving a shared event via prolongation), and the
   refresh/fan-out/garbage-collection logic — all fully unit-tested with fakes or a real in-memory

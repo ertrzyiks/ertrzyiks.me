@@ -3,7 +3,7 @@ import { createLibraryClient } from "./library.js";
 
 // The WBPG catalog is a real remote server — nothing to talk to in CI/sandbox, so every test
 // here injects a fake `fetch` via the `fetchImpl` seam rather than making a real HTTP call
-// (mirrors lmStudio.test.ts).
+// (mirrors openRouter.test.ts).
 
 function jsonResponse(body: unknown, status = 200, setCookie: string[] = []): Response {
   return {
