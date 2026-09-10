@@ -9,7 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fastify/formbody": "8.0.2",
+    "@fastify/formbody": "9.0.0",
     "fastify": "5.12.1"
   },
   "devDependencies": {
