@@ -14,8 +14,8 @@
     "review": "tsx scripts/review-inspections.ts"
   },
   "dependencies": {
-    "@bull-board/api": "8.6.0",
-    "@bull-board/fastify": "8.6.0",
+    "@bull-board/api": "8.6.1",
+    "@bull-board/fastify": "8.6.1",
     "@sentry/node": "10.70.0",
     "bullmq": "6.1.0",
     "dotenv": "17.4.2",
