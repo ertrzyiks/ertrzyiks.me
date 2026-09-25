@@ -17,7 +17,7 @@
     "@bull-board/api": "8.6.1",
     "@bull-board/fastify": "8.6.1",
     "@sentry/node": "10.70.0",
-    "bullmq": "6.2.0",
+    "bullmq": "6.3.0",
     "dotenv": "17.4.2",
     "fastify": "5.12.1",
     "google-auth-library": "10.5.0",
