@@ -9,7 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@sentry/node": "10.70.0",
+    "@sentry/node": "10.71.0",
     "googleapis": "174.0.1"
   },
   "devDependencies": {
