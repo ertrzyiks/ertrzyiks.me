@@ -142,16 +142,16 @@ importers:
     dependencies:
       '@bull-board/api':
         specifier: 8.6.1
-        version: 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.0(ioredis@6.0.0)))(bullmq@6.3.0(ioredis@6.0.0))
+        version: 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
       '@bull-board/fastify':
         specifier: 8.6.1
-        version: 8.6.1(bullmq@6.3.0(ioredis@6.0.0))
+        version: 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
       '@sentry/node':
         specifier: 10.73.0
         version: 10.73.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))
       bullmq:
-        specifier: 6.3.0
-        version: 6.3.0(ioredis@6.0.0)
+        specifier: 6.3.4
+        version: 6.3.4(ioredis@6.0.0)
       dotenv:
         specifier: 17.4.2
         version: 17.4.2
@@ -1432,8 +1432,8 @@ packages:
   buffer-equal-constant-time@1.0.1:
     resolution: {integrity: sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA==}
 
-  bullmq@6.3.0:
-    resolution: {integrity: sha512-KBBVtU9j/SctE6Cq0FCLtp5MrDaZKs87p/8ttmyOEyfArzUUorMDirbRCv1DeUEOZGWXJJFOMXVmP4cFp13Yog==}
+  bullmq@6.3.4:
+    resolution: {integrity: sha512-DpilB5sayCB8huCp4YuzVhJjxB4ieHidzu+GPgbcjPi3kQv0gdLoLnk+I+mMACDQ88rTbSiT+B4crmhWFGL9GA==}
     engines: {node: '>=14.17.0'}
     peerDependencies:
       bullmq-otel: '>=2.0.0'
@@ -2401,8 +2401,8 @@ packages:
     resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
     hasBin: true
 
-  msgpackr@2.0.5:
-    resolution: {integrity: sha512-cef05H/dSYpLpqp3sj/qyZh5vhUYCalnaLO7j1yOmpsR0y/XwLVtK7r5gn+U/F7CTEfMowcGhlUQJDLcLf7jcA==}
+  msgpackr@2.1.0:
+    resolution: {integrity: sha512-p/pBCVO63CsvvpkomUnNNag6+n38rULuDA6HHe70o2gtC8ODI52foF/4ko2qQcp6OiErJXTmrZeXmsGGHsIQNQ==}
 
   muggle-string@0.4.1:
     resolution: {integrity: sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==}
@@ -3643,17 +3643,17 @@ snapshots:
   '@bruits/satteri-win32-x64-msvc@0.9.5':
     optional: true
 
-  '@bull-board/api@8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.0(ioredis@6.0.0)))(bullmq@6.3.0(ioredis@6.0.0))':
+  '@bull-board/api@8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))':
     dependencies:
-      '@bull-board/ui': 8.6.1(bullmq@6.3.0(ioredis@6.0.0))
+      '@bull-board/ui': 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
       redis-info: 3.1.0
     optionalDependencies:
-      bullmq: 6.3.0(ioredis@6.0.0)
+      bullmq: 6.3.4(ioredis@6.0.0)
 
-  '@bull-board/fastify@8.6.1(bullmq@6.3.0(ioredis@6.0.0))':
+  '@bull-board/fastify@8.6.1(bullmq@6.3.4(ioredis@6.0.0))':
     dependencies:
-      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.0(ioredis@6.0.0)))(bullmq@6.3.0(ioredis@6.0.0))
-      '@bull-board/ui': 8.6.1(bullmq@6.3.0(ioredis@6.0.0))
+      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
+      '@bull-board/ui': 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
       '@fastify/static': 10.1.2
       '@fastify/view': 12.0.0
       ejs: 6.0.1
@@ -3661,9 +3661,9 @@ snapshots:
       - bull
       - bullmq
 
-  '@bull-board/ui@8.6.1(bullmq@6.3.0(ioredis@6.0.0))':
+  '@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0))':
     dependencies:
-      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.0(ioredis@6.0.0)))(bullmq@6.3.0(ioredis@6.0.0))
+      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
     transitivePeerDependencies:
       - bull
       - bullmq
@@ -4609,10 +4609,10 @@ snapshots:
 
   buffer-equal-constant-time@1.0.1: {}
 
-  bullmq@6.3.0(ioredis@6.0.0):
+  bullmq@6.3.4(ioredis@6.0.0):
     dependencies:
       cron-parser: 5.10.0
-      msgpackr: 2.0.5
+      msgpackr: 2.1.0
       node-abort-controller: 3.1.1
       semver: 7.8.5
       tslib: 2.8.1
@@ -5965,7 +5965,7 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
     optional: true
 
-  msgpackr@2.0.5:
+  msgpackr@2.1.0:
     optionalDependencies:
       msgpackr-extract: 3.0.4
 
