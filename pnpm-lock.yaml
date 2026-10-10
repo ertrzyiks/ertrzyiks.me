@@ -141,11 +141,11 @@ importers:
   apps/task-manager:
     dependencies:
       '@bull-board/api':
-        specifier: 8.6.1
-        version: 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
+        specifier: 9.10.0
+        version: 9.10.0(@bull-board/ui@9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3))(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)
       '@bull-board/fastify':
-        specifier: 8.6.1
-        version: 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
+        specifier: 9.10.0
+        version: 9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)
       '@sentry/node':
         specifier: 10.74.0
         version: 10.74.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))
@@ -432,23 +432,23 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@bull-board/api@8.6.1':
-    resolution: {integrity: sha512-v5GLzMpss8e+3AnnKRGry+9PKlm6MKU2VFxveJCSoT5+/no7WZTM5zVyjPJSG29Xwgf6CujThche6v3j4ZrmrA==}
+  '@bull-board/api@9.10.0':
+    resolution: {integrity: sha512-BbW7ZleJ+QAR3Ayu+u2VlgwSYoFcteY6BhS4iPsHMOw9Laohfx29lPEgdrGNZNHS7ORgxcMqcfMeq+hjqxgx5g==}
     peerDependencies:
-      '@bull-board/ui': 8.6.1
+      '@bull-board/ui': 9.10.0
       bull: ^4.16.5
-      bullmq: ^5.79.2 || ^6.0.0
+      bullmq: ^5.56.0 || ^6.0.0
     peerDependenciesMeta:
       bull:
         optional: true
       bullmq:
         optional: true
 
-  '@bull-board/fastify@8.6.1':
-    resolution: {integrity: sha512-a1y1HlQo8bX70797wDMV6VXYNZKF35gOuzQvzKYluwGXSRyeglNp80wF1PzeUABqSCTwDbku0Syrt03wTy/q1Q==}
+  '@bull-board/fastify@9.10.0':
+    resolution: {integrity: sha512-8/SEKyJgvwtkNeB+MqG9GuoQtd9wtQkukcC+diM4UviNZZKelW2uSZTGRFWXC+rZVreD1r9h8Ie6pDcqKRNnmQ==}
 
-  '@bull-board/ui@8.6.1':
-    resolution: {integrity: sha512-RV7oDopOJEUxzjmfKoqGcYDeHZGmpnpG+h/4DOVSSGYBtK87/8tlwAuLca9SPZqYTQjbviv7qOZ4jSjke/rUmQ==}
+  '@bull-board/ui@9.10.0':
+    resolution: {integrity: sha512-yKZ1o0wIxfGzywgEiLtvYMNLiAmtGDSJTZqdyV7a4fWkKQ5Ke+wCs//o69oaZLQHYNlwYF3e83wIeF+Pikurkg==}
 
   '@capsizecss/unpack@4.0.1':
     resolution: {integrity: sha512-CuNiSqg7+e1cO/GjffyMOm5Tt2jUF9CWHHnvQ/UkqvtkGfHdgwEC0wpmq7fkN3gxwpRnrAN0WzO3vREKmNolMQ==}
@@ -678,8 +678,8 @@ packages:
   '@fastify/send@4.1.0':
     resolution: {integrity: sha512-TMYeQLCBSy2TOFmV95hQWkiTYgC/SEx7vMdV+wnZVX4tt8VBLKzmH8vV9OzJehV0+XBfg+WxPMt5wp+JBUKsVw==}
 
-  '@fastify/static@10.1.2':
-    resolution: {integrity: sha512-G/g18cG9tLutT/OVyN1AIsHIl9L1UwmJ+S3dkyhVpplIx0nEMicd7RGQ+uJLyhKKF4a3tTcQydccn3Mop1fX+Q==}
+  '@fastify/static@10.1.6':
+    resolution: {integrity: sha512-f3x9XisI+y6AIhIfA/+Q3SFsuXeqNNk5HQh5htgHsPxmMLb4pLFskV6eFaLSW3IbI4azrS5np+/tkzXNH99LyQ==}
 
   '@fastify/view@12.0.0':
     resolution: {integrity: sha512-Prcoim4yTwG6vPnIyGrWViDx6FFnchV0GQWeBgAgywlL1JflGhTLDhIsyd7EkOreYHyqALqxnmhhJhD4NrJTWw==}
@@ -1523,9 +1523,9 @@ packages:
     resolution: {integrity: sha512-dnN3ibLeoRf2HNC+OlCiNc5d2zxbLJXOtiZUudNFSXZrNSydxcCsSpRzXwfu7BBWCIfHPw+xTayeBvJCP/D8Ng==}
     engines: {node: '>= 18'}
 
-  content-disposition@2.0.1:
-    resolution: {integrity: sha512-e+H0ZXHSWYrENhQzw1LPuP4oF5MzVKmDU6d3hxlvaPEYLLg62MxtQNPRx4SYSuYJSBUgnQIG4HIN2tEtNv7Dog==}
-    engines: {node: '>=18'}
+  content-disposition@3.0.0:
+    resolution: {integrity: sha512-ZH/0Xs9rMIFWCOmGdmS9eHBTF62qqQYNz4nVjQhkdIO/a0fCP4UIM3mRz/wiqL0L14YgAz/1xio4OaSY4+ON/A==}
+    engines: {node: '>=22'}
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
@@ -3078,6 +3078,14 @@ packages:
   url-template@2.0.8:
     resolution: {integrity: sha512-XdVKMF4SJ0nP/O7XIPB0JwAEuT9lDIYnNsK8yGVe43y0AWoKeJNdv3ZNWh7ksJ6KqQFjOO6ox/VEitLnaVNufw==}
 
+  valibot@1.5.0:
+    resolution: {integrity: sha512-nil6AkP2TChWL43Z5uJ6GTxX01CUA+g8LWUM+N/rB9NBbkUMaUsi9PUNzlUPgoKASgmx9f7eGOYpJ04/fSa6FQ==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   vfile-location@5.0.3:
     resolution: {integrity: sha512-5yXvWDEgqeiYiBe1lbxYF7UMAIm/IcopxMHrMQDq3nvKcjPKIhZklUKL+AE7J7uApI4kwe2snsK+eI6UTj9EHg==}
 
@@ -3648,30 +3656,35 @@ snapshots:
   '@bruits/satteri-win32-x64-msvc@0.9.5':
     optional: true
 
-  '@bull-board/api@8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))':
+  '@bull-board/api@9.10.0(@bull-board/ui@9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3))(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)':
     dependencies:
-      '@bull-board/ui': 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
+      '@bull-board/ui': 9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)
       redis-info: 3.1.0
+      valibot: 1.5.0(typescript@5.9.3)
     optionalDependencies:
       bullmq: 6.3.4(ioredis@6.0.0)
+    transitivePeerDependencies:
+      - typescript
 
-  '@bull-board/fastify@8.6.1(bullmq@6.3.4(ioredis@6.0.0))':
+  '@bull-board/fastify@9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)':
     dependencies:
-      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
-      '@bull-board/ui': 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
-      '@fastify/static': 10.1.2
+      '@bull-board/api': 9.10.0(@bull-board/ui@9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3))(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)
+      '@bull-board/ui': 9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)
+      '@fastify/static': 10.1.6
       '@fastify/view': 12.0.0
       ejs: 6.0.1
     transitivePeerDependencies:
       - bull
       - bullmq
+      - typescript
 
-  '@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0))':
+  '@bull-board/ui@9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)':
     dependencies:
-      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
+      '@bull-board/api': 9.10.0(@bull-board/ui@9.10.0(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3))(bullmq@6.3.4(ioredis@6.0.0))(typescript@5.9.3)
     transitivePeerDependencies:
       - bull
       - bullmq
+      - typescript
 
   '@capsizecss/unpack@4.0.1':
     dependencies:
@@ -3849,12 +3862,12 @@ snapshots:
       http-errors: 2.0.1
       mime: 3.0.0
 
-  '@fastify/static@10.1.2':
+  '@fastify/static@10.1.6':
     dependencies:
       '@fastify/accept-negotiator': 2.0.1
       '@fastify/error': 4.2.0
       '@fastify/send': 4.1.0
-      content-disposition: 2.0.1
+      content-disposition: 3.0.0
       fastify-plugin: 6.0.0
       fastq: 1.20.1
       glob: 13.0.6
@@ -4681,7 +4694,7 @@ snapshots:
 
   common-ancestor-path@2.0.0: {}
 
-  content-disposition@2.0.1: {}
+  content-disposition@3.0.0: {}
 
   convert-source-map@2.0.0: {}
 
@@ -6736,6 +6749,10 @@ snapshots:
       ioredis: 5.11.1
 
   url-template@2.0.8: {}
+
+  valibot@1.5.0(typescript@5.9.3):
+    optionalDependencies:
+      typescript: 5.9.3
 
   vfile-location@5.0.3:
     dependencies:
