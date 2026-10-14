@@ -142,16 +142,16 @@ importers:
     dependencies:
       '@bull-board/api':
         specifier: 8.6.1
-        version: 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
+        version: 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.5(ioredis@6.0.0)))(bullmq@6.3.5(ioredis@6.0.0))
       '@bull-board/fastify':
         specifier: 8.6.1
-        version: 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
+        version: 8.6.1(bullmq@6.3.5(ioredis@6.0.0))
       '@sentry/node':
         specifier: 10.74.0
         version: 10.74.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))
       bullmq:
-        specifier: 6.3.4
-        version: 6.3.4(ioredis@6.0.0)
+        specifier: 6.3.5
+        version: 6.3.5(ioredis@6.0.0)
       dotenv:
         specifier: 17.4.2
         version: 17.4.2
@@ -1430,8 +1430,8 @@ packages:
   buffer-equal-constant-time@1.0.1:
     resolution: {integrity: sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA==}
 
-  bullmq@6.3.4:
-    resolution: {integrity: sha512-DpilB5sayCB8huCp4YuzVhJjxB4ieHidzu+GPgbcjPi3kQv0gdLoLnk+I+mMACDQ88rTbSiT+B4crmhWFGL9GA==}
+  bullmq@6.3.5:
+    resolution: {integrity: sha512-Z+MZYgPOO3so36zVq5aUZFun1qObXoPDJAGYZ+uA0rTugurFjr2aX4wrregroZMs0KuL18UPLhJq6ZeEiMRVDQ==}
     engines: {node: '>=14.17.0'}
     peerDependencies:
       bullmq-otel: '>=2.0.0'
@@ -1541,8 +1541,8 @@ packages:
     resolution: {integrity: sha512-yuToqVvRrj6pfDXREyQAAv8SkAEk/8GS3jQRTiUMm66TVtBYmqQeoEjL2Lmq8Rpo6271vH76InTChTitEAm65w==}
     engines: {node: '>=22'}
 
-  cron-parser@5.10.0:
-    resolution: {integrity: sha512-izNAxJyRWUP8ljBoDSub5WyrVOUlT4SLGShswE7eoRBpp6QUsSycYxLBMJlbshgPBMcPT/nrfgjNY2918ayv2A==}
+  cron-parser@5.10.1:
+    resolution: {integrity: sha512-pKRrRagItwk9rGIStcUyMxFX34x56zoX3KDf9HJ4ttwkXIK1qxK63EvXvEDmlxI9AdPJ+Y7TEKRftRlW5eSS7A==}
     engines: {node: '>=18'}
 
   cross-spawn@7.0.6:
@@ -3648,17 +3648,17 @@ snapshots:
   '@bruits/satteri-win32-x64-msvc@0.9.5':
     optional: true
 
-  '@bull-board/api@8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))':
+  '@bull-board/api@8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.5(ioredis@6.0.0)))(bullmq@6.3.5(ioredis@6.0.0))':
     dependencies:
-      '@bull-board/ui': 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
+      '@bull-board/ui': 8.6.1(bullmq@6.3.5(ioredis@6.0.0))
       redis-info: 3.1.0
     optionalDependencies:
-      bullmq: 6.3.4(ioredis@6.0.0)
+      bullmq: 6.3.5(ioredis@6.0.0)
 
-  '@bull-board/fastify@8.6.1(bullmq@6.3.4(ioredis@6.0.0))':
+  '@bull-board/fastify@8.6.1(bullmq@6.3.5(ioredis@6.0.0))':
     dependencies:
-      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
-      '@bull-board/ui': 8.6.1(bullmq@6.3.4(ioredis@6.0.0))
+      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.5(ioredis@6.0.0)))(bullmq@6.3.5(ioredis@6.0.0))
+      '@bull-board/ui': 8.6.1(bullmq@6.3.5(ioredis@6.0.0))
       '@fastify/static': 10.1.2
       '@fastify/view': 12.0.0
       ejs: 6.0.1
@@ -3666,9 +3666,9 @@ snapshots:
       - bull
       - bullmq
 
-  '@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0))':
+  '@bull-board/ui@8.6.1(bullmq@6.3.5(ioredis@6.0.0))':
     dependencies:
-      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.4(ioredis@6.0.0)))(bullmq@6.3.4(ioredis@6.0.0))
+      '@bull-board/api': 8.6.1(@bull-board/ui@8.6.1(bullmq@6.3.5(ioredis@6.0.0)))(bullmq@6.3.5(ioredis@6.0.0))
     transitivePeerDependencies:
       - bull
       - bullmq
@@ -4613,9 +4613,9 @@ snapshots:
 
   buffer-equal-constant-time@1.0.1: {}
 
-  bullmq@6.3.4(ioredis@6.0.0):
+  bullmq@6.3.5(ioredis@6.0.0):
     dependencies:
-      cron-parser: 5.10.0
+      cron-parser: 5.10.1
       msgpackr: 2.1.0
       node-abort-controller: 3.1.1
       semver: 7.8.5
@@ -4691,7 +4691,7 @@ snapshots:
 
   cookie@2.0.1: {}
 
-  cron-parser@5.10.0:
+  cron-parser@5.10.1:
     dependencies:
       luxon: 3.7.2
 
