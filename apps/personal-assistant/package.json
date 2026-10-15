@@ -13,7 +13,7 @@
     "googleapis": "174.0.1"
   },
   "devDependencies": {
-    "@types/node": "24.13.4",
+    "@types/node": "24.13.5",
     "dotenv": "17.4.2",
     "tsx": "4.23.13",
     "typescript": "5.9.3",
