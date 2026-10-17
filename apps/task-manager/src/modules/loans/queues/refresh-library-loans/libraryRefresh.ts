@@ -2,19 +2,61 @@
 // BullMQ — same split as jobProcessor.ts/loanCalendarSync.ts. Runs on a schedule (see server.ts's
 // repeatable job), not once per loan — it's what *produces* the one `sync-loan-calendar` job per
 // current loan that loanCalendarSync.ts then handles individually.
-import type { LibraryClient } from "./library.js";
+//
+// "Check WBPG" means every configured account (see libraryConfig.ts): the loans of all of them
+// are pooled into one snapshot, so a second card's books are grouped into the same calendar
+// events as the primary's rather than getting a calendar of their own.
+import type { LibraryClient, LibraryLoan } from "./library.js";
 import type { LoanSyncQueue } from "../sync-loan-calendar/queue.js";
 import { noopJobLogger, type JobLogger } from "../../../../jobLogger.js";
 import type { LoansStore } from "../../loansStore.js";
 import type { CalendarClient } from "../../../../googleCalendarClient.js";
 
+/** One configured WBPG login (see libraryConfig.ts's LibraryAccountConfig) and the client that
+ * talks to it. Every account's loans are pooled into the same snapshot and the same calendar,
+ * so two cards due back at the same filia on the same day still share one event. */
+export interface LibraryRefreshAccount {
+  client: LibraryClient;
+  /** Owner name for loans on this login's own card; see LibraryAccountConfig.label. */
+  label?: string;
+}
+
 export interface LibraryRefreshDeps {
-  libraryClient: LibraryClient;
+  /** At least one — `accounts[0]` is the primary (see libraryConfig.ts). */
+  accounts: LibraryRefreshAccount[];
   store: LoansStore;
   syncQueue: LoanSyncQueue;
   calendar: CalendarClient;
   /** Bull Board per-job progress notes (#348) — optional, defaults to a no-op. */
   log?: JobLogger;
+}
+
+/** A loan on the login's own card carries no label from WBPG (only linked sub-accounts do), so
+ * the configured owner name fills that in — otherwise two cards' own loans would sit in the
+ * same event description with nothing saying whose each one is. */
+function withAccountLabel(loan: LibraryLoan, label: string | undefined): LibraryLoan {
+  return loan.accountLabel === null && label ? { ...loan, accountLabel: label } : loan;
+}
+
+/** Loans from every configured account, deduplicated by holdingId. The dedupe matters because
+ * the same card can be linked as a sub-account of more than one login (e.g. both parents have
+ * the child's card linked), which would otherwise list that book twice in one event. A
+ * holdingId identifies one physical copy in the shared catalog, so the same id across two
+ * accounts really is the same loan. Any account failing fails the whole refresh rather than
+ * writing a partial snapshot — a half-fetched snapshot looks exactly like "those books were
+ * returned" and would delete their calendar events. */
+async function fetchLoansFromAllAccounts(accounts: LibraryRefreshAccount[]): Promise<LibraryLoan[]> {
+  const perAccount = await Promise.all(
+    accounts.map(async (account) =>
+      (await account.client.getCurrentLoans()).map((loan) => withAccountLabel(loan, account.label)),
+    ),
+  );
+
+  const byHoldingId = new Map<number, LibraryLoan>();
+  for (const loan of perAccount.flat()) {
+    if (!byHoldingId.has(loan.holdingId)) byHoldingId.set(loan.holdingId, loan);
+  }
+  return [...byHoldingId.values()];
 }
 
 export interface LibraryRefreshResult {
@@ -25,10 +67,12 @@ export interface LibraryRefreshResult {
 export async function refreshLibraryLoans(deps: LibraryRefreshDeps): Promise<LibraryRefreshResult> {
   const log = deps.log ?? noopJobLogger;
 
-  log("Fetching current loans and filia names from WBPG");
+  log(`Fetching current loans and filia names from WBPG (${deps.accounts.length} account(s))`);
   const [loans, filiaNames] = await Promise.all([
-    deps.libraryClient.getCurrentLoans(),
-    deps.libraryClient.getFiliaNames(),
+    fetchLoansFromAllAccounts(deps.accounts),
+    // Public catalog config, identical whichever card asks for it (see library.ts), so one
+    // account's client answers for all of them.
+    deps.accounts[0].client.getFiliaNames(),
   ]);
   log(`Fetched ${loans.length} current loan(s)`);
 

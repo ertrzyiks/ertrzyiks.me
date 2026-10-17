@@ -84,6 +84,13 @@ data "onepassword_item" "task_manager_wbpg_login" {
   title = "task_manager_wbpg_login"
 }
 
+# The optional second WBPG card, synced onto the same calendar as the one above (see
+# apps/task-manager/README.md's "Two library cards on one calendar"). Same Login item shape.
+data "onepassword_item" "task_manager_wbpg_secondary_login" {
+  vault = "Dokku apps"
+  title = "task_manager_wbpg_secondary_login"
+}
+
 # calendar.events refresh token for that same worker (see scripts/calendar-oauth/README.md) —
 # again its own refresh token, minted from the same shared OAuth client below (#343).
 data "onepassword_item" "task_manager_google_calendar_refresh_token" {

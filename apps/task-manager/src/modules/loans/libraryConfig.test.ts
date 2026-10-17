@@ -17,7 +17,10 @@ describe("loadLibraryWorkerConfig", () => {
     expect(config).toEqual({
       redisUrl: "redis://localhost:6379",
       databasePath: "/app/data/library.sqlite",
-      wbpg: { baseUrl: undefined, username: "user", password: "pass" },
+      wbpg: {
+        baseUrl: undefined,
+        accounts: [{ username: "user", password: "pass", label: undefined }],
+      },
       googleCalendar: {
         clientId: "client-id",
         clientSecret: "client-secret",
@@ -58,5 +61,51 @@ describe("loadLibraryWorkerConfig", () => {
     delete env[key as keyof typeof env];
 
     expect(() => loadLibraryWorkerConfig(env)).toThrow(key);
+  });
+
+  describe("the optional second library account", () => {
+    it("adds it after the primary, both sharing the one catalog base URL", () => {
+      const config = loadLibraryWorkerConfig({
+        ...REQUIRED_ENV,
+        WBPG_LABEL: "Ala",
+        WBPG_SECONDARY_USERNAME: "other-user",
+        WBPG_SECONDARY_PASSWORD: "other-pass",
+        WBPG_SECONDARY_LABEL: "Ola",
+      });
+
+      expect(config.wbpg.accounts).toEqual([
+        { username: "user", password: "pass", label: "Ala" },
+        { username: "other-user", password: "other-pass", label: "Ola" },
+      ]);
+    });
+
+    it("is left out entirely when neither of its credentials is set", () => {
+      const config = loadLibraryWorkerConfig(REQUIRED_ENV);
+
+      expect(config.wbpg.accounts).toHaveLength(1);
+    });
+
+    it("allows it without a label — the owner name is optional", () => {
+      const config = loadLibraryWorkerConfig({
+        ...REQUIRED_ENV,
+        WBPG_SECONDARY_USERNAME: "other-user",
+        WBPG_SECONDARY_PASSWORD: "other-pass",
+      });
+
+      expect(config.wbpg.accounts[1]).toEqual({
+        username: "other-user",
+        password: "other-pass",
+        label: undefined,
+      });
+    });
+
+    it.each(["WBPG_SECONDARY_USERNAME", "WBPG_SECONDARY_PASSWORD"] as const)(
+      "throws when only %s is set — half a card is a misconfiguration, not a second account",
+      (key) => {
+        expect(() => loadLibraryWorkerConfig({ ...REQUIRED_ENV, [key]: "value" })).toThrow(
+          "WBPG_SECONDARY_USERNAME and WBPG_SECONDARY_PASSWORD must be set together",
+        );
+      },
+    );
   });
 });

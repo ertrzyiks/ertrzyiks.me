@@ -262,12 +262,23 @@ if (gmailClientId && gmailClientSecret && gmailRefreshToken && openRouterApiKey)
 // Optional at startup like Todoist above: the Jobs API and Bull Board still come up fine
 // before these five vars are provisioned, the two queues just sit unconsumed until they are.
 if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClientSecret && googleCalendarRefreshToken) {
-  // Safe to call without an env override — all five vars this checks for were just confirmed
-  // present above, so none of loadLibraryWorkerConfig's required(...) checks can throw here.
+  // Safe to call without an env override as far as required(...) goes — all five vars it checks
+  // for were just confirmed present above. It can still throw on a half-configured second card
+  // (WBPG_SECONDARY_USERNAME without its password), which is a misconfiguration worth failing
+  // startup over rather than quietly syncing one card.
   const libraryConfig = loadLibraryWorkerConfig();
 
   const store = createStore(libraryConfig.databasePath);
-  const libraryClient = createLibraryClient(libraryConfig.wbpg);
+  // One client per configured card — the primary plus the optional WBPG_SECONDARY_* one. Each
+  // needs its own client because library.ts keeps a per-client session cookie jar.
+  const libraryAccounts = libraryConfig.wbpg.accounts.map((account) => ({
+    label: account.label,
+    client: createLibraryClient({
+      baseUrl: libraryConfig.wbpg.baseUrl,
+      username: account.username,
+      password: account.password,
+    }),
+  }));
   const calendar = createGoogleCalendarClient(libraryConfig.googleCalendar);
   const librarySyncQueueAdapter = createLoanSyncQueueAdapter(librarySyncQueue);
 
@@ -281,7 +292,7 @@ if (wbpgUsername && wbpgPassword && googleCalendarClientId && googleCalendarClie
 
   createLibraryRefreshWorker(
     new Redis(redisUrl, { maxRetriesPerRequest: null }),
-    { libraryClient, store, syncQueue: librarySyncQueueAdapter, calendar },
+    { accounts: libraryAccounts, store, syncQueue: librarySyncQueueAdapter, calendar },
     { logger: app.log },
   );
 

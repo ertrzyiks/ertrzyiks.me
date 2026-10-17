@@ -109,6 +109,10 @@ dependencies/logger (Fastify's `app.log` in every case now) rather than construc
 | `CALENDAR_EVENTS_RATE_LIMIT_DURATION_MS`          | no       | Window length in ms for the rate limit above (default `1000`)|
 | `WBPG_USERNAME`                                   | no\*\*\*\* | WBPG library card number / login, for the library sync workers                |
 | `WBPG_PASSWORD`                                   | no\*\*\*\* | WBPG password                                                                 |
+| `WBPG_LABEL`                                      | no       | Owner name shown in event descriptions for loans on that card itself (only useful alongside a second account below) |
+| `WBPG_SECONDARY_USERNAME`                         | no\*\*\*\*\* | A second library card, synced onto the same calendar as the primary one       |
+| `WBPG_SECONDARY_PASSWORD`                         | no\*\*\*\*\* | Password for that second card                                                 |
+| `WBPG_SECONDARY_LABEL`                            | no       | Owner name for loans on that second card itself, like `WBPG_LABEL`            |
 | `DATABASE_PATH`                                   | no       | Where the sqlite loans DB lives (default `/app/data/library.sqlite`, matching the Dokku storage mount — see terraform/main.tf) |
 | `WBPG_BASE_URL`                                   | no       | Overrides the WBPG catalog base URL (default `https://katalog.wbpg.org.pl`)   |
 | `LIBRARY_REFRESH_CRON_PATTERN`                    | no       | Cron pattern for how often to re-check WBPG (default `0 7 * * *`, daily 07:00 Europe/Warsaw) |
@@ -138,6 +142,10 @@ process) only start once these two **and** the three `GOOGLE_CALENDAR_*` vars ab
 same optional-at-startup pattern as `TODOIST_API_TOKEN` above. Unset, Bull Board still shows both
 queues (registered unconditionally so its "Add Job" button always works — see `bullBoard.ts`),
 jobs just queue up unconsumed until the workers start.
+
+\*\*\*\*\* Optional second library card (see "Two library cards on one calendar" below) — both
+halves or neither, a username without its password fails startup rather than quietly syncing just
+the primary card. Unset, everything behaves exactly as with the single card it has always been.
 
 \*\*\*\*\*\* The `extract-action-items` worker only starts once all four (`GMAIL_CLIENT_ID`/
 `_SECRET`/`_REFRESH_TOKEN` and `OPENROUTER_API_KEY`) are set — same optional-at-startup pattern as
@@ -548,7 +556,36 @@ current loan onto the second queue, consumed by the second `Worker`.
   `loanCalendarSync.ts` above with its `ready`/`failed` listeners) — see "Queue layout" below for
   the convention every queue in this package follows.
 - `src/modules/loans/libraryConfig.ts` — typed env var loading for the five WBPG/Calendar vars plus their
-  optional overrides, called from `server.ts` once all five are confirmed present.
+  optional overrides, called from `server.ts` once all five are confirmed present. Also where the
+  optional second card (`WBPG_SECONDARY_*`) turns into the list of accounts `libraryRefresh.ts`
+  pulls from — see "Two library cards on one calendar" below.
+
+### Two library cards on one calendar
+
+A WBPG login already covers its own card plus every sub-account linked to it (`library.ts` walks
+them all), but two adults each have their own login, and neither can see the other's loans. Setting
+`WBPG_SECONDARY_USERNAME`/`WBPG_SECONDARY_PASSWORD` adds that second login to the same refresh run:
+one `refresh-library-loans` job logs into both, pools their loans into one snapshot, and the
+existing (filia, return-date day) grouping does the rest — two books due back at the same branch on
+the same day share one calendar event no matter which card they were borrowed on. Nothing about
+the schedule, the queues, the store or the calendar changes; only the number of logins the refresh
+job reads from.
+
+Worth knowing:
+
+- **Both halves or neither.** A username without its password fails startup, rather than silently
+  syncing only the primary card — on the calendar that is indistinguishable from "the second card
+  has no loans right now".
+- **An account that can't be read fails the whole refresh** (and retries on the queue's normal
+  backoff — see `src/retry.ts`). Deliberate: a partial snapshot looks exactly like "those books were
+  returned" and would have the refresh delete calendar events for books still on loan.
+- **Same catalog, one base URL.** `WBPG_BASE_URL` applies to both cards. That's also what makes it
+  safe to key the loans snapshot by `holdingId` alone — a holding id identifies one physical copy
+  in the one catalog, so the same id seen on both accounts really is the same loan (it happens
+  when a child's card is linked as a sub-account of both logins) and gets listed once.
+- **Who borrowed what**: optional `WBPG_LABEL`/`WBPG_SECONDARY_LABEL` name the owner of each
+  login's *own* loans in the event description. Loans on a linked sub-account already show the name
+  WBPG reports for that card and ignore these.
 
 ### What is the schedule, and can it be run manually?
 
@@ -562,7 +599,9 @@ processes every job on that queue identically, scheduled or manual). It fans out
 ### Setup
 
 1. **WBPG credentials**: just your library card number/login and password — set
-   `WBPG_USERNAME`/`WBPG_PASSWORD` (see the env var table above).
+   `WBPG_USERNAME`/`WBPG_PASSWORD` (see the env var table above). A second card is optional:
+   `WBPG_SECONDARY_USERNAME`/`WBPG_SECONDARY_PASSWORD`, see "Two library cards on one calendar"
+   below.
 2. **Google Calendar credential**: run `scripts/calendar-oauth/` — see that folder's README. This
    is a separate refresh token from the existing Gmail one; a Google refresh token is scoped to
    whatever was consented to, and the Gmail one was only ever consented for `gmail.readonly`.
