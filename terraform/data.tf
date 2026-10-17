@@ -86,12 +86,10 @@ data "onepassword_item" "task_manager_wbpg_login" {
 
 # The optional second WBPG card, synced onto the same calendar as the one above (see
 # apps/task-manager/README.md's "Two library cards on one calendar"). Same Login item shape.
-# Commented out, together with the two config vars it feeds in main.tf, until the item exists in
-# the vault — a data source for a missing item fails `terraform plan` for the whole stack.
-# data "onepassword_item" "task_manager_wbpg_secondary_login" {
-#   vault = "Dokku apps"
-#   title = "task_manager_wbpg_secondary_login"
-# }
+data "onepassword_item" "task_manager_wbpg_secondary_login" {
+  vault = "Dokku apps"
+  title = "task_manager_wbpg_secondary_login"
+}
 
 # calendar.events refresh token for that same worker (see scripts/calendar-oauth/README.md) —
 # again its own refresh token, minted from the same shared OAuth client below (#343).

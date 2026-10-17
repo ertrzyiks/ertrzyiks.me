@@ -129,12 +129,11 @@ resource "dokku_app" "task_manager" {
     # item (#343).
     WBPG_USERNAME = data.onepassword_item.task_manager_wbpg_login.username
     WBPG_PASSWORD = data.onepassword_item.task_manager_wbpg_login.password
-    # Optional second library card, pooled onto the same calendar as the one above — uncomment
-    # both lines (and the data source in data.tf) once task_manager_wbpg_secondary_login exists
-    # in the vault. Both or neither: a username without its password fails the app's startup on
-    # purpose (see libraryConfig.ts).
-    # WBPG_SECONDARY_USERNAME     = data.onepassword_item.task_manager_wbpg_secondary_login.username
-    # WBPG_SECONDARY_PASSWORD     = data.onepassword_item.task_manager_wbpg_secondary_login.password
+    # Optional second library card, pooled onto the same calendar as the one above. Both or
+    # neither: a username without its password fails the app's startup on purpose (see
+    # libraryConfig.ts).
+    WBPG_SECONDARY_USERNAME       = data.onepassword_item.task_manager_wbpg_secondary_login.username
+    WBPG_SECONDARY_PASSWORD       = data.onepassword_item.task_manager_wbpg_secondary_login.password
     GOOGLE_CALENDAR_CLIENT_ID     = data.onepassword_item.personal_assistant_google_oauth_client.username
     GOOGLE_CALENDAR_CLIENT_SECRET = data.onepassword_item.personal_assistant_google_oauth_client.password
     GOOGLE_CALENDAR_REFRESH_TOKEN = data.onepassword_item.task_manager_google_calendar_refresh_token.password
