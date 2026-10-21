@@ -4,7 +4,7 @@
 # No Procfile: Dokku treats a Dockerfile app's CMD as its `web` process type by default (and
 # proxies it accordingly) whenever there's no Procfile to say otherwise, so one isn't needed here.
 
-FROM node:24.19.0-slim AS build
+FROM node:24.20.0-slim AS build
 WORKDIR /repo
 
 RUN npm install -g pnpm@11.20.0
@@ -49,7 +49,7 @@ WORKDIR /repo/apps/kstatus/dist
 # needs a build step, but skipping install scripts by default keeps this resilient if one is added.
 RUN pnpm install --prod --ignore-workspace --ignore-scripts
 
-FROM node:24.19.0-slim AS runtime
+FROM node:24.20.0-slim AS runtime
 WORKDIR /app
 COPY --from=build /repo/apps/kstatus/dist ./
 

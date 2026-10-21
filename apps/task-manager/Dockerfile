@@ -8,7 +8,7 @@
 # read email content via the local Keychain/LM Studio and never ran on Dokku at all — moved into
 # this same cloud process once it started calling OpenRouter instead (see openRouter.ts).
 
-FROM node:24.19.0-slim AS build
+FROM node:24.20.0-slim AS build
 WORKDIR /repo
 
 RUN npm install -g pnpm@11.20.0
@@ -56,7 +56,7 @@ WORKDIR /repo/apps/task-manager/dist
 # now hard-fails with ERR_PNPM_IGNORED_BUILDS instead of silently skipping the build as before.
 RUN pnpm install --prod --ignore-workspace --ignore-scripts
 
-FROM node:24.19.0-slim AS runtime
+FROM node:24.20.0-slim AS runtime
 WORKDIR /app
 COPY --from=build /repo/apps/task-manager/dist ./
 
