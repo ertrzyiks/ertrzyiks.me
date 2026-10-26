@@ -12,7 +12,7 @@ terraform {
 
     checkly = {
       source  = "checkly/checkly"
-      version = "1.27.0"
+      version = "1.29.0"
     }
   }
 
