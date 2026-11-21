@@ -54,7 +54,7 @@ jobs:
         working-directory: ./apps/home
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: home-dist
           path: apps/home/dist
