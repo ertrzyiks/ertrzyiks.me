@@ -22,7 +22,7 @@ importers:
         version: 0.9.12(prettier@3.9.4)(typescript@5.9.3)
       '@astrojs/mdx':
         specifier: 7.0.8
-        version: 7.0.8(@astrojs/markdown-satteri@0.3.5)(astro@7.4.7(@types/node@24.19.0)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 7.0.8(@astrojs/markdown-satteri@0.3.5)(astro@7.4.7(@types/node@24.19.2)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1))
       '@astrojs/rss':
         specifier: 4.0.19
         version: 4.0.19
@@ -31,7 +31,7 @@ importers:
         version: 3.7.4
       astro:
         specifier: 7.4.7
-        version: 7.4.7(@types/node@24.19.0)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1)
+        version: 7.4.7(@types/node@24.19.2)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1)
       astro-remark-description:
         specifier: 1.1.2
         version: 1.1.2
@@ -58,7 +58,7 @@ importers:
         version: 1.2.4
       astro:
         specifier: 7.4.7
-        version: 7.4.7(@types/node@24.19.0)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1)
+        version: 7.4.7(@types/node@24.19.2)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1)
       dat.gui:
         specifier: 0.7.9
         version: 0.7.9
@@ -82,11 +82,11 @@ importers:
         specifier: 1.64.1
         version: 1.64.1
       '@types/node':
-        specifier: 24.19.0
-        version: 24.19.0
+        specifier: 24.19.2
+        version: 24.19.2
       vitest:
         specifier: 4.1.11
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.0)(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
 
   apps/kstatus:
     dependencies:
@@ -98,8 +98,8 @@ importers:
         version: 5.12.6
     devDependencies:
       '@types/node':
-        specifier: 24.19.0
-        version: 24.19.0
+        specifier: 24.19.2
+        version: 24.19.2
       dotenv:
         specifier: 17.4.2
         version: 17.4.2
@@ -111,7 +111,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: 4.1.11
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.0)(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
 
   apps/personal-assistant:
     dependencies:
@@ -123,8 +123,8 @@ importers:
         version: 174.0.1
     devDependencies:
       '@types/node':
-        specifier: 24.19.0
-        version: 24.19.0
+        specifier: 24.19.2
+        version: 24.19.2
       dotenv:
         specifier: 17.4.2
         version: 17.4.2
@@ -136,7 +136,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: 4.1.11
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.0)(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
 
   apps/task-manager:
     dependencies:
@@ -172,8 +172,8 @@ importers:
         version: 4.6.6
     devDependencies:
       '@types/node':
-        specifier: 24.19.0
-        version: 24.19.0
+        specifier: 24.19.2
+        version: 24.19.2
       tsx:
         specifier: 4.23.15
         version: 4.23.15
@@ -182,7 +182,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: 4.1.11
-        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.0)(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
 
 packages:
 
@@ -1390,8 +1390,8 @@ packages:
   '@types/nlcst@2.0.3':
     resolution: {integrity: sha512-vSYNSDe6Ix3q+6Z7ri9lyWqgGhJTmzRjZRqyq15N0Z/1/UnVsno9G/N40NBijoYx2seFDIl0+B2mgAb9mezUCA==}
 
-  '@types/node@24.19.0':
-    resolution: {integrity: sha512-zY+5tKxXdhGh1PYI0ac+7juvEu4OI6vWtVVoj5i2m42jxAY1U+zHGt6QCyOFwykdP62sM3MJ9stoYYUw5aCWew==}
+  '@types/node@24.19.2':
+    resolution: {integrity: sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==}
 
   '@types/sax@1.2.7':
     resolution: {integrity: sha512-rO73L89PJxeYM3s3pPPjiPgVVcymqU490g0YO5n5By0k2Erzj6tay/4lr1CHAAU4JyOWd1rpQ8bCf6cZfHU96A==}
@@ -3758,13 +3758,13 @@ snapshots:
       github-slugger: 2.0.0
       satteri: 0.11.7
 
-  '@astrojs/mdx@7.0.8(@astrojs/markdown-satteri@0.3.5)(astro@7.4.7(@types/node@24.19.0)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1))':
+  '@astrojs/mdx@7.0.8(@astrojs/markdown-satteri@0.3.5)(astro@7.4.7(@types/node@24.19.2)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@astrojs/internal-helpers': 0.10.4
       '@astrojs/markdown-remark': 7.2.4
       '@mdx-js/mdx': 3.1.1
       acorn: 8.17.0
-      astro: 7.4.7(@types/node@24.19.0)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1)
+      astro: 7.4.7(@types/node@24.19.2)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1)
       es-module-lexer: 2.3.1
       estree-util-visit: 2.0.0
       hast-util-to-html: 9.0.5
@@ -4683,13 +4683,13 @@ snapshots:
     dependencies:
       '@types/unist': 3.0.3
 
-  '@types/node@24.19.0':
+  '@types/node@24.19.2':
     dependencies:
       undici-types: 7.24.6
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 24.19.0
+      '@types/node': 24.19.2
 
   '@types/unist@2.0.11': {}
 
@@ -4706,13 +4706,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.1
 
-  '@vitest/mocker@4.1.11(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))':
+  '@vitest/mocker@4.1.11(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))':
     dependencies:
       '@vitest/spy': 4.1.11
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
 
   '@vitest/pretty-format@4.1.11':
     dependencies:
@@ -4867,7 +4867,7 @@ snapshots:
       mdast-util-to-string: 3.2.0
       unist-util-visit: 4.1.2
 
-  astro@7.4.7(@types/node@24.19.0)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1):
+  astro@7.4.7(@types/node@24.19.2)(esbuild@0.28.1)(ioredis@5.11.1)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
       '@astrojs/compiler-rs': 0.5.2
       '@astrojs/internal-helpers': 0.13.1
@@ -4916,13 +4916,13 @@ snapshots:
       unifont: 1.0.3
       unstorage: 1.17.6(ioredis@5.11.1)
       verkit: 0.5.0
-      vite: 8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
-      vitefu: 1.1.3(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
+      vite: 8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
+      vitefu: 1.1.3(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
       xxhash-wasm: 1.1.0
       yargs-parser: 22.0.0
       zod: 4.6.7
     optionalDependencies:
-      sharp: 0.35.4(@types/node@24.19.0)
+      sharp: 0.35.4(@types/node@24.19.2)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -6825,7 +6825,7 @@ snapshots:
 
   setprototypeof@1.2.0: {}
 
-  sharp@0.35.4(@types/node@24.19.0):
+  sharp@0.35.4(@types/node@24.19.2):
     dependencies:
       '@img/colour': 1.1.0
       detect-libc: 2.1.2
@@ -6856,7 +6856,7 @@ snapshots:
       '@img/sharp-win32-arm64': 0.35.4
       '@img/sharp-win32-ia32': 0.35.4
       '@img/sharp-win32-x64': 0.35.4
-      '@types/node': 24.19.0
+      '@types/node': 24.19.2
     optional: true
 
   shebang-command@2.0.0:
@@ -6923,7 +6923,7 @@ snapshots:
 
   sitemap@9.0.1:
     dependencies:
-      '@types/node': 24.19.0
+      '@types/node': 24.19.2
       '@types/sax': 1.2.7
       arg: 5.0.2
       sax: 1.6.0
@@ -7183,7 +7183,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1):
+  vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -7191,20 +7191,20 @@ snapshots:
       rolldown: 1.2.16
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 24.19.0
+      '@types/node': 24.19.2
       esbuild: 0.28.1
       fsevents: 2.3.3
       tsx: 4.23.15
       yaml: 2.9.1
 
-  vitefu@1.1.3(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)):
+  vitefu@1.1.3(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)):
     optionalDependencies:
-      vite: 8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
 
-  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.0)(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)):
+  vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)):
     dependencies:
       '@vitest/expect': 4.1.11
-      '@vitest/mocker': 4.1.11(vite@8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
+      '@vitest/mocker': 4.1.11(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1))
       '@vitest/pretty-format': 4.1.11
       '@vitest/runner': 4.1.11
       '@vitest/snapshot': 4.1.11
@@ -7221,11 +7221,11 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.1
-      vite: 8.3.6(@types/node@24.19.0)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
+      vite: 8.3.6(@types/node@24.19.2)(esbuild@0.28.1)(tsx@4.23.15)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
-      '@types/node': 24.19.0
+      '@types/node': 24.19.2
     transitivePeerDependencies:
       - msw
 
