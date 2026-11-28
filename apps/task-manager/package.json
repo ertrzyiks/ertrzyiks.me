@@ -16,7 +16,7 @@
   "dependencies": {
     "@bull-board/api": "9.10.5",
     "@bull-board/fastify": "9.10.5",
-    "@sentry/node": "10.77.1",
+    "@sentry/node": "10.78.0",
     "bullmq": "6.3.19",
     "dotenv": "17.4.2",
     "fastify": "5.12.6",
